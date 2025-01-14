@@ -1,18 +1,21 @@
 ---
-name: PullRequest
-on: # yamllint disable-line rule:truthy
-  pull_request:
-    branches: main
+name: Kube Lint
+on:
+  workflow_call:
+    inputs:
+      directory:
+        required: false
+        type: string
+        default: deployments
+
 jobs:
-  lintAllTheThings:
+  kube-linter:
+    name: chart-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: yaml-lint
-        uses: ibiqlik/action-yamllint@v3
-    ignore: /clusters/korriban/flux-system/*
-    extends: default
-    rules:
-      line-length:
-        max: 120
-        level: warning
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Scan repo with kube-linter
+        uses: stackrox/kube-linter-action@v1.0.5
+        with:
+          directory: main
