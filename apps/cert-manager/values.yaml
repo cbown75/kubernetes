@@ -1,0 +1,12 @@
+---
+certManager:
+  enabled: true
+  installCRDs: true
+
+cloudflare:
+  enabled: true
+  apiKey: "<YOUR_CLOUDFLARE_API_KEY>"
+  email: "<YOUR_CLOUDFLARE_EMAIL>"
+  zoneId: "<YOUR_CLOUDFLARE_ZONE_ID>"
+
+certManagerNamespace: cert-manager
