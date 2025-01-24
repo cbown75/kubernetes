@@ -9,4 +9,4 @@ spec:
   issuerRef:
     name: cloudflare-issuer
   dnsNames:
-    - "example.com"
+    - "traefik.home.cwbtech.net"
