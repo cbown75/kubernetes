@@ -1,0 +1,18 @@
+---
+#---
+#apiVersion: traefik.containo.us/v1alpha1
+#kind: IngressRoute
+#metadata:
+#  name: example-ingressroute
+#  namespace: {{ .Values.namespace }}
+#spec:
+#  entryPoints:
+#    - websecure
+#  routes:
+#    - match: Host(`example.{{ .Values.namespace }}.example.com`)
+#      kind: Rule
+#      services:
+#        - name: example-service
+#          port: 80
+#  tls:
+#    certResolver: default

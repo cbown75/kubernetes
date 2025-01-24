@@ -1,0 +1,12 @@
+namespace: traefik
+image:
+  repository: traefik
+  tag: "v3.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+  httpsPort: 443
+
+resources: {}

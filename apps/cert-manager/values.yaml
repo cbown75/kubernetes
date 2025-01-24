@@ -1,0 +1,10 @@
+---
+certManager:
+  enabled: true
+  installCRDs: true
+
+cloudflare:
+  enabled: true
+  email: "cbown75@gmail.com"
+
+certManagerNamespace: cert-manager

@@ -1,0 +1,6 @@
+---
+apiVersion: v2
+name: cert-manager-cloudflare
+description: A Helm chart for cert-manager with Cloudflare DNS as ACME solver
+version: 0.1.0
+appVersion: "1.0"
