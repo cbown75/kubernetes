@@ -18,7 +18,6 @@ jobs:
         with:
           directory: main
 
-jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
