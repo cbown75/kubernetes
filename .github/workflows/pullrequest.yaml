@@ -15,8 +15,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Scan repo with kube-linter
         uses: stackrox/kube-linter-action@v1.0.5
-        with:
-          directory: main
 
   commitlint:
     runs-on: ubuntu-latest
