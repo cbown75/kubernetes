@@ -1,12 +1,7 @@
-# Default values for sealed-secrets
+namespace: flux-system
 
-# The namespace where Sealed Secrets controller will be installed
-namespace: kube-system
-
-# Version of the Sealed Secrets controller to deploy
 controllerVersion: "v0.22.0"
 
-# Resource requests/limits for the controller
 resources:
   requests:
     memory: "64Mi"
@@ -15,27 +10,15 @@ resources:
     memory: "256Mi"
     cpu: "100m"
 
-# Node selector for the controller pod
 nodeSelector: {}
 
-# Tolerations for the controller pod
 tolerations: []
 
-# Affinity for the controller pod
 affinity: {}
 
-# Additional controller command line arguments
 extraArgs: []
 
-# Service configuration
 service:
   type: ClusterIP
   port: 8080
 
-# Define custom sealed secrets to deploy
-customSecrets: []
-  # - name: example-secret
-  #   namespace: default
-  #   encryptedData:
-  #     username: "AgBy8hCF8..."
-  #     password: "AgAT671..."

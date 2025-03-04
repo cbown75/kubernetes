@@ -1,14 +1,10 @@
-# Default values for flux-system
-
-# GitHub repositories to be synced by FluxCD
 repositories:
-  # Example repository configurations
   - name: kubernetes
     url: https://github.com/cbown75/kubernetes.git
     branch: main
     path: ./clusters/korriban
     interval: 1m
-    secretName: flux-system
+    secretName: github-token
   #- name: app2
   #  url: https://github.com/organization/app2
   #  branch: develop
@@ -16,10 +12,8 @@ repositories:
   #  interval: 5m
   #  secretName: github-token-app2
 
-# Namespace where FluxCD components will be installed
 namespace: flux-system
 
-# Configuration for Flux controllers
 controllers:
   source:
     enabled: true
@@ -30,9 +24,7 @@ controllers:
   notification:
     enabled: true
 
-# Configuration for notifications
 notifications:
   enabled: false
 
-# Default interval for reconciliation
 defaultInterval: 1m
