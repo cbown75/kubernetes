@@ -1,0 +1,30 @@
+{{- if .Values.repositories }}
+{{- range .Values.repositories }}
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace | default "flux-system" }}
+spec:
+  interval: {{ .interval | default $.Values.defaultInterval }}
+  url: {{ .url }}
+  ref:
+    branch: {{ .branch }}
+  secretRef:
+    name: {{ .secretName }}
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace | default "flux-system" }}
+spec:
+  interval: {{ .interval | default $.Values.defaultInterval }}
+  path: {{ .path }}
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: {{ .name }}
+{{- end }}
+{{- end }}

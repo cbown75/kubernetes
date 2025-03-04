@@ -1,0 +1,17 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your FluxCD system has been deployed to namespace: {{ .Values.namespace | default "flux-system" }}
+
+The following GitRepositories have been configured:
+{{- range .Values.repositories }}
+- {{ .name }} ({{ .url }})
+{{- end }}
+
+To check the status of your GitRepositories, run:
+  kubectl get gitrepositories -n {{ .Values.namespace | default "flux-system" }}
+
+To check the status of your Kustomizations, run:
+  kubectl get kustomizations -n {{ .Values.namespace | default "flux-system" }}
+
+For more information about FluxCD, visit:
+  https://fluxcd.io/docs/
