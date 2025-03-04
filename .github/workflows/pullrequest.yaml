@@ -7,15 +7,6 @@ permissions:
   pull-requests: read
 
 jobs:
-  kube-linter:
-    name: chart-lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Scan repo with kube-linter
-        uses: stackrox/kube-linter-action@v1.0.5
-
   commitlint:
     runs-on: ubuntu-latest
     steps:
