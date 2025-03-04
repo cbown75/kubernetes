@@ -1,12 +1,10 @@
 ---
 name: Kube Lint
-on:
-  workflow_call:
-    inputs:
-      directory:
-        required: false
-        type: string
-        default: deployments
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   kube-linter:
@@ -19,3 +17,10 @@ jobs:
         uses: stackrox/kube-linter-action@v1.0.5
         with:
           directory: main
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: wagoid/commitlint-github-action@v6
