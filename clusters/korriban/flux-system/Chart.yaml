@@ -1,0 +1,6 @@
+apiVersion: v2
+name: flux-system
+description: A Helm chart for deploying FluxCD resources
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

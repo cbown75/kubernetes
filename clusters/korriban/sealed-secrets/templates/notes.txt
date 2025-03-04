@@ -1,0 +1,35 @@
+Thank you for installing {{ .Chart.Name }}.
+
+The Sealed Secrets controller has been deployed to namespace: {{ .Values.namespace | default "kube-system" }}
+
+To check the status of the controller, run:
+  kubectl get pods -n {{ .Values.namespace | default "kube-system" }} -l name=sealed-secrets-controller
+
+To use Sealed Secrets, you'll need to install the kubeseal CLI tool and encrypt your secrets:
+
+1. Install kubeseal (Mac/Homebrew):
+   brew install kubeseal
+
+2. Create a regular secret:
+   cat <<EOF > mysecret.yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: mysecret
+     namespace: default
+   type: Opaque
+   stringData:
+     username: admin
+     password: supersecret
+   EOF
+
+3. Encrypt it:
+   kubeseal --format yaml < mysecret.yaml > sealed-secret.yaml
+
+4. Apply the sealed secret:
+   kubectl apply -f sealed-secret.yaml
+
+The controller will automatically decrypt the sealed secret and create a regular secret.
+
+For more information about Sealed Secrets, visit:
+  https://github.com/bitnami-labs/sealed-secrets

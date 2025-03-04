@@ -1,0 +1,116 @@
+{{- if .Values.controllers }}
+{{- if .Values.controllers.source.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: source-controller
+  namespace: {{ .Values.namespace | default "flux-system" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: source-controller
+  template:
+    metadata:
+      labels:
+        app: source-controller
+    spec:
+      containers:
+      - name: source-controller
+        image: fluxcd/source-controller:latest
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+{{- end }}
+
+{{- if .Values.controllers.kustomize.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kustomize-controller
+  namespace: {{ .Values.namespace | default "flux-system" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kustomize-controller
+  template:
+    metadata:
+      labels:
+        app: kustomize-controller
+    spec:
+      containers:
+      - name: kustomize-controller
+        image: fluxcd/kustomize-controller:latest
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+{{- end }}
+
+{{- if .Values.controllers.helm.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helm-controller
+  namespace: {{ .Values.namespace | default "flux-system" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: helm-controller
+  template:
+    metadata:
+      labels:
+        app: helm-controller
+    spec:
+      containers:
+      - name: helm-controller
+        image: fluxcd/helm-controller:latest
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+{{- end }}
+
+{{- if .Values.controllers.notification.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-controller
+  namespace: {{ .Values.namespace | default "flux-system" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-controller
+  template:
+    metadata:
+      labels:
+        app: notification-controller
+    spec:
+      containers:
+      - name: notification-controller
+        image: fluxcd/notification-controller:latest
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+{{- end }}
+{{- end }}

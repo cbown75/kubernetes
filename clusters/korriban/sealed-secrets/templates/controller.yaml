@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sealed-secrets-controller
+  namespace: {{ .Values.namespace | default "kube-system" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: sealed-secrets-controller
+  template:
+    metadata:
+      labels:
+        name: sealed-secrets-controller
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: sealed-secrets-controller
+        image: bitnami/sealed-secrets-controller:{{ .Values.controllerVersion | default "v0.22.0" }}
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+        command:
+          - controller
+        args:
+          - --update-status
+          - --log-format=json
+          {{- range .Values.extraArgs }}
+          - {{ . | quote }}
+          {{- end }}
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
