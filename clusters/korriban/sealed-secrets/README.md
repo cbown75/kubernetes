@@ -1,97 +1,210 @@
 # Sealed Secrets Helm Chart
 
-This Helm chart deploys the Bitnami Sealed Secrets controller to your Kubernetes cluster, enabling secure management of Kubernetes secrets.
+This Helm chart deploys the [Bitnami Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) controller to your Kubernetes cluster.
 
-## Overview
+## Introduction
 
-[Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) provides a mechanism to encrypt your Kubernetes Secrets into SealedSecrets, which can be safely stored in a Git repository and included in your GitOps workflows.
+Sealed Secrets is a Kubernetes controller and tool for one-way encrypted Secrets. The Sealed Secrets controller in the cluster automatically decrypts the encrypted secrets into regular Kubernetes Secrets.
 
 ## Prerequisites
 
 - Kubernetes 1.16+
 - Helm 3.0+
 
-## Getting Started
+## Installing the Chart
 
 To install the chart with the release name `sealed-secrets`:
 
 ```bash
-helm install sealed-secrets ./sealed-secrets
+helm install sealed-secrets ./aws/us-east-1/rp-eks-stg/sealed-secrets
 ```
 
-## Configuration
+## Certificate Management
 
-The following table lists the configurable parameters of the Sealed Secrets chart and their default values.
+### Understanding Sealed Secrets Certificates
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `namespace` | Namespace for Sealed Secrets controller | `kube-system` |
-| `controllerVersion` | Version of Sealed Secrets controller | `v0.22.0` |
-| `resources` | Resource requests/limits for the controller | `{}` |
-| `nodeSelector` | Node selectors for controller pod scheduling | `{}` |
-| `tolerations` | Tolerations for controller pod scheduling | `[]` |
-| `affinity` | Affinity rules for controller pod scheduling | `{}` |
-| `extraArgs` | Additional controller arguments | `[]` |
-| `service.type` | Service type for the controller | `ClusterIP` |
-| `service.port` | Service port for the controller | `8080` |
-| `customSecrets` | List of custom SealedSecrets to deploy | `[]` |
+Sealed Secrets uses a public/private key pair:
 
-## Working with Sealed Secrets
+- The private key is used by the controller to decrypt secrets
+- The public key is used by users to encrypt secrets
 
-### Creating Sealed Secrets
+By default, the controller generates a key pair on first startup and stores it as a Secret in the same namespace.
 
-To create a sealed secret:
+### Fetching the Public Certificate
 
-1. Install the kubeseal CLI tool:
-   ```bash
-   brew install kubeseal  # On macOS
-   ```
+To encrypt secrets, you need the controller's public key:
 
-2. Create a regular Secret manifest:
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: mysecret
-     namespace: default
-   type: Opaque
-   stringData:
-     username: admin
-     password: supersecret
-   ```
+```bash
+# Save the public key to a file
+kubeseal --fetch-cert > public-cert.pem
 
-3. Encrypt it using kubeseal:
-   ```bash
-   kubeseal --format yaml < secret.yaml > sealed-secret.yaml
-   ```
+```
 
-4. You can either apply the generated sealed-secret.yaml directly:
-   ```bash
-   kubectl apply -f sealed-secret.yaml
-   ```
+### Backing Up the Private Key
 
-   Or add it to the `customSecrets` section in your values.yaml file:
-   ```yaml
-   customSecrets:
-     - name: mysecret
-       namespace: default
-       encryptedData:
-         username: "AgBy8hCF8..."  # Copy encrypted data from sealed-secret.yaml
-         password: "AgAT671..."    # Copy encrypted data from sealed-secret.yaml
-   ```
+It's crucial to back up the private key for disaster recovery:
 
-## Integration with FluxCD
+```bash
+# Backup the private key
+kubectl get secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml > sealed-secrets-key.yaml
+```
 
-This chart works well with the companion FluxCD chart. To use them together:
+### Rotating Certificates
 
-1. Install Sealed Secrets first:
-   ```bash
-   helm install sealed-secrets ./sealed-secrets
-   ```
+To rotate the certificate:
 
-2. Install FluxCD with Git repository secrets:
-   ```bash
-   helm install flux ./flux-system
-   ```
+```bash
+# Generate a new key pair
+openssl req -x509 -days 365 -nodes -newkey rsa:4096 -keyout tls.key -out tls.crt -subj "/CN=sealed-secret/O=sealed-secret"
 
-The FluxCD GitRepository resources can reference secrets that are created by the Sealed Secrets controller.
+# Create a new secret with the key pair
+kubectl -n kube-system create secret tls sealed-secrets-key --cert=tls.crt --key=tls.key --dry-run=client -o yaml | kubectl apply -f -
+
+# Restart the controller to use the new key
+kubectl -n kube-system delete pod -l app.kubernetes.io/name=sealed-secrets
+```
+
+### Using Custom Certificates
+
+To use your own certificates instead of letting the controller generate them:
+
+```bash
+# Create a secret with your certificates before installing the controller
+kubectl -n kube-system create secret tls sealed-secrets-key --cert=tls.crt --key=tls.key
+```
+
+## Encrypting Secrets with Sealed Secrets
+
+### Installing the kubeseal CLI
+
+First, install the `kubeseal` CLI tool:
+
+```bash
+# For macOS
+brew install kubeseal
+
+# For Linux
+wget https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.19.5/kubeseal-0.19.5-linux-amd64.tar.gz
+tar -xvzf kubeseal-0.19.5-linux-amd64.tar.gz
+sudo install -m 755 kubeseal /usr/local/bin/kubeseal
+
+# For Windows (using Chocolatey)
+choco install kubeseal
+```
+
+### Basic Usage
+
+1. Create a regular Kubernetes Secret manifest:
+
+```yaml
+# my-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysecret
+  namespace: default
+type: Opaque
+data:
+  username: YWRtaW4= # base64 encoded "admin"
+  password: cGFzc3dvcmQ= # base64 encoded "password"
+```
+
+2. Encrypt the Secret using kubeseal:
+
+```bash
+kubeseal --format yaml < my-secret.yaml > sealed-secret.yaml
+```
+
+3. Apply the SealedSecret to your cluster:
+
+```bash
+kubectl apply -f sealed-secret.yaml
+```
+
+### Creating Secrets from Literal Values
+
+You can create a SealedSecret directly from literal values:
+
+```bash
+# Create a regular secret and pipe to kubeseal
+kubectl create secret generic mysecret \
+  --from-literal=username=admin \
+  --from-literal=password=password \
+  --dry-run=client -o yaml | \
+  kubeseal --format yaml > sealed-secret.yaml
+```
+
+### Creating Secrets from Files
+
+To create a secret from files:
+
+```bash
+# Create a secret from files
+kubectl create secret generic mysecret \
+  --from-file=./credentials.json \
+  --from-file=./config.yaml \
+  --dry-run=client -o yaml | \
+  kubeseal --format yaml > sealed-secret.yaml
+```
+
+### Namespace-Specific Secrets
+
+By default, a SealedSecret can only be decrypted in the same namespace it was sealed for:
+
+```bash
+kubeseal --format yaml --namespace production < my-secret.yaml > sealed-secret.yaml
+```
+
+### Cluster-Wide Secrets
+
+To create a SealedSecret that can be deployed to any namespace:
+
+```bash
+kubeseal --format yaml --scope cluster-wide < my-secret.yaml > sealed-secret.yaml
+```
+
+### Using a Specific Certificate
+
+If you need to use a specific public key:
+
+```bash
+# Fetch the certificate
+kubeseal --fetch-cert > public-cert.pem
+
+# Use the certificate for encryption
+kubeseal --format yaml --cert public-cert.pem < my-secret.yaml > sealed-secret.yaml
+```
+
+### Encrypting Secrets for a Different Cluster
+
+To encrypt secrets for a different cluster:
+
+```bash
+# Get the public key from the target cluster
+kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system > target-cluster-cert.pem
+
+# Encrypt using the target cluster's certificate
+kubeseal --format yaml --cert target-cluster-cert.pem < my-secret.yaml > sealed-secret.yaml
+```
+
+## Troubleshooting
+
+### Verifying Controller Status
+
+```bash
+kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets
+```
+
+### Checking Controller Logs
+
+```bash
+kubectl logs -n kube-system -l app.kubernetes.io/name=sealed-secrets
+```
+
+### Common Issues
+
+1. **Secret cannot be decrypted**: Ensure the SealedSecret was created for the correct namespace and using the correct certificate.
+
+2. **Certificate mismatch**: If you've rotated certificates, older SealedSecrets might not decrypt. The controller keeps old keys by default, but you may need to restore from backup.
+
+3. **Controller not starting**: Check for RBAC issues or certificate problems in the logs.
