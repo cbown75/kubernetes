@@ -6,6 +6,11 @@ This Helm chart deploys the [Bitnami Sealed Secrets](https://github.com/bitnami-
 
 Sealed Secrets is a Kubernetes controller and tool for one-way encrypted Secrets. The Sealed Secrets controller in the cluster automatically decrypts the encrypted secrets into regular Kubernetes Secrets.
 
+## Chart Details
+
+- Version: 0.1.0
+- App Version: 0.19.5
+
 ## Prerequisites
 
 - Kubernetes 1.16+
@@ -16,7 +21,7 @@ Sealed Secrets is a Kubernetes controller and tool for one-way encrypted Secrets
 To install the chart with the release name `sealed-secrets`:
 
 ```bash
-helm install sealed-secrets ./aws/us-east-1/rp-eks-stg/sealed-secrets
+helm install sealed-secrets ./clusters/korriban/sealed-secrets
 ```
 
 ## Certificate Management
@@ -90,6 +95,9 @@ sudo install -m 755 kubeseal /usr/local/bin/kubeseal
 
 # For Windows (using Chocolatey)
 choco install kubeseal
+
+# Using Go
+go install github.com/bitnami-labs/sealed-secrets/cmd/kubeseal@v0.19.5
 ```
 
 ### Basic Usage
@@ -187,6 +195,32 @@ kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=ku
 kubeseal --format yaml --cert target-cluster-cert.pem < my-secret.yaml > sealed-secret.yaml
 ```
 
+## Configuration
+
+The following table lists the configurable parameters of the Sealed Secrets chart and their default values.
+
+| Parameter                        | Description                                  | Default                             |
+| -------------------------------- | -------------------------------------------- | ----------------------------------- |
+| `replicaCount`                   | Number of controller replicas                | `1`                                 |
+| `image.repository`               | Controller image repository                  | `bitnami/sealed-secrets-controller` |
+| `image.tag`                      | Controller image tag                         | `v0.19.5`                           |
+| `image.pullPolicy`               | Controller image pull policy                 | `IfNotPresent`                      |
+| `resources.limits.cpu`           | CPU resource limits                          | `100m`                              |
+| `resources.limits.memory`        | Memory resource limits                       | `128Mi`                             |
+| `resources.requests.cpu`         | CPU resource requests                        | `50m`                               |
+| `resources.requests.memory`      | Memory resource requests                     | `64Mi`                              |
+| `nodeSelector`                   | Node labels for pod assignment               | `{}`                                |
+| `tolerations`                    | Tolerations for pod assignment               | `[]`                                |
+| `affinity`                       | Affinity for pod assignment                  | `{}`                                |
+| `service.type`                   | Service type                                 | `ClusterIP`                         |
+| `service.port`                   | Service port                                 | `8080`                              |
+| `rbac.create`                    | Create RBAC resources                        | `true`                              |
+| `rbac.pspEnabled`                | Create PSP resources (deprecated)            | `false`                             |
+| `serviceAccount.create`          | Create service account                       | `true`                              |
+| `serviceAccount.name`            | Service account name to use (if not created) | `""`                                |
+| `metrics.serviceMonitor.enabled` | Enable ServiceMonitor for Prometheus         | `false`                             |
+| `commandArgs`                    | Additional command arguments                 | `["--key-renew-period=0"]`          |
+
 ## Troubleshooting
 
 ### Verifying Controller Status
@@ -194,17 +228,3 @@ kubeseal --format yaml --cert target-cluster-cert.pem < my-secret.yaml > sealed-
 ```bash
 kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets
 ```
-
-### Checking Controller Logs
-
-```bash
-kubectl logs -n kube-system -l app.kubernetes.io/name=sealed-secrets
-```
-
-### Common Issues
-
-1. **Secret cannot be decrypted**: Ensure the SealedSecret was created for the correct namespace and using the correct certificate.
-
-2. **Certificate mismatch**: If you've rotated certificates, older SealedSecrets might not decrypt. The controller keeps old keys by default, but you may need to restore from backup.
-
-3. **Controller not starting**: Check for RBAC issues or certificate problems in the logs.
