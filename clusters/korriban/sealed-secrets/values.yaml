@@ -1,24 +1,52 @@
-namespace: flux-system
+replicaCount: 1
 
-controllerVersion: "v0.22.0"
+image:
+  repository: bitnami/sealed-secrets-controller
+  tag: v0.19.5
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
 
 resources:
-  requests:
-    memory: "64Mi"
-    cpu: "50m"
   limits:
-    memory: "256Mi"
-    cpu: "100m"
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
 
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
-
-extraArgs: []
 
 service:
   type: ClusterIP
   port: 8080
 
+podSecurityContext:
+  fsGroup: 65534
+
+securityContext:
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+rbac:
+  create: true
+  pspEnabled: false
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    namespace: ""
+    additionalLabels: {}
+
+commandArgs:
+  - "--key-renew-period=0"
