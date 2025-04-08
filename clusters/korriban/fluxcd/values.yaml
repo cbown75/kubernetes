@@ -1,0 +1,112 @@
+########################################
+# Notifications
+########################################
+notifications:
+  slack:
+    enabled: false
+    webhookUrl: "" # Slack webhook URL
+
+  discord:
+    enabled: false
+    webhookUrl: "" # Discord webhook URL
+
+########################################
+# FluxCD Git Repositories
+########################################
+gitRepositories:
+  - name: "kubernetes"
+    url: "https://github.com/encodium/kubernetes.git"
+    interval: "1m"
+    paths:
+      - "clusters/korriban/fluxcd"
+      - "clusters/korriban/sealed-secrets"
+  # - name: "another-repo"
+  #  url: "https://github.com/your-org/another-repo.git"
+  #  interval: "1m"
+  #  paths:
+  #    - "clusters/production"
+  #    - "clusters/staging"
+
+########################################
+# FluxCD Controllers
+########################################
+# These images are placeholders; please update to the actual version tags you desire
+controllers:
+  installFluxControllers: true
+  image:
+    repository: ghcr.io/fluxcd/flux
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  helmController:
+    enabled: true
+    image:
+      repository: ghcr.io/fluxcd/helm-controller
+      tag: "latest"
+      pullPolicy: IfNotPresent
+  notificationController:
+    enabled: true
+    image:
+      repository: ghcr.io/fluxcd/notification-controller
+      tag: "latest"
+      pullPolicy: IfNotPresent
+  imageReflectorController:
+    enabled: false
+    image:
+      repository: ghcr.io/fluxcd/image-reflector-controller
+      tag: "latest"
+      pullPolicy: IfNotPresent
+  imageAutomationController:
+    enabled: false
+    image:
+      repository: ghcr.io/fluxcd/image-automation-controller
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+########################################
+# RBAC
+########################################
+rbac:
+  enabled: true
+  serviceAccountName: "flux-sa"
+
+########################################
+# HorizontalPodAutoscaler
+########################################
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  cpuAverageUtilization: 80
+
+########################################
+# PodDisruptionBudget
+########################################
+pdb:
+  enabled: false
+  minAvailable: 1
+
+########################################
+# ServiceMonitor
+########################################
+serviceMonitor:
+  enabled: false
+  interval: 30s
+
+########################################
+# Resources
+########################################
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+########################################
+# Flux Logs/Debug Arguments
+########################################
+fluxArgs: []
+# Example:
+# fluxArgs:
+#   - "--log-level=debug"
