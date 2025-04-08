@@ -48,7 +48,7 @@ spec:
           image: "{{ .Values.controllers.notificationController.image.repository }}:{{ .Values.controllers.notificationController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.notificationController.image.pullPolicy }}
           ports:
-            - name: http-notification
+            - name: http-notify
               containerPort: 3040
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -59,7 +59,7 @@ spec:
           image: "{{ .Values.controllers.imageReflectorController.image.repository }}:{{ .Values.controllers.imageReflectorController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.imageReflectorController.image.pullPolicy }}
           ports:
-            - name: http-image-reflector
+            - name: img-reflect
               containerPort: 3050
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -70,7 +70,7 @@ spec:
           image: "{{ .Values.controllers.imageAutomationController.image.repository }}:{{ .Values.controllers.imageAutomationController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.imageAutomationController.image.pullPolicy }}
           ports:
-            - name: http-image-automation
+            - name: img-auto
               containerPort: 3060
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

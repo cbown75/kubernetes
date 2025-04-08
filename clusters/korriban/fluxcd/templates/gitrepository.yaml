@@ -1,5 +1,5 @@
 {{- range .Values.gitRepositories }}
-apiVersion: source.toolkit.fluxcd.io/v1beta2
+apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
 metadata:
   name: {{ .name }}
@@ -9,6 +9,6 @@ spec:
   interval: {{ .interval | default "1m" }}
   url: {{ .url }}
   secretRef:
-    name: {{ include "fluxcd.fullname" $ }}-github-token
+    name: github-token
 ---
 {{- end }}

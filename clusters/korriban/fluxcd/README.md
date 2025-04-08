@@ -1,120 +1,93 @@
-# FluxCD Helm Chart
+# FluxCD Deployment Guide
 
 ## Overview
 
-This is a Helm chart for installing [FluxCD](https://fluxcd.io/) with support for multiple Git repositories and notifications.
+This directory contains Helm charts for deploying FluxCD v2 with GitOps support. The configuration includes:
 
-## Chart Details
-
-- **Name**: `fluxcd`
-- **Version**: 0.1.0
-- **App Version**: 1.0
-- **Type**: Application
-- **Description**: Deploy FluxCD with notifications and multiple Git repositories.
+- Multiple Git repository monitoring
+- Notification support (Slack and Discord)
+- Sealed Secrets integration
+- Monitoring and resource management
 
 ## Installation
 
 ### Prerequisites
 
-- Helm 3+
-- Kubernetes Cluster
-- FluxCD CLI (optional, but recommended)
+- Kubernetes cluster running v1.20+
+- Helm v3.0+
+- `kubectl` configured to access your cluster
+
+### Pre-Installation Steps
+
+Before installing, ensure any previous FluxCD installations or terminating CRDs are properly cleaned up:
+
+```bash
+# Check for any terminating CRDs
+kubectl get crds | grep flux
+
+# Force delete any terminating FluxCD CRDs if needed
+kubectl patch crd <terminating-crd-name> -p '{"metadata":{"finalizers":[]}}' --type=merge
+```
 
 ### Installing the Chart
 
-```sh
-helm repo add my-repo https://my.repo.url
-helm install my-fluxcd my-repo/fluxcd -f values.yaml
+```bash
+# Navigate to the chart directory
+cd clusters/korriban/fluxcd
+
+# Install or upgrade
+helm upgrade --install fluxcd . -n flux-system --create-namespace
 ```
+
+### Configuration
+
+The chart is configured through `values.yaml`. Key sections include:
+
+- **Git Repositories**: Configure which repositories to monitor and paths within them
+- **Controllers**: Enable/disable specific FluxCD controllers
+- **Notifications**: Set up Slack or Discord alerts
+- **Resources**: Configure CPU and memory limits
 
 ### Upgrading the Chart
 
-```sh
-helm upgrade my-fluxcd my-repo/fluxcd -f values.yaml
+When upgrading, ensure you handle API version changes correctly:
+
+```bash
+# Check for pending changes or notifications
+kubectl get gitrepositories -A
+kubectl get kustomizations -A
+
+# Upgrade the helm chart
+helm upgrade fluxcd . -n flux-system
 ```
 
-### Uninstalling the Chart
+## Troubleshooting
 
-```sh
-helm uninstall my-fluxcd
+### Common Issues
+
+1. **API Version Errors**: This chart has been updated to use stable v1 APIs. If you see warnings about deprecated APIs, ensure you're using the latest version of this chart.
+
+2. **Port Name Issues**: Kubernetes limits port names to 15 characters. The chart has been updated to use shorter port names.
+
+3. **CRD Termination Issues**: If you see errors about "CRD terminating", follow the pre-installation steps to clear any terminating CRDs.
+
+4. **Secret Access Problems**: Ensure that the GitRepository objects have the correct secretRef configuration.
+
+## Verification
+
+Once deployed, verify the installation:
+
+```bash
+# Check FluxCD pods
+kubectl get pods -n flux-system
+
+# Check GitRepository status
+kubectl get gitrepositories -n flux-system
+
+# Check Kustomization status
+kubectl get kustomizations -n flux-system
 ```
 
-## Configuration
+## Maintenance and Updates
 
-This chart can be configured through `values.yaml`. Below are some key configurations:
-
-### Notifications
-
-Supports Slack and Discord:
-
-```yaml
-notifications:
-  slack:
-    enabled: false
-    webhookUrl: ""
-  discord:
-    enabled: false
-    webhookUrl: ""
-```
-
-### Git Repositories
-
-Multiple repositories can be configured:
-
-```yaml
-gitRepositories:
-  - name: "example-repo"
-    url: "https://github.com/your-org/example-repo.git"
-    interval: "1m"
-    paths:
-      - "clusters/apps"
-```
-
-### FluxCD Controllers
-
-Define FluxCD components to install:
-
-```yaml
-controllers:
-  installFluxControllers: true
-  helmController:
-    enabled: true
-  notificationController:
-    enabled: true
-```
-
-### RBAC
-
-```yaml
-rbac:
-  enabled: true
-  serviceAccountName: "flux-sa"
-```
-
-### ServiceMonitor
-
-For enabling Prometheus monitoring:
-
-```yaml
-serviceMonitor:
-  enabled: false
-  interval: 30s
-```
-
-### Resources
-
-Set resource requests and limits:
-
-```yaml
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 200m
-    memory: 256Mi
-```
-
-## License
-
-This project is licensed under the MIT License.
+When updating FluxCD versions, always check for API version changes and update the templates accordingly. Current controller images should be updated to their latest stable versions in the values file.
