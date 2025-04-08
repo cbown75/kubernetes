@@ -1,0 +1,247 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.1
+  name: gitrepositories.source.toolkit.fluxcd.io
+spec:
+  group: source.toolkit.fluxcd.io
+  names:
+    kind: GitRepository
+    listKind: GitRepositoryList
+    plural: gitrepositories
+    shortNames:
+      - gitrepo
+    singular: gitrepository
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .spec.url
+          name: URL
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Ready")].status
+          name: Ready
+          type: string
+        - jsonPath: .status.conditions[?(@.type=="Ready")].message
+          name: Status
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: GitRepository is the Schema for the gitrepositories API.
+          properties:
+            apiVersion:
+              description: "APIVersion defines the versioned schema of this representation of an object."
+              type: string
+            kind:
+              description: "Kind is a string value representing the REST resource this object represents."
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: GitRepositorySpec specifies the required configuration to produce an Artifact for a Git repository.
+              properties:
+                ignore:
+                  description: Ignore overrides the set of excluded patterns in the .sourceignore format.
+                  type: string
+                include:
+                  description: Include specifies a list of GitRepository resources which Artifacts should be included.
+                  items:
+                    description: GitRepositoryInclude specifies a local reference to a GitRepository which Artifact should be included.
+                    properties:
+                      fromPath:
+                        description: FromPath specifies the path to copy contents from.
+                        type: string
+                      repository:
+                        description: GitRepositoryRef specifies the GitRepository which Artifact should be included.
+                        properties:
+                          name:
+                            description: Name of the referent.
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      toPath:
+                        description: ToPath specifies the path to copy contents to.
+                        type: string
+                    required:
+                      - repository
+                    type: object
+                  type: array
+                interval:
+                  description: Interval at which to check the GitRepository for updates.
+                  pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                  type: string
+                ref:
+                  description: Reference specifies the Git reference to resolve and monitor for changes.
+                  properties:
+                    branch:
+                      description: Branch to check out.
+                      type: string
+                    commit:
+                      description: Commit SHA to check out.
+                      type: string
+                    semver:
+                      description: SemVer tag expression to check out.
+                      type: string
+                    tag:
+                      description: Tag to check out.
+                      type: string
+                  type: object
+                secretRef:
+                  description: SecretRef specifies the Secret containing authentication credentials for the GitRepository.
+                  properties:
+                    name:
+                      description: Name of the referent.
+                      type: string
+                  required:
+                    - name
+                  type: object
+                suspend:
+                  description: Suspend tells the controller to suspend the reconciliation of this GitRepository.
+                  type: boolean
+                timeout:
+                  description: Timeout for Git operations like clone, defaults to 60s.
+                  pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m))+$
+                  type: string
+                url:
+                  description: URL is the Git repository URL to clone from.
+                  pattern: ^(http|https|ssh)://.*$
+                  type: string
+                verify:
+                  description: Verification configures the verification of the Git commit signature.
+                  properties:
+                    mode:
+                      description: Mode specifies which verification mode to use.
+                      enum:
+                        - none
+                        - head
+                      type: string
+                    secretRef:
+                      description: SecretRef specifies the Secret containing the public keys of trusted Git authors.
+                      properties:
+                        name:
+                          description: Name of the referent.
+                          type: string
+                      required:
+                        - name
+                      type: object
+                  required:
+                    - mode
+                  type: object
+              required:
+                - interval
+                - url
+              type: object
+            status:
+              description: GitRepositoryStatus records the observed state of a Git repository.
+              properties:
+                artifact:
+                  description: Artifact represents the last successful Git repository reconciliation.
+                  properties:
+                    checksum:
+                      description: Checksum is the SHA256 checksum of the Artifact file.
+                      type: string
+                    lastUpdateTime:
+                      description: LastUpdateTime is the timestamp when the Artifact was last updated.
+                      format: date-time
+                      type: string
+                    path:
+                      description: Path is the relative file path of the Artifact.
+                      type: string
+                    revision:
+                      description: Revision is a human-readable identifier derived from the Git commit hash.
+                      type: string
+                    size:
+                      description: Size is the number of bytes in the Artifact file.
+                      format: int64
+                      type: integer
+                    url:
+                      description: URL is the HTTP address of the Artifact.
+                      type: string
+                  required:
+                    - path
+                    - url
+                  type: object
+                conditions:
+                  description: Conditions holds the conditions for the GitRepository.
+                  items:
+                    description: "Condition contains details for one aspect of the current state of this API Resource."
+                    properties:
+                      lastTransitionTime:
+                        description: lastTransitionTime is the last time the condition transitioned from one status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: message is a human readable message indicating details about the transition.
+                        type: string
+                      observedGeneration:
+                        description: observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        format: int64
+                        type: integer
+                      reason:
+                        description: reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        type: string
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                includedArtifacts:
+                  description: IncludedArtifacts represents the included Artifacts from the referenced GitRepository resources.
+                  items:
+                    description: Artifact represents the output of a Source reconciliation.
+                    properties:
+                      checksum:
+                        description: Checksum is the SHA256 checksum of the Artifact file.
+                        type: string
+                      lastUpdateTime:
+                        description: LastUpdateTime is the timestamp when the Artifact was last updated.
+                        format: date-time
+                        type: string
+                      path:
+                        description: Path is the relative file path of the Artifact.
+                        type: string
+                      revision:
+                        description: Revision is a human-readable identifier derived from the source revision.
+                        type: string
+                      size:
+                        description: Size is the number of bytes in the Artifact file.
+                        format: int64
+                        type: integer
+                      url:
+                        description: URL is the HTTP address of the Artifact.
+                        type: string
+                    required:
+                      - path
+                      - url
+                    type: object
+                  type: array
+                lastHandledReconcileAt:
+                  description: LastHandledReconcileAt holds the value of the most recent reconcile request value.
+                  type: string
+                observedGeneration:
+                  description: ObservedGeneration is the last observed generation of the GitRepository object.
+                  format: int64
+                  type: integer
+                url:
+                  description: URL is the dynamic fetch link for the latest Artifact.
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
