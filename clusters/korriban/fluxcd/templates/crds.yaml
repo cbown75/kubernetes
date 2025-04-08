@@ -1,0 +1,47 @@
+{{- if .Values.installCRDs }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "fluxcd.fullname" . }}-install-crds
+  labels:
+    {{- include "fluxcd.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      # Add pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: {{ .Values.rbac.serviceAccountName }}
+      restartPolicy: OnFailure
+      containers:
+        - name: kubectl
+          # Add container-level security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              kubectl apply -f /crds/gitrepositories.yaml
+              kubectl apply -f /crds/kustomizations.yaml  
+              kubectl apply -f /crds/alerts.yaml
+              kubectl apply -f /crds/providers.yaml
+          volumeMounts:
+            - name: crds-volume
+              mountPath: /crds
+      volumes:
+        - name: crds-volume
+          configMap:
+            name: {{ include "fluxcd.fullname" . }}-crds
+# ... rest of the file
+{{- end }}

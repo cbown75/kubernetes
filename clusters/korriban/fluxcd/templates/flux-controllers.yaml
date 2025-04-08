@@ -16,9 +16,20 @@ spec:
       labels:
         {{- include "fluxcd.selectorLabels" . | nindent 8 }}
     spec:
+      # Add pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: {{ .Values.rbac.serviceAccountName }}
       containers:
         - name: {{ include "fluxcd.name" . }}
+          # Add container-level security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
           image: "{{ .Values.controllers.image.repository }}:{{ .Values.controllers.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.image.pullPolicy }}
           args:
@@ -34,6 +45,12 @@ spec:
 
         {{- if .Values.controllers.helmController.enabled }}
         - name: helm-controller
+          # Add security context to helm-controller
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
           image: "{{ .Values.controllers.helmController.image.repository }}:{{ .Values.controllers.helmController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.helmController.image.pullPolicy }}
           ports:
@@ -45,6 +62,12 @@ spec:
 
         {{- if .Values.controllers.notificationController.enabled }}
         - name: notification-controller
+          # Add security context to notification-controller
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
           image: "{{ .Values.controllers.notificationController.image.repository }}:{{ .Values.controllers.notificationController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.notificationController.image.pullPolicy }}
           ports:
@@ -56,6 +79,12 @@ spec:
 
         {{- if .Values.controllers.imageReflectorController.enabled }}
         - name: image-reflector-controller
+          # Add security context to image-reflector-controller
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
           image: "{{ .Values.controllers.imageReflectorController.image.repository }}:{{ .Values.controllers.imageReflectorController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.imageReflectorController.image.pullPolicy }}
           ports:
@@ -67,6 +96,12 @@ spec:
 
         {{- if .Values.controllers.imageAutomationController.enabled }}
         - name: image-automation-controller
+          # Add security context to image-automation-controller
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
           image: "{{ .Values.controllers.imageAutomationController.image.repository }}:{{ .Values.controllers.imageAutomationController.image.tag }}"
           imagePullPolicy: {{ .Values.controllers.imageAutomationController.image.pullPolicy }}
           ports:

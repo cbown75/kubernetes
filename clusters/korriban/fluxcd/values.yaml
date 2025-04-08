@@ -110,3 +110,19 @@ fluxArgs: []
 # Example:
 # fluxArgs:
 #   - "--log-level=debug"
+#
+installCRDs: false
+
+########################################
+# Security Settings
+########################################
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  runAsNonRoot: true
