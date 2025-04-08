@@ -1,0 +1,14 @@
+{{- range .Values.gitRepositories }}
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: GitRepository
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "fluxcd.labels" $ | nindent 4 }}
+spec:
+  interval: {{ .interval | default "1m" }}
+  url: {{ .url }}
+  secretRef:
+    name: {{ include "fluxcd.fullname" $ }}-github-token
+---
+{{- end }}
