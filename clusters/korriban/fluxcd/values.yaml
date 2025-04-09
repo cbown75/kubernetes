@@ -34,32 +34,32 @@ gitRepositories:
 controllers:
   installFluxControllers: true
   image:
-    repository: ghcr.io/fluxcd/flux
-    tag: "latest"
+    repository: ghcr.io/fluxcd/source-controller
+    tag: "v1.5.0" # Use a specific version instead of latest
     pullPolicy: IfNotPresent
   helmController:
     enabled: true
     image:
       repository: ghcr.io/fluxcd/helm-controller
-      tag: "latest"
+      tag: "v1.2.0"
       pullPolicy: IfNotPresent
   notificationController:
     enabled: true
     image:
       repository: ghcr.io/fluxcd/notification-controller
-      tag: "latest"
+      tag: "v1.5.0"
       pullPolicy: IfNotPresent
   imageReflectorController:
     enabled: false
     image:
       repository: ghcr.io/fluxcd/image-reflector-controller
-      tag: "latest"
+      tag: "v0.31.1"
       pullPolicy: IfNotPresent
   imageAutomationController:
     enabled: false
     image:
       repository: ghcr.io/fluxcd/image-automation-controller
-      tag: "latest"
+      tag: "v0.40.0"
       pullPolicy: IfNotPresent
 
 ########################################
@@ -73,7 +73,7 @@ rbac:
 # HorizontalPodAutoscaler
 ########################################
 hpa:
-  enabled: false
+  enabled: true
   minReplicas: 1
   maxReplicas: 3
   cpuAverageUtilization: 80
