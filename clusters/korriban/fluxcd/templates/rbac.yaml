@@ -5,6 +5,12 @@ metadata:
   name: {{ .Values.rbac.serviceAccountName }}
   labels:
     {{- include "fluxcd.labels" . | nindent 4 }}
+  annotations:
+    # These annotations ensure the ServiceAccount is created first
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+imagePullSecrets:
+  - name: github-container-registry
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -12,6 +18,9 @@ metadata:
   name: {{ include "fluxcd.fullname" . }}-clusterrole
   labels:
     {{- include "fluxcd.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-9"
 rules:
   - apiGroups: ["*"]
     resources: ["*"]
@@ -23,6 +32,9 @@ metadata:
   name: {{ include "fluxcd.fullname" . }}-clusterrolebinding
   labels:
     {{- include "fluxcd.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-8"
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.rbac.serviceAccountName }}
