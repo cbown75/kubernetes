@@ -7,7 +7,6 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m0s
-  path: ./clusters/korriban
   ref:
     branch: main
   secretRef:
@@ -21,7 +20,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  path: ./clusters/korriban
+  path: ./clusters/korriban/sealed-secrets
   prune: true
   sourceRef:
     kind: GitRepository
