@@ -1,7 +1,0 @@
-apiVersion: v2
-name: sealed-secrets
-namespace: flux-system
-description: A Helm chart for Bitnami Sealed Secrets Controller
-type: application
-version: 0.1.0
-appVersion: "0.19.5"

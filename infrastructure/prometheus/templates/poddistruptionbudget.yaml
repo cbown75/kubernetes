@@ -1,0 +1,20 @@
+{{- if .Values.prometheus.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "prometheus.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prometheus.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "prometheus.selectorLabels" . | nindent 6 }}
+  
+  {{- if .Values.prometheus.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.prometheus.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.prometheus.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.prometheus.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+{{- end }}

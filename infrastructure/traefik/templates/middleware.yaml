@@ -1,0 +1,55 @@
+{{- if .Values.middleware.redirect.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "traefik.fullname" . }}-redirect
+  labels:
+    {{- include "traefik.labels" . | nindent 4 }}
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+{{- end }}
+{{- if .Values.middleware.headers.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "traefik.fullname" . }}-headers
+  labels:
+    {{- include "traefik.labels" . | nindent 4 }}
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+    customResponseHeaders:
+      X-Frame-Options: DENY
+      X-Content-Type-Options: nosniff
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+---
+{{- end }}
+{{- if .Values.middleware.rateLimit.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "traefik.fullname" . }}-ratelimit
+  labels:
+    {{- include "traefik.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ .Values.middleware.rateLimit.average }}
+    burst: {{ .Values.middleware.rateLimit.burst }}
+---
+{{- end }}
+{{- if and .Values.dashboard.auth.enabled .Values.sealedSecrets.dashboard.create }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "traefik.fullname" . }}-auth
+  labels:
+    {{- include "traefik.labels" . | nindent 4 }}
+spec:
+  basicAuth:
+    secret: {{ include "traefik.fullname" . }}-dashboard-auth
+{{- end }}

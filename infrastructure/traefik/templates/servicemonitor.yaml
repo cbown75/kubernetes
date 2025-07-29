@@ -1,0 +1,22 @@
+{{- if and .Values.metrics.prometheus.enabled .Values.metrics.prometheus.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "traefik.fullname" . }}
+  {{- if .Values.metrics.prometheus.serviceMonitor.namespace }}
+  namespace: {{ .Values.metrics.prometheus.serviceMonitor.namespace }}
+  {{- end }}
+  labels:
+    {{- include "traefik.labels" . | nindent 4 }}
+    {{- with .Values.metrics.prometheus.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "traefik.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.prometheus.serviceMonitor.interval }}
+      path: {{ .Values.metrics.prometheus.serviceMonitor.path }}
+{{- end }}

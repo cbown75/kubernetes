@@ -1,0 +1,655 @@
+# Traefik Ingress Controller Deployment Guide
+
+This guide provides complete instructions for deploying Traefik with automatic service discovery, Let's Encrypt certificates via Cloudflare DNS challenge, and GitOps workflow integration.
+
+## 📋 Prerequisites
+
+- Kubernetes cluster with FluxCD installed
+- Sealed Secrets controller deployed
+- `kubeseal` CLI tool installed
+- Cloudflare account with API access
+- Git repository: `https://github.com/cbown75/kubernetes`
+
+## 🚀 Quick Start
+
+### 1. Install Required Tools
+
+```bash
+# Install kubeseal (if not already installed)
+wget https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.19.5/kubeseal-0.19.5-linux-amd64.tar.gz
+tar -xvzf kubeseal-0.19.5-linux-amd64.tar.gz
+sudo install -m 755 kubeseal /usr/local/bin/kubeseal
+
+# Verify installation
+kubeseal --version
+```
+
+### 2. Add Chart to Repository
+
+```bash
+# Clone your kubernetes repository
+git clone https://github.com/cbown75/kubernetes.git
+cd kubernetes
+
+# Create chart directory
+mkdir -p infrastructure/traefik
+
+# Copy all chart files to infrastructure/traefik/
+# - Chart.yaml
+# - values.yaml
+# - templates/ (entire directory)
+# - README.md
+```
+
+### 3. Get Cloudflare API Token
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
+2. Click "Create Token"
+3. Use "Custom token" with these permissions:
+   - **Zone:Zone:Read** - All zones
+   - **Zone:DNS:Edit** - All zones
+4. Optionally restrict to specific zones
+5. Copy the generated token
+
+### 4. Create Sealed Secret
+
+```bash
+# Encrypt your Cloudflare API token
+echo -n "your-cloudflare-api-token-here" | \
+  kubeseal --raw --scope cluster-wide \
+  --name traefik-cloudflare \
+  --namespace traefik-system
+
+# Save the output (starts with "AgBy..." or similar)
+```
+
+### 5. Configure values.yaml
+
+Edit `infrastructure/traefik/values.yaml`:
+
+```yaml
+# Update these required values:
+
+# 1. Your email for Let's Encrypt
+traefik:
+  additionalConfiguration:
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: "admin@yourdomain.com" # ← Change this
+
+# 2. Dashboard hostname
+dashboard:
+  ingress:
+    host: traefik.yourdomain.com # ← Change this
+
+# 3. Enable Cloudflare DNS challenge
+sealedSecrets:
+  enabled: true
+  cloudflare:
+    create: true
+    sealedApiToken: "AgBy3i4OJSWK+your-encrypted-token-here" # ← Paste encrypted token
+
+# 4. Service type (choose based on your infrastructure)
+service:
+  type: LoadBalancer # For cloud (AWS, GCP, Azure)
+  # type: NodePort    # For on-premises/Talos
+# 5. For Talos environments (uncomment if using Talos)
+# talos:
+#   enabled: true
+```
+
+### 6. Create HelmRelease
+
+Create `clusters/korriban/infrastructure/traefik-helmrelease.yaml`:
+
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik-system
+spec:
+  interval: 10m
+  timeout: 5m
+  chart:
+    spec:
+      chart: ./infrastructure/traefik
+      version: "1.0.0"
+      sourceRef:
+        kind: GitRepository
+        name: kubernetes-repo
+        namespace: flux-system
+      interval: 5m
+  values:
+    # Override values here if needed
+    dashboard:
+      ingress:
+        host: traefik.yourdomain.com # Update to your domain
+
+    sealedSecrets:
+      enabled: true
+      cloudflare:
+        create: true
+        sealedApiToken: "AgBy3i4OJSWK+your-encrypted-token"
+
+    traefik:
+      additionalConfiguration:
+        certificatesResolvers:
+          letsencrypt:
+            acme:
+              email: "admin@yourdomain.com"
+
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
+```
+
+### 7. Deploy
+
+```bash
+# Commit and push changes
+git add .
+git commit -m "Add Traefik ingress controller"
+git push origin main
+
+# Apply HelmRelease
+kubectl apply -f clusters/korriban/infrastructure/traefik-helmrelease.yaml
+
+# Monitor deployment
+flux get helmreleases -n traefik-system
+kubectl get pods -n traefik-system -w
+```
+
+## 🏷️ Service Discovery: Labels and Annotations
+
+### Method 1: Using Kubernetes Ingress (Standard)
+
+Add to your service manifests:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: traefik-headers@kubernetescrd
+spec:
+  rules:
+    - host: myapp.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app-service
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - myapp.yourdomain.com
+      secretName: myapp-tls # Auto-generated by cert-resolver
+```
+
+### Method 2: Using Service Annotations (Automatic)
+
+Add to your service manifests:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-app
+  annotations:
+    # Required: Define the routing rule
+    traefik.ingress.kubernetes.io/router.rule: "Host(`myapp.yourdomain.com`)"
+
+    # Use HTTPS entrypoint
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+    # Enable TLS with Let's Encrypt
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+
+    # Optional: Add middleware for security headers
+    traefik.ingress.kubernetes.io/router.middlewares: traefik-headers@kubernetescrd
+
+    # Optional: Set priority (higher = more priority)
+    traefik.ingress.kubernetes.io/router.priority: "100"
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: my-web-app
+```
+
+### Method 3: Using Service Labels (Simple)
+
+Add to your service manifests:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  labels:
+    # Enable automatic exposure
+    traefik.expose: "true"
+
+    # Specify the port Traefik should use
+    traefik.port: "3000"
+
+    # Use secure entrypoint
+    traefik.entrypoint: "websecure"
+
+    # Optional: Router name
+    traefik.router: "api"
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: api-service
+```
+
+### Method 4: Using IngressRoute (Advanced)
+
+For complex routing scenarios:
+
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: complex-app
+  namespace: my-namespace
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # API routes
+    - match: Host(`app.yourdomain.com`) && PathPrefix(`/api/`)
+      kind: Rule
+      services:
+        - name: api-service
+          port: 3000
+      middlewares:
+        - name: traefik-ratelimit
+        - name: api-auth
+
+    # Frontend routes
+    - match: Host(`app.yourdomain.com`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: frontend-service
+          port: 80
+      middlewares:
+        - name: traefik-headers
+
+  tls:
+    certResolver: letsencrypt
+```
+
+## 🛡️ Common Middleware Examples
+
+### Security Headers Middleware
+
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: traefik-system
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+    customResponseHeaders:
+      X-Frame-Options: DENY
+      X-Content-Type-Options: nosniff
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Referrer-Policy: "strict-origin-when-cross-origin"
+```
+
+### Rate Limiting Middleware
+
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: traefik-system
+spec:
+  rateLimit:
+    average: 100 # requests per second
+    burst: 200 # burst capacity
+    period: 1s # time window
+```
+
+### Basic Auth Middleware
+
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: basic-auth
+  namespace: traefik-system
+spec:
+  basicAuth:
+    secret: auth-secret # Contains users file
+```
+
+### CORS Middleware
+
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: cors
+  namespace: traefik-system
+spec:
+  headers:
+    accessControlAllowMethods:
+      - GET
+      - OPTIONS
+      - PUT
+      - POST
+      - DELETE
+    accessControlAllowOriginList:
+      - "https://yourdomain.com"
+      - "https://app.yourdomain.com"
+    accessControlMaxAge: 100
+    addVaryHeader: true
+```
+
+## 📱 Application Examples
+
+### Simple Web Application
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: webapp
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp
+  annotations:
+    traefik.ingress.kubernetes.io/router.rule: "Host(`webapp.yourdomain.com`)"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: traefik-headers@kubernetescrd
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: webapp
+```
+
+### API with Path-based Routing
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-v1
+  annotations:
+    traefik.ingress.kubernetes.io/router.rule: "Host(`api.yourdomain.com`) && PathPrefix(`/v1/`)"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: rate-limit@kubernetescrd,cors@kubernetescrd
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: api
+    version: v1
+```
+
+### Websocket Application
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-app
+  annotations:
+    traefik.ingress.kubernetes.io/router.rule: "Host(`ws.yourdomain.com`)"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Enable websocket support
+    traefik.ingress.kubernetes.io/router.middlewares: websocket-headers@kubernetescrd
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: websocket-app
+```
+
+### Multiple Domains for Same Service
+
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: multi-domain-app
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`app.yourdomain.com`) || Host(`app.example.com`) || Host(`myapp.net`)
+      kind: Rule
+      services:
+        - name: webapp
+          port: 80
+  tls:
+    certResolver: letsencrypt
+    domains:
+      - main: yourdomain.com
+        sans:
+          - "*.yourdomain.com"
+      - main: example.com
+        sans:
+          - "*.example.com"
+      - main: myapp.net
+```
+
+## 🔧 Troubleshooting
+
+### Check FluxCD Status
+
+```bash
+# Check if GitRepository is syncing
+flux get sources git -A
+
+# Check HelmRelease status
+flux get helmreleases -n traefik-system
+
+# Get detailed status
+kubectl describe helmrelease traefik -n traefik-system
+```
+
+### Check Traefik Deployment
+
+```bash
+# Check pods
+kubectl get pods -n traefik-system
+
+# Check logs
+kubectl logs -n traefik-system deployment/traefik -f
+
+# Check service
+kubectl get svc -n traefik-system
+```
+
+### Check Certificate Generation
+
+```bash
+# Check certificate requests
+kubectl get certificaterequest -A
+
+# Check certificates
+kubectl get certificate -A
+
+# Check Let's Encrypt logs in Traefik
+kubectl logs -n traefik-system deployment/traefik | grep -i "acme\|cert\|letsencrypt"
+```
+
+### Check Service Discovery
+
+```bash
+# List all IngressRoutes
+kubectl get ingressroutes -A
+
+# Check if services are discovered
+kubectl get ingress -A
+
+# Check Traefik configuration
+kubectl port-forward -n traefik-system svc/traefik 8080:8080
+# Open http://localhost:8080/dashboard/
+```
+
+### Debug SealedSecrets
+
+```bash
+# Check if SealedSecret was created
+kubectl get sealedsecrets -n traefik-system
+
+# Check if Secret was decrypted
+kubectl get secrets -n traefik-system
+
+# Check sealed-secrets controller logs
+kubectl logs -n kube-system deployment/sealed-secrets-controller
+```
+
+### Common Issues
+
+#### 1. Certificate Not Generated
+
+- Verify Cloudflare API token has correct permissions
+- Check DNS propagation: `dig TXT _acme-challenge.yourdomain.com`
+- Verify email address in Let's Encrypt configuration
+
+#### 2. Service Not Discovered
+
+- Ensure annotations/labels are correctly formatted
+- Check service selector matches pod labels
+- Verify Traefik has RBAC permissions
+
+#### 3. Dashboard Not Accessible
+
+- Check DNS resolution for dashboard hostname
+- Verify ingress route is created
+- Check if dashboard service is running
+
+#### 4. 502/503 Errors
+
+- Verify backend service is running and healthy
+- Check service port configuration
+- Review Traefik access logs
+
+## 🔄 Updating Configuration
+
+### Update Sealed Secrets
+
+```bash
+# Generate new encrypted value
+echo -n "new-api-token" | kubeseal --raw --scope cluster-wide \
+  --name traefik-cloudflare --namespace traefik-system
+
+# Update values.yaml with new encrypted value
+# Commit and push to Git
+```
+
+### Update Traefik Configuration
+
+```bash
+# Edit values.yaml
+vim infrastructure/traefik/values.yaml
+
+# Commit changes
+git add infrastructure/traefik/values.yaml
+git commit -m "Update Traefik configuration"
+git push origin main
+
+# FluxCD will automatically apply changes
+```
+
+### Rolling Updates
+
+```bash
+# Force update if needed
+kubectl rollout restart deployment/traefik -n traefik-system
+
+# Check rollout status
+kubectl rollout status deployment/traefik -n traefik-system
+```
+
+## 📚 Additional Resources
+
+- [Traefik Documentation](https://doc.traefik.io/traefik/)
+- [Traefik Kubernetes Ingress](https://doc.traefik.io/traefik/providers/kubernetes-ingress/)
+- [Sealed Secrets Documentation](https://sealed-secrets.netlify.app/)
+- [FluxCD Documentation](https://fluxcd.io/docs/)
+- [Let's Encrypt Rate Limits](https://letsencrypt.org/docs/rate-limits/)
+
+## 🎯 Quick Reference
+
+### Essential Annotations
+
+```yaml
+# Basic HTTPS service exposure
+annotations:
+  traefik.ingress.kubernetes.io/router.rule: "Host(`app.domain.com`)"
+  traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+```
+
+### Essential Labels
+
+```yaml
+# Simple service exposure
+labels:
+  traefik.expose: "true"
+  traefik.port: "8080"
+  traefik.entrypoint: "websecure"
+```
+
+### Dashboard Access
+
+- URL: `https://traefik.yourdomain.com/dashboard/`
+- Shows real-time routes, services, and metrics
+- Useful for debugging routing issues
+
+This guide covers everything needed to deploy and use Traefik with automatic service discovery in your GitOps workflow. The service discovery features allow your applications to be automatically exposed with minimal configuration.
