@@ -1,0 +1,53 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik-system
+spec:
+  interval: 10m
+  timeout: 5m
+  chart:
+    spec:
+      chart: ./infrastructure/traefik
+      version: "1.0.0"
+      sourceRef:
+        kind: GitRepository
+        name: kubernetes-repo
+        namespace: flux-system
+      interval: 5m
+  values:
+    # Override default values here if needed
+    dashboard:
+      ingress:
+        host: traefik.korriban.local # Update to your domain
+
+    # For Talos environments, uncomment:
+    # service:
+    #   type: NodePort
+    # talos:
+    #   enabled: true
+
+    # For cloud environments with LoadBalancer:
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/address-pool: default # If using MetalLB
+
+    # Update Let's Encrypt email
+    traefik:
+      additionalConfiguration:
+        certificatesResolvers:
+          letsencrypt:
+            acme:
+              email: "admin@yourdomain.com" # Update this
+
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
