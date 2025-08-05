@@ -1,6 +1,3 @@
-# ===========================================
-# clusters/korriban/monitoring/prometheus/helmrelease.yaml
-# ===========================================
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -163,13 +160,6 @@ spec:
       prometheus.io/scrape: "true"
       prometheus.io/port: "9090"
       prometheus.io/path: "/metrics"
-
-  # Health checks
-  healthChecks:
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: prometheus
-      namespace: monitoring
 
   # Dependencies - ensure traefik is ready first
   dependsOn:
