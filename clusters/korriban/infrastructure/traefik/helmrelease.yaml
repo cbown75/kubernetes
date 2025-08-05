@@ -12,7 +12,7 @@ spec:
       version: "1.0.0"
       sourceRef:
         kind: GitRepository
-        name: kubernetes-repo
+        name: kubernetes-infrastructure
         namespace: flux-system
       interval: 5m
   values:
@@ -39,7 +39,7 @@ spec:
         certificatesResolvers:
           letsencrypt:
             acme:
-              email: "admin@yourdomain.com" # Update this
+              email: "cbown75@gmail.com" # Update this
 
   install:
     createNamespace: true

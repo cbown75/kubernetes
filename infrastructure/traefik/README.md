@@ -118,7 +118,7 @@ spec:
       version: "1.0.0"
       sourceRef:
         kind: GitRepository
-        name: kubernetes-repo
+        name: kubernetes-infrastructure
         namespace: flux-system
       interval: 5m
   values:
