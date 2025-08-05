@@ -1,34 +1,75 @@
+# ===========================================
+# clusters/korriban/monitoring/prometheus/helmrelease.yaml
+# ===========================================
 apiVersion: v1
 kind: Namespace
 metadata:
   name: monitoring
   labels:
     name: monitoring
+    app.kubernetes.io/part-of: monitoring-stack
+    # Pod Security Standards
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
+    # Network policy label for cross-namespace communication
+    network-policy/monitoring: "true"
+
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: prometheus
   namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: monitoring-stack
 spec:
   interval: 10m
-  timeout: 5m
+  timeout: 10m
   chart:
     spec:
       chart: infrastructure/prometheus
       version: ">=1.0.0"
       sourceRef:
         kind: GitRepository
-        name: kubernetes-repo
+        name: kubernetes-infrastructure
         namespace: flux-system
       interval: 5m
+
+  # Helm install configuration
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+
+  # Helm upgrade configuration
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+
+  # Helm rollback configuration
+  rollback:
+    recreate: true
+    force: true
+    cleanupOnFail: true
+
+  # Values for Korriban cluster with Traefik
   values:
-    # Environment-specific values will be merged here
+    global:
+      imageRegistry: ""
+      storageClass: "local-path"
+
     prometheus:
       replicaCount: 1
+
+      image:
+        registry: docker.io
+        repository: prom/prometheus
+        tag: "v2.51.2"
+        pullPolicy: IfNotPresent
 
       resources:
         limits:
@@ -40,57 +81,113 @@ spec:
 
       persistence:
         enabled: true
+        storageClass: "local-path"
         size: 50Gi
 
-      config:
-        global:
-          scrape_interval: 30s
-          evaluation_interval: 30s
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 9090
+      targetPort: 9090
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
 
+    # ServiceAccount and RBAC
+    serviceAccount:
+      create: true
+      automount: true
+      annotations: {}
+
+    rbac:
+      create: true
+
+    # Ingress configuration for Traefik
     ingress:
       enabled: true
-      className: "nginx"
+      className: "traefik"
       annotations:
-        cert-manager.io/cluster-issuer: "letsencrypt-prod"
-        nginx.ingress.kubernetes.io/auth-type: basic
-        nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+        traefik.ingress.kubernetes.io/router.middlewares: monitoring-prometheus-auth@kubernetescrd
       hosts:
-        - host: prometheus.korriban.local
+        - host: prometheus.home.cwbtech.net
           paths:
             - path: /
               pathType: Prefix
       tls:
         - secretName: prometheus-tls
           hosts:
-            - prometheus.korriban.local
+            - prometheus.home.cwbtech.net
 
+    # ServiceMonitor for Prometheus Operator integration
     serviceMonitor:
       enabled: true
       interval: 30s
+      scrapeTimeout: 10s
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
 
+    # Network Policy for security
     networkPolicy:
       enabled: true
+      ingress:
+        # Allow traefik ingress
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: traefik-system
+          ports:
+            - protocol: TCP
+              port: 9090
+        # Allow monitoring namespace
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: monitoring
+          ports:
+            - protocol: TCP
+              port: 9090
 
-  # Post-install and upgrade actions
-  postRenderers:
-    - kustomize:
-        patches:
-          - target:
-              kind: Deployment
-              name: prometheus
-            patch: |
-              - op: add
-                path: /spec/template/metadata/annotations/fluxcd.io~1automated
-                value: "true"
+    # Sealed Secrets configuration
+    sealedSecrets:
+      enabled: true
+      secrets:
+        prometheus-basic-auth:
+          # Generate with: htpasswd -nb admin password | kubeseal --raw --from-file=/dev/stdin --name=prometheus-basic-auth --namespace=monitoring
+          auth: ""
 
-  # Health checks and monitoring
+    # Pod annotations for monitoring
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9090"
+      prometheus.io/path: "/metrics"
+
+  # Health checks
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
       name: prometheus
       namespace: monitoring
 
-  # Dependencies
+  # Dependencies - ensure traefik is ready first
   dependsOn:
-    - name: sealed-secrets
-      namespace: kube-system
+    - name: traefik
+      namespace: traefik-system
+
+---
+# ===========================================
+# clusters/korriban/monitoring/prometheus/prometheus-auth-middleware.yaml
+# ===========================================
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: prometheus-auth
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  basicAuth:
+    secret: prometheus-basic-auth
