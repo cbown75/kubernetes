@@ -2,8 +2,9 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: traefik
-  namespace: traefik-system
+  namespace: flux-system
 spec:
+  targetNamespace: traefik-system
   dependsOn:
     - name: sealed-secrets
       namespace: kube-system
