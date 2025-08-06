@@ -4,14 +4,10 @@ metadata:
   name: kubernetes-infrastructure
   namespace: flux-system
 spec:
-  interval: 1m
+  interval: 5m
+  url: https://github.com/cbown75/kubernetes
   ref:
     branch: main
-  secretRef:
-    name: flux-system
-  url: https://github.com/cbown75/kubernetes
   ignore: |
-    # ignore all
     /*
-    # include infrastructure directory
     !/infrastructure/
