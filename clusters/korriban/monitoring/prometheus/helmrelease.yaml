@@ -170,14 +170,14 @@ spec:
 # ===========================================
 # clusters/korriban/monitoring/prometheus/prometheus-auth-middleware.yaml
 # ===========================================
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: prometheus-auth
-  namespace: monitoring
-  labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/part-of: monitoring-stack
-spec:
-  basicAuth:
-    secret: prometheus-basic-auth
+# apiVersion: traefik.containo.us/v1alpha1
+# kind: Middleware
+# metadata:
+#   name: prometheus-auth
+#   namespace: monitoring
+#   labels:
+#     app.kubernetes.io/name: prometheus
+#     app.kubernetes.io/part-of: monitoring-stack
+# spec:
+#   basicAuth:
+#     secret: prometheus-basic-auth
