@@ -1,0 +1,19 @@
+apiVersion: v2
+name: flux-system
+description: FluxCD GitOps toolkit installation
+type: application
+version: 1.0.0
+appVersion: "v2.4.0"
+keywords:
+  - flux
+  - gitops
+  - cd
+  - continuous-delivery
+home: https://fluxcd.io/
+sources:
+  - https://github.com/fluxcd/flux2
+  - https://github.com/fluxcd-community/helm-charts
+maintainers:
+  - name: cbown75
+    url: https://github.com/cbown75/kubernetes
+dependencies: []

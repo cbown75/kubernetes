@@ -1,0 +1,96 @@
+global:
+  imageRegistry: ""
+
+# FluxCD Configuration
+flux:
+  # Use the community helm chart from fluxcd-community
+  helmRepository:
+    name: fluxcd-community
+    url: https://fluxcd-community.github.io/helm-charts
+
+  # FluxCD release configuration
+  helmRelease:
+    name: flux2
+    namespace: flux-system
+    chart: flux2
+    version: "2.x"
+
+    # FluxCD specific values
+    values:
+      # Install all core controllers
+      controllers:
+        source:
+          create: true
+        kustomize:
+          create: true
+        helm:
+          create: true
+        notification:
+          create: true
+
+      # Resource limits
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 64Mi
+
+      # RBAC
+      rbac:
+        create: true
+        aggregateClusterRoles: true
+
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Pod security context
+      podSecurityContext:
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Node selector and tolerations
+      nodeSelector: {}
+      tolerations: []
+      affinity: {}
+
+      # Network policies
+      networkPolicy:
+        create: true
+
+      # Multi-tenancy
+      multiTenancy:
+        enabled: false
+        defaultServiceAccount: "default"
+
+# GitRepository Configuration
+# This will be created to point to your repo
+gitRepository:
+  name: kubernetes-infrastructure
+  namespace: flux-system
+  url: https://github.com/cbown75/kubernetes
+  branch: main
+  interval: 5m
+  secretRef:
+    name: flux-system # If using private repo
+
+# Kustomization Configuration
+# This will apply your cluster configurations
+kustomization:
+  name: flux-system
+  namespace: flux-system
+  path: "./clusters/korriban"
+  prune: true
+  interval: 10m
