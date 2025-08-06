@@ -22,6 +22,11 @@ metadata:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: monitoring-stack
 spec:
+  dependsOn:
+    - name: kubernetes-infrastructure
+      kind: GitRepository
+      namespace: flux-system
+  interval: 10m
   interval: 10m
   timeout: 10m
   chart:

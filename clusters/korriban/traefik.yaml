@@ -4,6 +4,11 @@ metadata:
   name: traefik
   namespace: traefik-system
 spec:
+  dependsOn:
+    - name: kubernetes-infrastructure
+      kind: GitRepository
+      namespace: flux-system
+  interval: 10m
   interval: 10m
   timeout: 5m
   chart:
