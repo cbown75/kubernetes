@@ -2,11 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - flux-system/
+  # Infrastructure GitRepository (must be first to create kubernetes-infrastructure source)
+  - infrastructure/gitrepository.yaml
 
-  - infrastructure/
+  # Core infrastructure (order matters for dependencies)
+  - sealed-secrets.yaml # Sealed secrets controller
+  - cert-manager.yaml # Certificate management
+  - traefik.yaml # Ingress controller
 
-  - certmanager/
-  - monitoring/
-
-namespace: flux-system
+  # Monitoring (depends on traefik for ingress)
+  - prometheus.yaml
