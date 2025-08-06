@@ -6,7 +6,6 @@ resources:
   - gitrepository-infrastructure.yaml
 
   # Core infrastructure (order matters for dependencies)
-  - flux-system.yaml
   - sealed-secrets.yaml # Sealed secrets controller
   - cert-manager.yaml # Certificate management
   - traefik.yaml # Ingress controller
