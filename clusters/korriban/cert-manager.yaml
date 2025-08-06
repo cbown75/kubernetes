@@ -16,6 +16,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 30m
+  targetNamespace: cert-manager
   chart:
     spec:
       chart: cert-manager
@@ -26,7 +27,6 @@ spec:
         namespace: flux-system
       interval: 12h
   install:
-    targetNamespace: cert-manager
     createNamespace: true
     remediation:
       retries: 3
