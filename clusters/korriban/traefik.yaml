@@ -19,6 +19,7 @@ spec:
         name: kubernetes-infrastructure
         namespace: flux-system
       interval: 5m
+      reconcileStrategy: Revision
   values:
     # Override default values here if needed
     dashboard:
