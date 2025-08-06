@@ -5,9 +5,8 @@ metadata:
   namespace: traefik-system
 spec:
   dependsOn:
-    - name: kubernetes-infrastructure
-      kind: GitRepository
-      namespace: flux-system
+    - name: sealed-secrets
+      namespace: kube-system
   interval: 10m
   timeout: 5m
   chart:
