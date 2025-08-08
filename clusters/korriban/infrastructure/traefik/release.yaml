@@ -8,7 +8,6 @@ metadata:
     app.kubernetes.io/name: traefik
     app.kubernetes.io/part-of: traefik
     network-policy/traefik: "true"
-
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
@@ -18,7 +17,6 @@ metadata:
 spec:
   interval: 24h
   url: https://traefik.github.io/charts
-
 ---
 apiVersion: bitnami.com/v1alpha1
 kind: SealedSecret
@@ -33,7 +31,6 @@ spec:
       name: traefik-cloudflare
       namespace: traefik-system
     type: Opaque
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -50,14 +47,16 @@ spec:
   chart:
     spec:
       chart: traefik
-      version: "28.x"
+      version: "28.x" # Use latest stable 28.x version
       sourceRef:
         kind: HelmRepository
         name: traefik
         namespace: flux-system
       interval: 5m
+
+  # Install/upgrade configuration
   install:
-    createNamespace: false # We create it explicitly above
+    createNamespace: true
     remediation:
       retries: 3
   upgrade:
@@ -67,6 +66,7 @@ spec:
     recreate: true
     force: true
 
+  # Corrected values for Traefik v28.x
   values:
     # Deployment configuration
     deployment:
@@ -94,28 +94,28 @@ spec:
     serviceAccount:
       create: true
 
-    # Entry Points - FIXED FORMAT
+    # CORRECTED: Entry Points with proper v28.x syntax
     ports:
       web:
         port: 8000
-        expose: true
+        expose: true # Boolean - not object
         exposedPort: 80
         protocol: TCP
-        redirectTo: websecure
+        redirectTo: websecure # Simple string - not object
       websecure:
         port: 8443
-        expose: true
+        expose: true # Boolean - not object
         exposedPort: 443
         protocol: TCP
         tls:
           enabled: true
       traefik:
         port: 9000
-        expose: false
+        expose: false # Boolean - not object
         protocol: TCP
       metrics:
         port: 9100
-        expose: false
+        expose: false # Boolean - not object
         protocol: TCP
 
     # API and Dashboard
@@ -123,29 +123,12 @@ spec:
       dashboard: true
       debug: false
 
-    # Logs
-    logs:
-      general:
-        level: INFO
-      access:
-        enabled: true
-
-    # Metrics for Prometheus integration
+    # Metrics (for Prometheus integration)
     metrics:
       prometheus:
         addEntryPointsLabels: true
         addServicesLabels: true
         addRoutersLabels: true
-
-    # Providers
-    providers:
-      kubernetesCRD:
-        enabled: true
-        allowCrossNamespace: true
-        allowExternalNameServices: true
-      kubernetesIngress:
-        enabled: true
-        allowExternalNameServices: true
 
     # Let's Encrypt configuration with Cloudflare DNS challenge
     certificatesResolvers:
@@ -161,12 +144,12 @@ spec:
               - "1.1.1.1:53"
               - "8.8.8.8:53"
 
-    # Persistence for ACME certificates
+    # Persistence (for ACME certificates)
     persistence:
       enabled: true
       accessMode: ReadWriteOnce
       size: 128Mi
-      storageClass: ""
+      storageClass: "" # Use default storage class
       path: /data
 
     # Security Context
@@ -191,7 +174,24 @@ spec:
         cpu: 300m
         memory: 150Mi
 
-    # Environment variables for Cloudflare API token
+    # Providers
+    providers:
+      kubernetesCRD:
+        enabled: true
+        allowCrossNamespace: true
+        allowExternalNameServices: true
+      kubernetesIngress:
+        enabled: true
+        allowExternalNameServices: true
+
+    # Logs
+    logs:
+      general:
+        level: INFO
+      access:
+        enabled: true
+
+    # Environment variables (Cloudflare API token from Sealed Secret)
     env:
       - name: CF_API_TOKEN
         valueFrom:
