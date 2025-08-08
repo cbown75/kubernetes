@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/name: traefik
     app.kubernetes.io/part-of: traefik
     network-policy/traefik: "true"
+
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
@@ -17,6 +18,7 @@ metadata:
 spec:
   interval: 24h
   url: https://traefik.github.io/charts
+
 ---
 apiVersion: bitnami.com/v1alpha1
 kind: SealedSecret
@@ -31,6 +33,7 @@ spec:
       name: traefik-cloudflare
       namespace: traefik-system
     type: Opaque
+
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -47,14 +50,23 @@ spec:
   chart:
     spec:
       chart: traefik
-      version: "28.x" # Use latest stable 28.x version
+      version: "28.x"
       sourceRef:
         kind: HelmRepository
         name: traefik
         namespace: flux-system
       interval: 5m
+  install:
+    createNamespace: false # We create it explicitly above
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
 
-  # Your existing values, translated to official chart format
   values:
     # Deployment configuration
     deployment:
@@ -62,21 +74,19 @@ spec:
       kind: Deployment
       replicas: 2
 
-    # Service configuration (your existing config works!)
+    # Service configuration
     service:
       enabled: true
       type: LoadBalancer
       annotations:
         metallb.universe.tf/address-pool: default
-      spec:
-        loadBalancerSourceRanges: []
 
-    # Ingress Class (replaces your ingressClass config)
+    # Ingress Class
     ingressClass:
       enabled: true
       isDefaultClass: true
 
-    # RBAC (your custom chart had this)
+    # RBAC
     rbac:
       enabled: true
 
@@ -84,17 +94,14 @@ spec:
     serviceAccount:
       create: true
 
-    # Entry Points (your additionalConfiguration)
+    # Entry Points - FIXED FORMAT
     ports:
       web:
         port: 8000
         expose: true
         exposedPort: 80
         protocol: TCP
-        redirectTo:
-          port: websecure
-          scheme: https
-          permanent: true
+        redirectTo: websecure
       websecure:
         port: 8443
         expose: true
@@ -104,24 +111,41 @@ spec:
           enabled: true
       traefik:
         port: 9000
-        expose: false # Dashboard port
+        expose: false
         protocol: TCP
       metrics:
         port: 9100
         expose: false
         protocol: TCP
 
-    # API and Dashboard (your dashboard config)
+    # API and Dashboard
     api:
       dashboard: true
       debug: false
 
-    # Metrics (for Prometheus integration)
+    # Logs
+    logs:
+      general:
+        level: INFO
+      access:
+        enabled: true
+
+    # Metrics for Prometheus integration
     metrics:
       prometheus:
         addEntryPointsLabels: true
         addServicesLabels: true
         addRoutersLabels: true
+
+    # Providers
+    providers:
+      kubernetesCRD:
+        enabled: true
+        allowCrossNamespace: true
+        allowExternalNameServices: true
+      kubernetesIngress:
+        enabled: true
+        allowExternalNameServices: true
 
     # Let's Encrypt configuration with Cloudflare DNS challenge
     certificatesResolvers:
@@ -130,7 +154,6 @@ spec:
           email: cbown75@gmail.com
           storage: /data/acme.json
           caServer: https://acme-v02.api.letsencrypt.org/directory
-          # DNS challenge with Cloudflare (using Sealed Secret)
           dnsChallenge:
             provider: cloudflare
             delayBeforeCheck: 10
@@ -138,12 +161,12 @@ spec:
               - "1.1.1.1:53"
               - "8.8.8.8:53"
 
-    # Persistence (for ACME certificates)
+    # Persistence for ACME certificates
     persistence:
       enabled: true
       accessMode: ReadWriteOnce
       size: 128Mi
-      storageClass: "" # Use default storage class
+      storageClass: ""
       path: /data
 
     # Security Context
@@ -168,41 +191,10 @@ spec:
         cpu: 300m
         memory: 150Mi
 
-    # Providers (replaces your additionalConfiguration.providers)
-    providers:
-      kubernetesCRD:
-        enabled: true
-        allowCrossNamespace: true
-        allowExternalNameServices: true
-      kubernetesIngress:
-        enabled: true
-        allowExternalNameServices: true
-
-    # Logs
-    logs:
-      general:
-        level: INFO
-      access:
-        enabled: true
-
-    # Additional arguments (for any extra Traefik config)
-    additionalArguments: []
-
-    # Environment variables (Cloudflare API token from Sealed Secret)
+    # Environment variables for Cloudflare API token
     env:
       - name: CF_API_TOKEN
         valueFrom:
           secretKeyRef:
             name: traefik-cloudflare
             key: CF_API_TOKEN
-
-  install:
-    createNamespace: true
-    remediation:
-      retries: 3
-  upgrade:
-    remediation:
-      retries: 3
-  rollback:
-    recreate: true
-    force: true
