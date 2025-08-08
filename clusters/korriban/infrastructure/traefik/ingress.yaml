@@ -1,0 +1,33 @@
+---
+# Traefik Dashboard Ingress using cert-manager
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: traefik-dashboard
+  namespace: traefik-system
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/part-of: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.rule: Host(`traefik.home.cwbtech.net`)
+    traefik.ingress.kubernetes.io/router.service: api@internal
+    traefik.ingress.kubernetes.io/router.middlewares: traefik-dashboard-auth@kubernetescrd
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - traefik.home.cwbtech.net
+      secretName: traefik-dashboard-tls # cert-manager will create this
+  rules:
+    - host: traefik.home.cwbtech.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api@internal
+                port:
+                  number: 80

@@ -1,0 +1,50 @@
+---
+# Production ClusterIssuer for cwbtech.net domain using Cloudflare DNS challenge
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-cloudflare
+  labels:
+    app.kubernetes.io/part-of: cert-manager
+    app.kubernetes.io/name: clusterissuer
+spec:
+  acme:
+    email: cbown75@gmail.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-cloudflare-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: traefik-cloudflare # Using your existing sealed secret
+              key: CF_API_TOKEN
+        selector:
+          dnsZones:
+            - "cwbtech.net"
+            - "home.cwbtech.net"
+---
+# Staging ClusterIssuer for testing certificates
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-cloudflare-staging
+  labels:
+    app.kubernetes.io/part-of: cert-manager
+    app.kubernetes.io/name: clusterissuer
+spec:
+  acme:
+    email: cbown75@gmail.com
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-cloudflare-staging-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: traefik-cloudflare
+              key: CF_API_TOKEN
+        selector:
+          dnsZones:
+            - "cwbtech.net"
+            - "home.cwbtech.net"
