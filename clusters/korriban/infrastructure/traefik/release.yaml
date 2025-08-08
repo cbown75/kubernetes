@@ -54,7 +54,6 @@ spec:
         namespace: flux-system
       interval: 5m
 
-  # Install/upgrade configuration
   install:
     createNamespace: true
     remediation:
@@ -66,78 +65,76 @@ spec:
     recreate: true
     force: true
 
-  # Corrected values for Traefik v28.x
   values:
-    # Deployment configuration
     deployment:
       enabled: true
       kind: Deployment
       replicas: 2
 
-    # Service configuration
     service:
       enabled: true
       type: LoadBalancer
       annotations:
         metallb.universe.tf/address-pool: default
 
-    # Ingress Class
     ingressClass:
       enabled: true
       isDefaultClass: true
 
-    # RBAC
     rbac:
       enabled: true
 
-    # Service Account
     serviceAccount:
       create: true
 
-    # CORRECTED: Entry Points with proper v28.x syntax
     ports:
       web:
         port: 8000
-        expose: true # Boolean - not object
+        expose:
+          default: true
         exposedPort: 80
         protocol: TCP
-        redirectTo: websecure # Simple string - not object
+        redirections:
+          entryPoint:
+            to: websecure
+            scheme: https
+            permanent: true
       websecure:
         port: 8443
-        expose: true # Boolean - not object
+        expose:
+          default: true
         exposedPort: 443
         protocol: TCP
         tls:
           enabled: true
       traefik:
         port: 9000
-        expose: false # Boolean - not object
+        expose:
+          default: false
         protocol: TCP
       metrics:
         port: 9100
-        expose: false # Boolean - not object
+        expose:
+          default: false
         protocol: TCP
 
-    # API and Dashboard - CORRECTED for v28.x
     api:
       dashboard: true
       debug: false
 
-    # IngressRoute for Dashboard (REQUIRED for v28.x)
     ingressRoute:
       dashboard:
         enabled: true
-        # Use traefik entrypoint (not exposed by default - secure)
+        matchRule: PathPrefix(`/dashboard`) || PathPrefix(`/api`)
         entryPoints: ["traefik"]
+        middlewares: []
 
-    # Metrics (for Prometheus integration)
     metrics:
       prometheus:
         addEntryPointsLabels: true
         addServicesLabels: true
         addRoutersLabels: true
 
-    # Let's Encrypt configuration with Cloudflare DNS challenge
     certificatesResolvers:
       letsencrypt:
         acme:
@@ -151,15 +148,13 @@ spec:
               - "1.1.1.1:53"
               - "8.8.8.8:53"
 
-    # Persistence (for ACME certificates)
     persistence:
       enabled: true
       accessMode: ReadWriteOnce
       size: 128Mi
-      storageClass: "" # Use default storage class
+      storageClass: ""
       path: /data
 
-    # Security Context
     securityContext:
       capabilities:
         drop: [ALL]
@@ -172,7 +167,6 @@ spec:
     podSecurityContext:
       fsGroup: 65532
 
-    # Resource limits
     resources:
       requests:
         cpu: 100m
@@ -181,7 +175,6 @@ spec:
         cpu: 300m
         memory: 150Mi
 
-    # Providers
     providers:
       kubernetesCRD:
         enabled: true
@@ -191,14 +184,12 @@ spec:
         enabled: true
         allowExternalNameServices: true
 
-    # Logs
     logs:
       general:
         level: INFO
       access:
         enabled: true
 
-    # Environment variables (Cloudflare API token from Sealed Secret)
     env:
       - name: CF_API_TOKEN
         valueFrom:
