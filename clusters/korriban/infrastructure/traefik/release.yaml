@@ -135,19 +135,6 @@ spec:
         addServicesLabels: true
         addRoutersLabels: true
 
-    certificatesResolvers:
-      letsencrypt:
-        acme:
-          email: cbown75@gmail.com
-          storage: /data/acme.json
-          caServer: https://acme-v02.api.letsencrypt.org/directory
-          dnsChallenge:
-            provider: cloudflare
-            delayBeforeCheck: 10
-            resolvers:
-              - "1.1.1.1:53"
-              - "8.8.8.8:53"
-
     persistence:
       enabled: false
 
