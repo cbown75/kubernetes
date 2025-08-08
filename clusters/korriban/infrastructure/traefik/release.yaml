@@ -118,10 +118,17 @@ spec:
         expose: false # Boolean - not object
         protocol: TCP
 
-    # API and Dashboard
+    # API and Dashboard - CORRECTED for v28.x
     api:
       dashboard: true
       debug: false
+
+    # IngressRoute for Dashboard (REQUIRED for v28.x)
+    ingressRoute:
+      dashboard:
+        enabled: true
+        # Use traefik entrypoint (not exposed by default - secure)
+        entryPoints: ["traefik"]
 
     # Metrics (for Prometheus integration)
     metrics:
