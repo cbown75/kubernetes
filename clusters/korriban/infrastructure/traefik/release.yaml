@@ -44,7 +44,7 @@ spec:
     - name: sealed-secrets
       namespace: kube-system
   interval: 10m
-  timeout: 5m
+  timeout: 10m # OPTION 1: Increased from 5m to 10m
   chart:
     spec:
       chart: traefik
@@ -57,9 +57,11 @@ spec:
 
   install:
     createNamespace: true
+    crds: CreateReplace # OPTION 2: Force CRD installation/updates
     remediation:
       retries: 3
   upgrade:
+    crds: CreateReplace # OPTION 2: Also update CRDs on upgrades
     remediation:
       retries: 3
   rollback:
