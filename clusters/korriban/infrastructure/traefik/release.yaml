@@ -149,11 +149,7 @@ spec:
               - "8.8.8.8:53"
 
     persistence:
-      enabled: true
-      accessMode: ReadWriteOnce
-      size: 128Mi
-      storageClass: ""
-      path: /data
+      enabled: false
 
     securityContext:
       capabilities:
