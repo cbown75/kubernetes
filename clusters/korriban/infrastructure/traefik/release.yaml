@@ -1,4 +1,14 @@
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: traefik-system
+  labels:
+    name: traefik-system
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/part-of: traefik
+    network-policy/traefik: "true"
+---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
