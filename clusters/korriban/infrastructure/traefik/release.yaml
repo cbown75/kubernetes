@@ -76,7 +76,7 @@ spec:
 
     service:
       enabled: true
-      type: LoadBalancer
+      type: NodePort
       annotations:
         metallb.universe.tf/address-pool: default
 
