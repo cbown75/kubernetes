@@ -152,6 +152,8 @@ spec:
 
     podSecurityContext:
       fsGroup: 65532
+      seccompProfile:
+        type: RuntimeDefault
 
     resources:
       requests:
