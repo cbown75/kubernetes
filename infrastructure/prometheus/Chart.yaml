@@ -15,8 +15,3 @@ sources:
 maintainers:
   - name: DevOps Team
     email: devops@example.com
-dependencies:
-  - name: sealed-secrets
-    version: ">=2.0.0"
-    repository: file://../sealed-secrets
-    condition: sealedSecrets.enabled
