@@ -1,0 +1,181 @@
+{{- if .Values.storageClasses.holocron.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-fast
+  {{- if eq .Values.storageClasses.defaultClass "nfs-holocron-fast" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: holocron
+    tier: fast
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.holocron.server }}
+  share: {{ .Values.nas.holocron.shares.fast }}
+  subDir: "${pvc.metadata.namespace}/${pvc.metadata.name}"
+mountOptions:
+  {{- toYaml .Values.mountOptions.fast | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.holocron.fast.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.holocron.fast.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+
+{{- if .Values.storageClasses.holocron.general.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron
+  {{- if eq .Values.storageClasses.defaultClass "nfs-holocron" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: holocron
+    tier: general
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.holocron.server }}
+  share: {{ .Values.nas.holocron.shares.general }}
+  subDir: "${pvc.metadata.namespace}/${pvc.metadata.name}"
+mountOptions:
+  {{- toYaml .Values.mountOptions.general | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.holocron.general.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.holocron.general.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.holocron.backup.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-backup
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: holocron
+    tier: backup
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.holocron.server }}
+  share: {{ .Values.nas.holocron.shares.backup }}
+  subDir: "${pvc.metadata.namespace}/${pvc.metadata.name}"
+mountOptions:
+  {{- toYaml .Values.mountOptions.backup | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.holocron.backup.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.holocron.backup.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+{{- end }}
+
+{{- if .Values.storageClasses.sith.enabled }}
+{{- if .Values.storageClasses.sith.fast.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-sith-fast
+  {{- if eq .Values.storageClasses.defaultClass "nfs-sith-fast" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: sith
+    tier: fast
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.sith.server }}
+  share: {{ .Values.nas.sith.shares.fast }}
+  subDir: "${pvc.metadata.namespace}/${pvc.metadata.name}"
+mountOptions:
+  {{- toYaml .Values.mountOptions.fast | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.sith.fast.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.sith.fast.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.sith.general.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-sith
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: sith
+    tier: general
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.sith.server }}
+  share: {{ .Values.nas.sith.shares.general }}
+  subDir: "${pvc.metadata.namespace}/${pvc.metadata.name}"
+mountOptions:
+  {{- toYaml .Values.mountOptions.general | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.sith.general.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.sith.general.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.sith.media.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-sith-media
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: sith
+    tier: media
+    use-case: "arr-stack,plex"
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.sith.server }}
+  share: {{ .Values.nas.sith.shares.media | default "/volume1/media" }}
+mountOptions:
+  {{- toYaml .Values.mountOptions.media | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.sith.media.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.sith.media.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.sith.backup.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-sith-backup
+  labels:
+    app.kubernetes.io/name: {{ include "nfs-csi-driver.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    nas: sith
+    tier: backup
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: {{ .Values.nas.sith.server }}
+  share: {{ .Values.nas.sith.shares.backup }}
+  subDir: "${pvc.metadata.namespace}/${pvc.metadata.name}"
+mountOptions:
+  {{- toYaml .Values.mountOptions.backup | nindent 2 }}
+reclaimPolicy: {{ .Values.storageClasses.sith.backup.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.sith.backup.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+{{- end }}

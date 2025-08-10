@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   # Core infrastructure (order matters for dependencies)
+  - storage
   - sealed-secrets
   - cert-manager
   - traefik

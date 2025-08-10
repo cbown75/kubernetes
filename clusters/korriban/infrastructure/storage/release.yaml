@@ -1,0 +1,50 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: GitRepository
+metadata:
+  name: infrastructure-storage
+  namespace: flux-system
+spec:
+  interval: 1h0m0s
+  ref:
+    branch: main
+  url: https://github.com/cbown75/kubernetes
+  include:
+    - path: infrastructure/storage/nfs-csi-driver
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nfs-csi-driver
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: nfs-csi-driver
+  chart:
+    spec:
+      chart: infrastructure/storage/nfs-csi-driver
+      sourceRef:
+        kind: GitRepository
+        name: infrastructure-storage
+        namespace: flux-system
+      interval: 12h
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    nas:
+      holocron:
+        server: holocron.home.cwbtech.net
+      sith:
+        server: sith.home.cwbtech.net
+
+    storageClasses:
+      defaultClass: nfs-holocron-fast
+
+      sith:
+        media:
+          enabled: false

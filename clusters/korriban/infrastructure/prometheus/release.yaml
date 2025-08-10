@@ -57,7 +57,7 @@ spec:
   values:
     global:
       imageRegistry: ""
-      storageClass: "local-path"
+      storageClass: "nfs-holocron-fast"
 
     prometheus:
       replicaCount: 1
@@ -78,7 +78,7 @@ spec:
 
       persistence:
         enabled: true
-        storageClass: "local-path"
+        storageClass: "nfs-holocron-fast"
         size: 50Gi
 
     # Service configuration

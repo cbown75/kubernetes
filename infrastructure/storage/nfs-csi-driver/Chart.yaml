@@ -1,0 +1,17 @@
+apiVersion: v2
+name: nfs-csi-driver
+description: NFS CSI Driver for Kubernetes with Synology NAS support
+type: application
+version: 1.0.0
+appVersion: "4.6.0"
+keywords:
+  - nfs
+  - csi
+  - storage
+  - synology
+home: https://github.com/kubernetes-csi/csi-driver-nfs
+sources:
+  - https://github.com/kubernetes-csi/csi-driver-nfs
+maintainers:
+  - name: cwbtech
+    email: cbown75@gmail.com
