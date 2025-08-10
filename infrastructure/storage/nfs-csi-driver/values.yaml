@@ -71,10 +71,11 @@ controller:
 
   resources:
     limits:
-      memory: 400Mi
+      cpu: 500m
+      memory: 1Gi
     requests:
       cpu: 10m
-      memory: 20Mi
+      memory: 128Mi
 
 node:
   image:
@@ -84,36 +85,36 @@ node:
 
   resources:
     limits:
-      memory: 300Mi
+      cpu: 500m
+      memory: 1Gi
     requests:
       cpu: 10m
-      memory: 20Mi
+      memory: 512Mi
 
 mountOptions:
   fast:
     - nfsvers=4.1
-    - rsize=1048576
-    - wsize=1048576
     - hard
-    - intr
+    - rsize=262144
+    - wsize=262144
     - timeo=600
-    - fsc
+    - retrans=2
 
   general:
     - nfsvers=4.1
-    - rsize=1048576
-    - wsize=1048576
     - hard
-    - intr
+    - rsize=262144
+    - wsize=262144
     - timeo=600
+    - retrans=2
 
   backup:
     - nfsvers=4.1
+    - hard
     - rsize=65536
     - wsize=65536
-    - hard
-    - intr
     - timeo=600
+    - retrans=2
 
 securityContext:
   runAsNonRoot: true

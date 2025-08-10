@@ -28,7 +28,8 @@ spec:
       serviceAccountName: {{ include "nfs-csi-driver.fullname" . }}-node-sa
       priorityClassName: system-node-critical
       securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
+        seccompProfile:
+          type: RuntimeDefault
       tolerations:
         - operator: Exists
       containers:
@@ -36,7 +37,7 @@ spec:
           image: {{ .Values.node.image.nodeDriverRegistrar.repository }}:{{ .Values.node.image.nodeDriverRegistrar.tag }}
           args:
             - --csi-address=/csi/csi.sock
-            - --kubelet-registration-path=/var/lib/kubelet/plugins/csi-nfsplugin/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/nfs.csi.k8s.io/csi.sock
           env:
             - name: KUBE_NODE_NAME
               valueFrom:
@@ -80,6 +81,8 @@ spec:
             - name: pods-mount-dir
               mountPath: /var/lib/kubelet/pods
               mountPropagation: "Bidirectional"
+            - name: fuse-device
+              mountPath: /dev/fuse
           resources:
             limits:
               memory: 300Mi
@@ -89,7 +92,7 @@ spec:
       volumes:
         - name: plugin-dir
           hostPath:
-            path: /var/lib/kubelet/plugins/csi-nfsplugin
+            path: /var/lib/kubelet/plugins/nfs.csi.k8s.io
             type: DirectoryOrCreate
         - name: pods-mount-dir
           hostPath:
@@ -99,6 +102,9 @@ spec:
           hostPath:
             path: /var/lib/kubelet/plugins_registry
             type: Directory
+        - name: fuse-device
+          hostPath:
+            path: /dev/fuse
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -259,3 +265,4 @@ spec:
   volumeLifecycleModes:
     - Persistent
   fsGroupPolicy: File
+  podInfoOnMount: false

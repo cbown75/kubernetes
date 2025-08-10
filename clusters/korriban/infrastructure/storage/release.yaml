@@ -17,6 +17,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 30m
+  timeout: 15m
   targetNamespace: nfs-csi-driver
   chart:
     spec:
@@ -28,9 +29,11 @@ spec:
       interval: 12h
   install:
     createNamespace: true
+    timeout: 10m
     remediation:
       retries: 3
   upgrade:
+    timeout: 10m
     remediation:
       retries: 3
   values:
