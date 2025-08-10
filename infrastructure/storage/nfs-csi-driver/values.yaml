@@ -52,7 +52,7 @@ storageClasses:
 
 csiDriver:
   image:
-    repository: registry.k8s.io/sig-storage/nfscsi
+    repository: registry.k8s.io/sig-storage/csi-driver-nfs
     tag: v4.6.0
     pullPolicy: IfNotPresent
 
