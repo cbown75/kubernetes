@@ -150,6 +150,9 @@ spec:
       labels:
         app.kubernetes.io/part-of: monitoring-stack
 
+    sealedSecrets:
+      enabled: true
+
     networkPolicy:
       enabled: true
       ingress:
