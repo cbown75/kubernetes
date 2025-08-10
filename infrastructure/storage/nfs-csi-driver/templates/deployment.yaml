@@ -210,11 +210,10 @@ spec:
         - name: nfs
           image: {{ .Values.csiDriver.image.repository }}:{{ .Values.csiDriver.image.tag }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            privileged: true
             capabilities:
-              drop:
-              - ALL
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
           args:
             - "-v=2"
             - "--nodeid=$(NODE_ID)"
