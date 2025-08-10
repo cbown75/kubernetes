@@ -1,352 +1,143 @@
-# Default values for prometheus
-# This is a YAML-formatted file.
-
-# Global configuration
-global:
-  # Image registry for all images
-  imageRegistry: ""
-  # Image pull secrets
-  imagePullSecrets: []
-  # Storage class for persistent volumes
-  storageClass: "local-path"
-
-# Prometheus server configuration
-prometheus:
-  # Image configuration
-  image:
-    registry: docker.io
-    repository: prom/prometheus
-    tag: "v2.51.2"
-    pullPolicy: IfNotPresent
-    pullSecrets: []
-
-  # Resource configuration
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 4Gi
-    requests:
-      cpu: 500m
-      memory: 2Gi
-
-  # Replica configuration
-  replicaCount: 1
-
-  # Prometheus configuration
-  config:
-    # Global prometheus configuration
-    global:
-      scrape_interval: 30s
-      scrape_timeout: 10s
-      evaluation_interval: 30s
-      external_labels:
-        cluster: "korriban"
-        environment: "production"
-
-    # Rule files
-    rule_files:
-      - "/etc/prometheus/rules/*.yml"
-
-    # Scrape configurations
-    scrape_configs:
-      - job_name: "prometheus"
-        static_configs:
-          - targets: ["localhost:9090"]
-
-      - job_name: "kubernetes-apiservers"
-        kubernetes_sd_configs:
-          - role: endpoints
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        relabel_configs:
-          - source_labels:
-              [
-                __meta_kubernetes_namespace,
-                __meta_kubernetes_service_name,
-                __meta_kubernetes_endpoint_port_name,
-              ]
-            action: keep
-            regex: default;kubernetes;https
-
-      - job_name: "kubernetes-nodes"
-        kubernetes_sd_configs:
-          - role: node
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-          - target_label: __address__
-            replacement: kubernetes.default.svc:443
-          - source_labels: [__meta_kubernetes_node_name]
-            regex: (.+)
-            target_label: __metrics_path__
-            replacement: /api/v1/nodes/${1}/proxy/metrics
-
-      - job_name: "kubernetes-nodes-cadvisor"
-        kubernetes_sd_configs:
-          - role: node
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          insecure_skip_verify: true
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        relabel_configs:
-          - action: labelmap
-            regex: __meta_kubernetes_node_label_(.+)
-          - target_label: __address__
-            replacement: kubernetes.default.svc:443
-          - source_labels: [__meta_kubernetes_node_name]
-            regex: (.+)
-            target_label: __metrics_path__
-            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
-
-      - job_name: "kubernetes-service-endpoints"
-        kubernetes_sd_configs:
-          - role: endpoints
-        relabel_configs:
-          - source_labels:
-              [__meta_kubernetes_service_annotation_prometheus_io_scrape]
-            action: keep
-            regex: true
-          - source_labels:
-              [__meta_kubernetes_service_annotation_prometheus_io_scheme]
-            action: replace
-            target_label: __scheme__
-            regex: (https?)
-          - source_labels:
-              [__meta_kubernetes_service_annotation_prometheus_io_path]
-            action: replace
-            target_label: __metrics_path__
-            regex: (.+)
-          - source_labels:
-              [
-                __address__,
-                __meta_kubernetes_service_annotation_prometheus_io_port,
-              ]
-            action: replace
-            target_label: __address__
-            regex: ([^:]+)(?::\d+)?;(\d+)
-            replacement: $1:$2
-          - action: labelmap
-            regex: __meta_kubernetes_service_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            action: replace
-            target_label: kubernetes_namespace
-          - source_labels: [__meta_kubernetes_service_name]
-            action: replace
-            target_label: kubernetes_name
-
-      - job_name: "kubernetes-pods"
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          - source_labels:
-              [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-            action: keep
-            regex: true
-          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-            action: replace
-            target_label: __metrics_path__
-            regex: (.+)
-          - source_labels:
-              [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-            action: replace
-            regex: ([^:]+)(?::\d+)?;(\d+)
-            replacement: $1:$2
-            target_label: __address__
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            action: replace
-            target_label: kubernetes_namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            action: replace
-            target_label: kubernetes_pod_name
-
-  # Alerting configuration
-  alerting:
-    alertmanagers:
-      - static_configs:
-          - targets: []
-
-  # Storage configuration
-  persistence:
-    enabled: true
-    storageClass: "local-path"
-    accessMode: ReadWriteOnce
-    size: 50Gi
-    annotations: {}
-
-  # Security context optimized for Talos
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 65534
-    runAsGroup: 65534
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    readOnlyRootFilesystem: true
-    seccompProfile:
-      type: RuntimeDefault
-
-  # Pod security context
-  podSecurityContext:
-    fsGroup: 65534
-    seccompProfile:
-      type: RuntimeDefault
-
-  # Node selector, affinity and tolerations
-  nodeSelector: {}
-  affinity: {}
-  tolerations: []
-
-  # Pod disruption budget
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
-
-  # Startup and liveness probes
-  probes:
-    liveness:
-      httpGet:
-        path: /-/healthy
-        port: 9090
-      initialDelaySeconds: 30
-      periodSeconds: 15
-      timeoutSeconds: 10
-      failureThreshold: 3
-
-    readiness:
-      httpGet:
-        path: /-/ready
-        port: 9090
-      initialDelaySeconds: 5
-      periodSeconds: 5
-      timeoutSeconds: 4
-      failureThreshold: 3
-
-  # Additional arguments optimized for Talos
-  extraArgs:
-    - --storage.tsdb.retention.time=15d
-    - --storage.tsdb.retention.size=45GB
-    - --web.console.libraries=/etc/prometheus/console_libraries
-    - --web.console.templates=/etc/prometheus/consoles
-    - --web.enable-lifecycle
-    - --web.enable-admin-api
-    - --web.route-prefix=/
-    - --storage.tsdb.wal-compression
-
-# Service configuration
-service:
-  type: ClusterIP
-  port: 9090
-  targetPort: 9090
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "9090"
-  labels: {}
-
-# ServiceAccount configuration
-serviceAccount:
-  create: true
-  automount: true
-  annotations: {}
-  name: ""
-
-# RBAC configuration
-rbac:
-  create: true
-  # Additional rules for the ClusterRole
-  extraRules: []
-
-# Ingress configuration
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/auth-type: basic
-    nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
-    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Prometheus"
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
-  hosts:
-    - host: prometheus.korriban.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: prometheus-tls
-      hosts:
-        - prometheus.korriban.local
-
-# ServiceMonitor for Prometheus Operator
-serviceMonitor:
-  enabled: true
-  namespace: ""
-  interval: 30s
-  scrapeTimeout: 10s
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
   labels:
+    name: monitoring
     app.kubernetes.io/part-of: monitoring-stack
-  annotations: {}
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    network-policy/monitoring: "true"
 
-# Network Policy
-networkPolicy:
-  enabled: true
-  ingress:
-    # Allow ingress controller
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: ingress-nginx
-      ports:
-        - protocol: TCP
-          port: 9090
-    # Allow monitoring namespace
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: monitoring
-      ports:
-        - protocol: TCP
-          port: 9090
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: infrastructure/prometheus
+      version: ">=1.0.0"
+      sourceRef:
+        kind: GitRepository
+        name: kubernetes-infrastructure
+        namespace: flux-system
+      interval: 5m
 
-# Sealed Secrets configuration
-sealedSecrets:
-  enabled: true
-  secrets:
-    prometheus-basic-auth:
-      # This will be populated with actual sealed secret values
-      auth: "AgCvwFftjWB+/BxnGRMzRtJZPqbA6DdXnGK/j2WxHCHGfVGuIeyQ05+nep9cQwTKfT/V81CB1GaGqUFs68FqHaFEHv4krH0JPgxgHxMjjIsRKZJYMG1Bpg2RxIlwPKiMoAY5a2VPGk+STnwNMwCD8f3QpyEu1wX7gSA7SX7NEdf3XdQJmXLb7lRC1N/erJLoDzNewOeH759u/r4Wkebl3m8IHeKNs6RkbD7PgQhnWZuLHudIxH4J1qQ1c8/klOhKuKdvHV9+v458eDscdzkKd2rsLgtXvw0zg43JxWKy6PpUaWWJKt5gOzbAKyAdkU942A3bfxot4FfTotoFIOGFJ3FlENX2wHXU0pKHYmBxhO+LqW3DbeksVMoHmX33NrgvvjMMe3waLn11UusOdNpZen/GqT54kVEYoKJ1GBySb5aiJRtONSGQC0owrYm6Y6djiPNEwifh3X4dnATqx9hA/UfcXE6ZdW5k8ZANfalDbGAgoNOpvO6Cs5bba1/ShFQuoelM3T+5bpdUBNnvgny2jXAQMy1N4gQY6cWQonUAyTMTOTg8fm7rAN4C7nanf5q12C7MCXoBRgopbQLG8pPkYHRFs06ViZ7FIjh1AaDqnpmUCQCY/7f0FukpownvQzsWRtEKUEVNQxpG2Lc303wRBA0BK5wK5Nq3oJlP+Bwj1Hv1vi+pojo3M7/tEemZlIWy310pd+FXW1SWxmXDnqnddlNaiD3rrncMUKhtZkTscpFKnE4+BHvMFInqKtl9"
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
 
-# Pod annotations for service discovery
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "9090"
-  prometheus.io/path: "/metrics"
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
 
-# Pod labels
-podLabels: {}
+  rollback:
+    recreate: true
+    force: true
+    cleanupOnFail: true
 
-# Additional volumes
-extraVolumes: []
+  values:
+    global:
+      imageRegistry: ""
+      storageClass: "nfs-holocron-fast"
 
-# Additional volume mounts
-extraVolumeMounts: []
+    prometheus:
+      replicaCount: 1
 
-# Additional containers
-extraContainers: []
+      image:
+        registry: docker.io
+        repository: prom/prometheus
+        tag: "v2.51.2"
+        pullPolicy: IfNotPresent
 
-# Init containers
-initContainers: []
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+        requests:
+          cpu: 500m
+          memory: 2Gi
 
-# Environment variables
-env: []
+      persistence:
+        enabled: true
+        storageClass: "nfs-holocron-fast"
+        size: 50Gi
+
+    service:
+      type: ClusterIP
+      port: 9090
+      targetPort: 9090
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+
+    serviceAccount:
+      create: true
+      automount: true
+      annotations: {}
+
+    rbac:
+      create: true
+
+    ingress:
+      enabled: true
+      className: "traefik"
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.middlewares: monitoring-prometheus-auth@kubernetescrd
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+      hosts:
+        - host: prometheus.home.cwbtech.net
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: prometheus-tls
+          hosts:
+            - prometheus.home.cwbtech.net
+
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+
+    networkPolicy:
+      enabled: true
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: traefik-system
+          ports:
+            - protocol: TCP
+              port: 9090
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: monitoring
+          ports:
+            - protocol: TCP
+              port: 9090
+
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9090"
+      prometheus.io/path: "/metrics"
+
+  dependsOn:
+    - name:
