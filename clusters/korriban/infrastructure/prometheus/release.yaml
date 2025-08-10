@@ -5,11 +5,9 @@ metadata:
   labels:
     name: monitoring
     app.kubernetes.io/part-of: monitoring-stack
-    # Pod Security Standards
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
-    # Network policy label for cross-namespace communication
     network-policy/monitoring: "true"
 
 ---
@@ -34,26 +32,22 @@ spec:
         namespace: flux-system
       interval: 5m
 
-  # Helm install configuration
   install:
     createNamespace: false
     remediation:
       retries: 3
 
-  # Helm upgrade configuration
   upgrade:
     remediation:
       retries: 3
       remediateLastFailure: true
     cleanupOnFail: true
 
-  # Helm rollback configuration
   rollback:
     recreate: true
     force: true
     cleanupOnFail: true
 
-  # Values for Korriban cluster with Traefik
   values:
     global:
       imageRegistry: ""
@@ -80,8 +74,41 @@ spec:
         enabled: true
         storageClass: "nfs-holocron-fast"
         size: 50Gi
+        accessMode: ReadWriteOnce
 
-    # Service configuration
+      podDisruptionBudget:
+        enabled: false
+
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65534
+
+      probes:
+        liveness:
+          httpGet:
+            path: /-/healthy
+            port: http
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+        readiness:
+          httpGet:
+            path: /-/ready
+            port: http
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+
     service:
       type: ClusterIP
       port: 9090
@@ -90,7 +117,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
 
-    # ServiceAccount and RBAC
     serviceAccount:
       create: true
       automount: true
@@ -99,7 +125,6 @@ spec:
     rbac:
       create: true
 
-    # Ingress configuration for Traefik
     ingress:
       enabled: true
       className: "traefik"
@@ -118,7 +143,6 @@ spec:
           hosts:
             - prometheus.home.cwbtech.net
 
-    # ServiceMonitor for Prometheus Operator integration
     serviceMonitor:
       enabled: true
       interval: 30s
@@ -126,11 +150,9 @@ spec:
       labels:
         app.kubernetes.io/part-of: monitoring-stack
 
-    # Network Policy for security
     networkPolicy:
       enabled: true
       ingress:
-        # Allow traefik ingress
         - from:
             - namespaceSelector:
                 matchLabels:
@@ -138,7 +160,6 @@ spec:
           ports:
             - protocol: TCP
               port: 9090
-        # Allow monitoring namespace
         - from:
             - namespaceSelector:
                 matchLabels:
@@ -147,33 +168,11 @@ spec:
             - protocol: TCP
               port: 9090
 
-    # Sealed Secrets configuration
-    sealedSecrets:
-      enabled: true
-      secrets:
-        prometheus-basic-auth:
-          # Generate with: htpasswd -nb admin password | kubeseal --raw --from-file=/dev/stdin --name=prometheus-basic-auth --namespace=monitoring
-          auth: ""
-
-    # Pod annotations for monitoring
     podAnnotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "9090"
       prometheus.io/path: "/metrics"
 
-  # Dependencies - ensure traefik is ready first
   dependsOn:
     - name: traefik
       namespace: flux-system
-# ---
-# apiVersion: traefik.containo.us/v1alpha1
-# kind: Middleware
-# metadata:
-#   name: prometheus-auth
-#   namespace: monitoring
-#   labels:
-#     app.kubernetes.io/name: prometheus
-#     app.kubernetes.io/part-of: monitoring-stack
-# spec:
-#   basicAuth:
-#     secret: prometheus-basic-auth
