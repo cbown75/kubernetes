@@ -1,143 +1,307 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: monitoring
-  labels:
-    name: monitoring
-    app.kubernetes.io/part-of: monitoring-stack
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/audit: restricted
-    pod-security.kubernetes.io/warn: restricted
-    network-policy/monitoring: "true"
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "local-path"
 
----
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: prometheus
-  namespace: monitoring
-  labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/part-of: monitoring-stack
-spec:
-  interval: 10m
-  timeout: 10m
-  chart:
-    spec:
-      chart: infrastructure/prometheus
-      version: ">=1.0.0"
-      sourceRef:
-        kind: GitRepository
-        name: kubernetes-infrastructure
-        namespace: flux-system
-      interval: 5m
+prometheus:
+  image:
+    registry: docker.io
+    repository: prom/prometheus
+    tag: "v2.51.2"
+    pullPolicy: IfNotPresent
+    pullSecrets: []
 
-  install:
-    createNamespace: false
-    remediation:
-      retries: 3
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi
 
-  upgrade:
-    remediation:
-      retries: 3
-      remediateLastFailure: true
-    cleanupOnFail: true
+  replicaCount: 1
 
-  rollback:
-    recreate: true
-    force: true
-    cleanupOnFail: true
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 50Gi
+    storageClass: ""
+    annotations: {}
 
-  values:
+  podSecurityContext:
+    fsGroup: 65534
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65534
+
+  probes:
+    liveness:
+      httpGet:
+        path: /-/healthy
+        port: http
+      initialDelaySeconds: 30
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+    readiness:
+      httpGet:
+        path: /-/ready
+        port: http
+      initialDelaySeconds: 30
+      timeoutSeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    maxUnavailable: ""
+
+  config:
     global:
-      imageRegistry: ""
-      storageClass: "nfs-holocron-fast"
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      evaluation_interval: 30s
+      external_labels:
+        cluster: "korriban"
+        environment: "production"
 
-    prometheus:
-      replicaCount: 1
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
 
-      image:
-        registry: docker.io
-        repository: prom/prometheus
-        tag: "v2.51.2"
-        pullPolicy: IfNotPresent
+    scrape_configs:
+      - job_name: "prometheus"
+        static_configs:
+          - targets: ["localhost:9090"]
 
-      resources:
-        limits:
-          cpu: 2000m
-          memory: 4Gi
-        requests:
-          cpu: 500m
-          memory: 2Gi
+      - job_name: "kubernetes-apiservers"
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels:
+              [
+                __meta_kubernetes_namespace,
+                __meta_kubernetes_service_name,
+                __meta_kubernetes_endpoint_port_name,
+              ]
+            action: keep
+            regex: default;kubernetes;https
 
-      persistence:
-        enabled: true
-        storageClass: "nfs-holocron-fast"
-        size: 50Gi
+      - job_name: "kubernetes-nodes"
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
 
-    service:
-      type: ClusterIP
-      port: 9090
-      targetPort: 9090
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
+      - job_name: "kubernetes-cadvisor"
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
 
-    serviceAccount:
-      create: true
-      automount: true
-      annotations: {}
+      - job_name: "kubernetes-service-endpoints"
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels:
+              [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels:
+              [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+            action: replace
+            target_label: __scheme__
+            regex: (https?)
+          - source_labels:
+              [__meta_kubernetes_service_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels:
+              [
+                __address__,
+                __meta_kubernetes_service_annotation_prometheus_io_port,
+              ]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: kubernetes_name
 
-    rbac:
-      create: true
+      - job_name: "kubernetes-pods"
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels:
+              [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels:
+              [__meta_kubernetes_pod_annotation_prometheus_io_scheme]
+            action: replace
+            target_label: __scheme__
+            regex: (https?)
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels:
+              [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
 
-    ingress:
-      enabled: true
-      className: "traefik"
-      annotations:
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: "true"
-        traefik.ingress.kubernetes.io/router.middlewares: monitoring-prometheus-auth@kubernetescrd
-        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+  extraArgs:
+    - --storage.tsdb.retention.time=15d
+    - --storage.tsdb.retention.size=45GB
+    - --web.console.libraries=/etc/prometheus/console_libraries
+    - --web.console.templates=/etc/prometheus/consoles
+    - --web.enable-lifecycle
+    - --web.enable-admin-api
+    - --web.route-prefix=/
+    - --storage.tsdb.wal-compression
+
+service:
+  type: ClusterIP
+  port: 9090
+  targetPort: 9090
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+  labels: {}
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+  extraRules: []
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Prometheus"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  hosts:
+    - host: prometheus.korriban.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: prometheus-tls
       hosts:
-        - host: prometheus.home.cwbtech.net
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
-        - secretName: prometheus-tls
-          hosts:
-            - prometheus.home.cwbtech.net
+        - prometheus.korriban.local
 
-    serviceMonitor:
-      enabled: true
-      interval: 30s
-      scrapeTimeout: 10s
-      labels:
-        app.kubernetes.io/part-of: monitoring-stack
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 30s
+  scrapeTimeout: 10s
+  labels:
+    app.kubernetes.io/part-of: monitoring-stack
+  annotations: {}
 
-    networkPolicy:
-      enabled: true
-      ingress:
-        - from:
-            - namespaceSelector:
-                matchLabels:
-                  name: traefik-system
-          ports:
-            - protocol: TCP
-              port: 9090
-        - from:
-            - namespaceSelector:
-                matchLabels:
-                  name: monitoring
-          ports:
-            - protocol: TCP
-              port: 9090
+sealedSecrets:
+  enabled: false
+  secrets: {}
 
-    podAnnotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "9090"
-      prometheus.io/path: "/metrics"
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 9090
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
 
-  dependsOn:
-    - name:
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []
+initContainers: []
+env: []
+nameOverride: ""
+fullnameOverride: ""
