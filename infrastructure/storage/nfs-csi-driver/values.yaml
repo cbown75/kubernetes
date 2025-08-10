@@ -52,7 +52,7 @@ storageClasses:
 
 csiDriver:
   image:
-    repository: registry.k8s.io/sig-storage/csi-driver-nfs
+    repository: registry.k8s.io/sig-storage/nfsplugin
     tag: v4.6.0
     pullPolicy: IfNotPresent
 
@@ -95,16 +95,17 @@ mountOptions:
   fast:
     - nfsvers=4.1
     - hard
-    - rsize=262144
-    - wsize=262144
+    - rsize=1048576
+    - wsize=1048576
     - timeo=600
     - retrans=2
+    - fsc
 
   general:
     - nfsvers=4.1
     - hard
-    - rsize=262144
-    - wsize=262144
+    - rsize=1048576
+    - wsize=1048576
     - timeo=600
     - retrans=2
 
@@ -115,6 +116,15 @@ mountOptions:
     - wsize=65536
     - timeo=600
     - retrans=2
+
+  media:
+    - nfsvers=4.1
+    - hard
+    - rsize=1048576
+    - wsize=1048576
+    - timeo=600
+    - retrans=2
+    - actimeo=1800
 
 securityContext:
   runAsNonRoot: true
