@@ -27,6 +27,7 @@ spec:
         name: infrastructure-storage
         namespace: flux-system
       interval: 12h
+      reconcileStrategy: Revision
   install:
     createNamespace: true
     timeout: 10m
