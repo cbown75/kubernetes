@@ -11,6 +11,7 @@ nas:
       general: /volume1/kubernetes
       fast: /volume1/kubernetes-fast
       backup: /volume1/kubernetes-backup
+      media: /volume1/media
 
 storageClasses:
   defaultClass: nfs-holocron-fast
@@ -95,36 +96,15 @@ mountOptions:
   fast:
     - nfsvers=4.1
     - hard
-    - rsize=1048576
-    - wsize=1048576
-    - timeo=600
-    - retrans=2
-    - fsc
-
   general:
     - nfsvers=4.1
     - hard
-    - rsize=1048576
-    - wsize=1048576
-    - timeo=600
-    - retrans=2
-
   backup:
     - nfsvers=4.1
     - hard
-    - rsize=65536
-    - wsize=65536
-    - timeo=600
-    - retrans=2
-
   media:
     - nfsvers=4.1
     - hard
-    - rsize=1048576
-    - wsize=1048576
-    - timeo=600
-    - retrans=2
-    - actimeo=1800
 
 securityContext:
   runAsNonRoot: true
