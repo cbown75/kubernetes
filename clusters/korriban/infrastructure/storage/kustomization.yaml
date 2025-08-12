@@ -6,3 +6,4 @@ metadata:
   namespace: flux-system
 resources:
   - release.yaml
+  - proxmox-csi-release.yaml

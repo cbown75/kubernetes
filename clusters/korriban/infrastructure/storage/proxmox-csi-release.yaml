@@ -1,0 +1,30 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: proxmox-csi-driver
+  namespace: flux-system
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: infrastructure/storage/proxmox-csi-driver
+      version: "*"
+      sourceRef:
+        kind: GitRepository
+        name: infrastructure-storage
+        namespace: flux-system
+      interval: 12h
+  targetNamespace: kube-system
+  install:
+    createNamespace: false
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  dependsOn:
+    - name: sealed-secrets
+      namespace: kube-system

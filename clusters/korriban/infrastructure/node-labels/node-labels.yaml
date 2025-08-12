@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-labeling-script
+  namespace: kube-system
+data:
+  label-nodes.sh: |
+    #!/bin/bash
+    # Label Talos nodes for Proxmox CSI
+    kubectl label node talos-54d-wps topology.kubernetes.io/region=korriban-cluster --overwrite
+    kubectl label node talos-54d-wps topology.kubernetes.io/zone=korriban-node-1 --overwrite
+    kubectl label node talos-54d-wps node.kubernetes.io/instance-type=qemu --overwrite
+
+    kubectl label node talos-d1o-w09 topology.kubernetes.io/region=korriban-cluster --overwrite
+    kubectl label node talos-d1o-w09 topology.kubernetes.io/zone=korriban-node-1 --overwrite
+    kubectl label node talos-d1o-w09 node.kubernetes.io/instance-type=qemu --overwrite
+
+    kubectl label node talos-j1i-u0k topology.kubernetes.io/region=korriban-cluster --overwrite
+    kubectl label node talos-j1i-u0k topology.kubernetes.io/zone=korriban-node-1 --overwrite
+    kubectl label node talos-j1i-u0k node.kubernetes.io/instance-type=qemu --overwrite
+
+    kubectl label node talos-pha-db7 topology.kubernetes.io/region=korriban-cluster --overwrite
+    kubectl label node talos-pha-db7 topology.kubernetes.io/zone=korriban-node-1 --overwrite
+    kubectl label node talos-pha-db7 node.kubernetes.io/instance-type=qemu --overwrite
+
+    kubectl label node talos-q9h-jvf topology.kubernetes.io/region=korriban-cluster --overwrite
+    kubectl label node talos-q9h-jvf topology.kubernetes.io/zone=korriban-node-1 --overwrite
+    kubectl label node talos-q9h-jvf node.kubernetes.io/instance-type=qemu --overwrite
+
+    kubectl label node talos-yux-tz4 topology.kubernetes.io/region=korriban-cluster --overwrite
+    kubectl label node talos-yux-tz4 topology.kubernetes.io/zone=korriban-node-1 --overwrite
+    kubectl label node talos-yux-tz4 node.kubernetes.io/instance-type=qemu --overwrite
+
+    echo "All nodes labeled for Proxmox CSI"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: label-nodes-job
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      serviceAccountName: node-labeler
+      containers:
+        - name: node-labeler
+          image: bitnami/kubectl:latest
+          command: ["/bin/bash"]
+          args: ["/scripts/label-nodes.sh"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: node-labeling-script
+            defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 3
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-labeler
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-labeler
+subjects:
+  - kind: ServiceAccount
+    name: node-labeler
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: node-labeler
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: node-labeler-cron
+  namespace: kube-system
+spec:
+  schedule: "0 */6 * * *" # Every 6 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: node-labeler
+          containers:
+            - name: node-labeler
+              image: bitnami/kubectl:latest
+              command: ["/bin/bash"]
+              args: ["/scripts/label-nodes.sh"]
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+          volumes:
+            - name: script
+              configMap:
+                name: node-labeling-script
+                defaultMode: 0755
+          restartPolicy: OnFailure
