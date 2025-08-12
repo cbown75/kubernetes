@@ -5,6 +5,7 @@ resources:
   # Core infrastructure (order matters for dependencies)
   - node-labels
   - storage
+  - proxmox
   - sealed-secrets
   - cert-manager
   - traefik

@@ -1,0 +1,82 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: sergelogvinov
+  namespace: flux-system
+spec:
+  interval: 10m
+  type: oci
+  url: oci://ghcr.io/sergelogvinov/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: proxmox-csi-driver
+  namespace: flux-system
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: proxmox-csi-plugin
+      version: ">=0.8.0"
+      sourceRef:
+        kind: HelmRepository
+        name: sergelogvinov
+        namespace: flux-system
+      interval: 12h
+  targetNamespace: kube-system
+  install:
+    createNamespace: false
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  dependsOn:
+    - name: sealed-secrets
+      namespace: kube-system
+  values:
+    config:
+      existingSecret: proxmox-csi-config
+    controller:
+      replicaCount: 1
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+    node:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+    storageClasses:
+      - name: proxmox-korriban-holocron-fast
+        storage: korriban-synology-holocron-fast
+        reclaimPolicy: Delete
+        allowVolumeExpansion: true
+        fstype: ext4
+        cache: writethrough
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+      - name: proxmox-korriban-holocron-general
+        storage: korriban-synology-holocron-general
+        reclaimPolicy: Retain
+        allowVolumeExpansion: true
+        fstype: ext4
+        cache: writethrough
+      - name: proxmox-korriban-sith-fast
+        storage: korriban-synology-sith-fast
+        reclaimPolicy: Delete
+        allowVolumeExpansion: true
+        fstype: ext4
+        cache: writethrough
