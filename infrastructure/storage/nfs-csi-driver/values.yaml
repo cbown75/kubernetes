@@ -92,14 +92,13 @@ node:
       cpu: 10m
       memory: 512Mi
 
-# Optimized mount options for 50Gb Synology NAS with NFSv4.1
+# Fixed mount options - removed fsc which requires cachefilesd daemon
 mountOptions:
   fast:
     - nfsvers=4.1
     - hard
     - rsize=1048576 # 1MB read blocks for high-bandwidth connections
     - wsize=1048576 # 1MB write blocks for high-bandwidth connections
-    - fsc # Enable local caching for frequently accessed files
     - intr # Allow interruption of NFS calls
     - timeo=600 # 60 second timeout
   general:
