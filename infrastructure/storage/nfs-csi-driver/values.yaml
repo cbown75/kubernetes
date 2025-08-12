@@ -92,19 +92,37 @@ node:
       cpu: 10m
       memory: 512Mi
 
+# Optimized mount options for 50Gb Synology NAS with NFSv4.1
 mountOptions:
   fast:
     - nfsvers=4.1
     - hard
+    - rsize=1048576 # 1MB read blocks for high-bandwidth connections
+    - wsize=1048576 # 1MB write blocks for high-bandwidth connections
+    - fsc # Enable local caching for frequently accessed files
+    - intr # Allow interruption of NFS calls
+    - timeo=600 # 60 second timeout
   general:
     - nfsvers=4.1
     - hard
+    - rsize=1048576 # 1MB read blocks for high-bandwidth connections
+    - wsize=1048576 # 1MB write blocks for high-bandwidth connections
+    - intr # Allow interruption of NFS calls
+    - timeo=600 # 60 second timeout
   backup:
     - nfsvers=4.1
     - hard
+    - rsize=65536 # 64KB blocks for sequential backup access
+    - wsize=65536 # 64KB blocks for sequential backup access
+    - intr # Allow interruption of NFS calls
+    - timeo=600 # 60 second timeout
   media:
     - nfsvers=4.1
     - hard
+    - rsize=1048576 # 1MB read blocks for media streaming
+    - wsize=1048576 # 1MB write blocks for media streaming
+    - intr # Allow interruption of NFS calls
+    - timeo=600 # 60 second timeout
 
 securityContext:
   runAsNonRoot: true
