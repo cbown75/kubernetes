@@ -41,12 +41,7 @@ spec:
       namespace: kube-system
   values:
     config:
-      clusters:
-        - url: https://korriban.home.cwbtech.net:8006/api2/json
-          insecure: true
-          token_id: "kubernetes@pve!csi"
-          token_secret: "fa697689-31e9-4990-859e-c17a5b2f525d"
-          region: korriban-cluster
+      existingSecret: "kube-system-proxmox-csi-driver-proxmox-csi-plugin"
     controller:
       replicaCount: 1
       resources:
