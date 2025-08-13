@@ -35,7 +35,7 @@ spec:
             - name: ADDRESS
               value: /csi/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: /var/lib/kubelet/plugins/csi.san.synology.com/csi.sock
+              value: {{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -64,8 +64,7 @@ spec:
           args:
             - --endpoint=$(CSI_ENDPOINT)
             - --nodeid=$(NODE_ID)
-            - --logtostderr
-            - --v=2
+            - --log-level=info
           env:
             - name: CSI_ENDPOINT
               value: unix://{{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com/csi.sock
