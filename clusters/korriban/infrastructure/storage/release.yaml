@@ -26,7 +26,7 @@ spec:
         name: synology-csi-local
         namespace: flux-system
       interval: 12h
-      reconcileStrategy: Revision # Changed from ChartVersion to Revision
+      reconcileStrategy: Revision
   targetNamespace: kube-system
   install:
     createNamespace: false
@@ -52,19 +52,19 @@ spec:
         port: 5000
         https: false
 
-    # CSI Driver Configuration
+    # CSI Driver Configuration - Updated for Talos
     csiDriver:
       name: synology-csi-driver
       image:
-        repository: synology/synology-csi
-        tag: v1.1.0
+        repository: ghcr.io/zebernst/synology-csi-talos
+        tag: v1.2.0
         pullPolicy: IfNotPresent
 
     # Kubelet configuration
     kubelet:
       socketPath: /var/lib/kubelet
 
-    # CSI Sidecar Images
+    # CSI Sidecar Images - Updated to latest versions
     images:
       attacher:
         repository: registry.k8s.io/sig-storage/csi-attacher
@@ -128,11 +128,11 @@ spec:
           cpu: 10m
           memory: 64Mi
 
-    # Security Context
+    # Security Context - Updated for Talos compatibility
     securityContext:
-      runAsNonRoot: true
-      runAsUser: 65532
-      fsGroup: 65532
+      runAsNonRoot: false # Changed: Talos CSI fork needs root
+      runAsUser: 0 # Changed: Must run as root for mount operations
+      fsGroup: 0 # Changed: Root group required
       seccompProfile:
         type: RuntimeDefault
 
