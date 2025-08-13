@@ -80,9 +80,6 @@ spec:
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
-            capabilities:
-              add:
-                - SYS_ADMIN
           volumeMounts:
             - name: plugin-dir
               mountPath: {{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com

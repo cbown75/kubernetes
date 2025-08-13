@@ -18,8 +18,6 @@ spec:
         {{- include "synology-csi-driver.controller.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "synology-csi-driver.controller.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
         - name: csi-provisioner
           image: {{ .Values.images.provisioner.repository }}:{{ .Values.images.provisioner.tag }}
@@ -132,7 +130,8 @@ spec:
           args:
             - --endpoint=$(CSI_ENDPOINT)
             - --nodeid=$(NODE_ID)
-            - --log-level=info
+            - --logtostderr
+            - --v=2
           env:
             - name: CSI_ENDPOINT
               value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock

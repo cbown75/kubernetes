@@ -1,16 +1,18 @@
 apiVersion: v2
 name: synology-csi-driver
-description: Synology CSI Driver for Kubernetes with iSCSI backend
+description: Synology CSI Driver for Kubernetes with iSCSI backend (Talos Linux compatible)
 type: application
-version: 1.0.0
-appVersion: "v1.1.0"
+version: 1.1.0
+appVersion: "v1.2.0"
 keywords:
   - synology
   - csi
   - storage
   - iscsi
+  - talos
 home: https://github.com/cbown75/kubernetes
 sources:
+  - https://github.com/zebernst/synology-csi-talos
   - https://github.com/SynologyOpenSource/synology-csi
 maintainers:
   - name: cbown75
