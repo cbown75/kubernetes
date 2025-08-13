@@ -19,6 +19,10 @@ spec:
       serviceAccountName: {{ include "synology-csi-driver.node.serviceAccountName" . }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists
       containers:
         - name: csi-node-driver-registrar
           image: {{ .Values.images.registrar.repository }}:{{ .Values.images.registrar.tag }}
@@ -64,7 +68,8 @@ spec:
           args:
             - --endpoint=$(CSI_ENDPOINT)
             - --nodeid=$(NODE_ID)
-            - --log-level=info
+            - --logtostderr
+            - --v=2
           env:
             - name: CSI_ENDPOINT
               value: unix://{{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com/csi.sock
@@ -74,6 +79,10 @@ spec:
                   fieldPath: spec.nodeName
           securityContext:
             privileged: true
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+                - SYS_ADMIN
           volumeMounts:
             - name: plugin-dir
               mountPath: {{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com
@@ -108,16 +117,15 @@ spec:
         - name: device-dir
           hostPath:
             path: /dev
+            type: ""
         - name: client-info-secret
           secret:
             secretName: {{ .Values.secret.existingSecret }}
         - name: host-sys
           hostPath:
             path: /sys
+            type: ""
         - name: lib-modules
           hostPath:
             path: /lib/modules
-      nodeSelector:
-        kubernetes.io/os: linux
-      tolerations:
-        - operator: Exists
+            type: ""
