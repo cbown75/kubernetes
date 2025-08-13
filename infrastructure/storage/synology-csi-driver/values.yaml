@@ -14,7 +14,7 @@ csiDriver:
   name: synology-csi-driver
   image:
     repository: ghcr.io/zebernst/synology-csi-talos
-    tag: v0.9.4
+    tag: v1.1.0 # FIXED: Changed from v1.2.0 to v1.1.0 to match release.yaml
     pullPolicy: IfNotPresent
 
 # Kubelet configuration
