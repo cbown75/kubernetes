@@ -1,12 +1,14 @@
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: GitRepository
 metadata:
-  name: synology-csi
+  name: synology-csi-local
   namespace: flux-system
 spec:
   interval: 10m
-  url: https://zebernst.github.io/synology-csi-talos
+  ref:
+    branch: main
+  url: https://github.com/cbown75/kubernetes.git
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -18,11 +20,10 @@ spec:
   timeout: 15m
   chart:
     spec:
-      chart: synology-csi
-      version: "*"
+      chart: ./infrastructure/storage/synology-csi-driver
       sourceRef:
-        kind: HelmRepository
-        name: synology-csi
+        kind: GitRepository
+        name: synology-csi-local
         namespace: flux-system
       interval: 12h
   targetNamespace: kube-system
@@ -39,7 +40,30 @@ spec:
     - name: sealed-secrets
       namespace: kube-system
   values:
-    # Use newer CSI sidecar images for compatibility
+    # Synology NAS Configuration
+    synology:
+      holocron:
+        host: holocron.home.cwbtech.net
+        port: 5000
+        https: false
+      sith:
+        host: sith.home.cwbtech.net
+        port: 5000
+        https: false
+
+    # CSI Driver Configuration
+    csiDriver:
+      name: synology-csi-driver
+      image:
+        repository: synology/synology-csi
+        tag: v1.1.0
+        pullPolicy: IfNotPresent
+
+    # Kubelet configuration
+    kubelet:
+      socketPath: /var/lib/kubelet
+
+    # CSI Sidecar Images
     images:
       attacher:
         repository: registry.k8s.io/sig-storage/csi-attacher
@@ -56,32 +80,35 @@ spec:
       registrar:
         repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
         tag: v2.11.1
-      plugin:
-        repository: synology/synology-csi
-        tag: v1.1.0
 
-    # Create storage classes for your configured iSCSI targets
+    # Storage Classes
     storageClasses:
-      retain:
-        - name: synology-holocron-general
-          reclaimPolicy: Retain
-          volumeBindingMode: Immediate
-          allowVolumeExpansion: true
-          parameters:
-            dsm: "holocron.home.cwbtech.net"
-            location: "/volume1"
-      delete:
-        - name: synology-holocron-fast
-          reclaimPolicy: Delete
-          volumeBindingMode: Immediate
-          allowVolumeExpansion: true
-          isDefault: true
-          parameters:
-            dsm: "holocron.home.cwbtech.net"
-            location: "/volume1"
+      defaultClass: synology-holocron-fast
 
-    # Resource limits for the CSI components
+      holocron:
+        fast:
+          enabled: true
+          reclaimPolicy: Delete
+          allowVolumeExpansion: true
+        general:
+          enabled: true
+          reclaimPolicy: Retain
+          allowVolumeExpansion: true
+
+      # Future Sith configuration
+      sith:
+        fast:
+          enabled: false
+          reclaimPolicy: Delete
+          allowVolumeExpansion: true
+        general:
+          enabled: false
+          reclaimPolicy: Retain
+          allowVolumeExpansion: true
+
+    # Controller Resources
     controller:
+      replicaCount: 1
       resources:
         limits:
           cpu: 500m
@@ -90,6 +117,7 @@ spec:
           cpu: 10m
           memory: 64Mi
 
+    # Node Resources
     node:
       resources:
         limits:
@@ -99,10 +127,18 @@ spec:
           cpu: 10m
           memory: 64Mi
 
-    # Security context for CSI pods
+    # Security Context
     securityContext:
       runAsNonRoot: true
       runAsUser: 65532
       fsGroup: 65532
       seccompProfile:
         type: RuntimeDefault
+
+    # Secret Configuration
+    secret:
+      existingSecret: synology-csi-config
+
+    # Override settings
+    nameOverride: ""
+    fullnameOverride: ""
