@@ -57,7 +57,7 @@ spec:
       name: synology-csi-driver
       image:
         repository: ghcr.io/zebernst/synology-csi-talos
-        tag: v1.2.0
+        tag: synology-csi-0.9.4
         pullPolicy: IfNotPresent
 
     # Kubelet configuration
