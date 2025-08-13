@@ -1,0 +1,102 @@
+# Synology NAS Configuration
+synology:
+  holocron:
+    host: holocron.home.cwbtech.net
+    port: 5000
+    https: false
+  sith:
+    host: sith.home.cwbtech.net
+    port: 5000
+    https: false
+
+# CSI Driver Configuration
+csiDriver:
+  name: synology-csi-driver
+  image:
+    repository: synology/synology-csi
+    tag: v1.1.0
+    pullPolicy: IfNotPresent
+
+# Kubelet configuration
+kubelet:
+  socketPath: /var/lib/kubelet
+
+# CSI Sidecar Images
+images:
+  attacher:
+    repository: registry.k8s.io/sig-storage/csi-attacher
+    tag: v4.6.1
+  provisioner:
+    repository: registry.k8s.io/sig-storage/csi-provisioner
+    tag: v5.0.1
+  resizer:
+    repository: registry.k8s.io/sig-storage/csi-resizer
+    tag: v1.11.1
+  snapshotter:
+    repository: registry.k8s.io/sig-storage/csi-snapshotter
+    tag: v8.0.1
+  registrar:
+    repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+    tag: v2.11.1
+
+# Storage Classes
+storageClasses:
+  defaultClass: synology-holocron-fast
+
+  holocron:
+    fast:
+      enabled: true
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+    general:
+      enabled: true
+      reclaimPolicy: Retain
+      allowVolumeExpansion: true
+
+  # Future Sith configuration
+  sith:
+    fast:
+      enabled: false
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+    general:
+      enabled: false
+      reclaimPolicy: Retain
+      allowVolumeExpansion: true
+
+# Controller Resources
+controller:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 10m
+      memory: 64Mi
+
+# Node Resources
+node:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 10m
+      memory: 64Mi
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+# Secret Configuration
+secret:
+  existingSecret: synology-csi-config
+
+# Override settings
+nameOverride: ""
+fullnameOverride: ""

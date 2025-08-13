@@ -1,0 +1,95 @@
+{{- if .Values.storageClasses.holocron.fast.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synology-holocron-fast
+  {{- if eq .Values.storageClasses.defaultClass "synology-holocron-fast" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "synology-csi-driver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-class
+    nas: holocron
+    tier: fast
+provisioner: csi.san.synology.com
+parameters:
+  dsm: {{ .Values.synology.holocron.host | quote }}
+  location: "/volume1"
+reclaimPolicy: {{ .Values.storageClasses.holocron.fast.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.holocron.fast.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.holocron.general.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synology-holocron-general
+  {{- if eq .Values.storageClasses.defaultClass "synology-holocron-general" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "synology-csi-driver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-class
+    nas: holocron
+    tier: general
+provisioner: csi.san.synology.com
+parameters:
+  dsm: {{ .Values.synology.holocron.host | quote }}
+  location: "/volume1"
+reclaimPolicy: {{ .Values.storageClasses.holocron.general.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.holocron.general.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.sith.fast.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synology-sith-fast
+  {{- if eq .Values.storageClasses.defaultClass "synology-sith-fast" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "synology-csi-driver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-class
+    nas: sith
+    tier: fast
+provisioner: csi.san.synology.com
+parameters:
+  dsm: {{ .Values.synology.sith.host | quote }}
+  location: "/volume1"
+reclaimPolicy: {{ .Values.storageClasses.sith.fast.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.sith.fast.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}
+
+{{- if .Values.storageClasses.sith.general.enabled }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: synology-sith-general
+  {{- if eq .Values.storageClasses.defaultClass "synology-sith-general" }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "synology-csi-driver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-class
+    nas: sith
+    tier: general
+provisioner: csi.san.synology.com
+parameters:
+  dsm: {{ .Values.synology.sith.host | quote }}
+  location: "/volume1"
+reclaimPolicy: {{ .Values.storageClasses.sith.general.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClasses.sith.general.allowVolumeExpansion }}
+volumeBindingMode: Immediate
+{{- end }}

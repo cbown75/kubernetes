@@ -1,0 +1,124 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "synology-csi-driver.fullname" . }}-node
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "synology-csi-driver.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node
+spec:
+  selector:
+    matchLabels:
+      {{- include "synology-csi-driver.node.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "synology-csi-driver.node.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "synology-csi-driver.node.serviceAccountName" . }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: csi-node-driver-registrar
+          image: {{ .Values.images.registrar.repository }}:{{ .Values.images.registrar.tag }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --v=2
+            - --csi-address=$(ADDRESS)
+            - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/csi.san.synology.com /registration/csi.san.synology.com-reg.sock"]
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/csi.san.synology.com/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi/
+            - name: registration-dir
+              mountPath: /registration/
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+              - ALL
+        - name: synology-csi-plugin
+          image: {{ .Values.csiDriver.image.repository }}:{{ .Values.csiDriver.image.tag }}
+          imagePullPolicy: {{ .Values.csiDriver.image.pullPolicy }}
+          args:
+            - --endpoint=$(CSI_ENDPOINT)
+            - --nodeid=$(NODE_ID)
+            - --logtostderr
+            - --v=2
+          env:
+            - name: CSI_ENDPOINT
+              value: unix://{{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com/csi.sock
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: {{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com
+            - name: pods-mount-dir
+              mountPath: {{ .Values.kubelet.socketPath }}
+              mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
+            - name: client-info-secret
+              mountPath: /etc/synology
+              readOnly: true
+            - name: host-sys
+              mountPath: /sys
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+          resources:
+            {{- toYaml .Values.node.resources | nindent 12 }}
+      volumes:
+        - name: registration-dir
+          hostPath:
+            path: {{ .Values.kubelet.socketPath }}/plugins_registry/
+            type: DirectoryOrCreate
+        - name: plugin-dir
+          hostPath:
+            path: {{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: {{ .Values.kubelet.socketPath }}
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
+        - name: client-info-secret
+          secret:
+            secretName: {{ .Values.secret.existingSecret }}
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - operator: Exists

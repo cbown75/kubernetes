@@ -1,0 +1,17 @@
+apiVersion: v2
+name: synology-csi-driver
+description: Synology CSI Driver for Kubernetes with iSCSI backend
+type: application
+version: 1.0.0
+appVersion: "v1.1.0"
+keywords:
+  - synology
+  - csi
+  - storage
+  - iscsi
+home: https://github.com/cbown75/kubernetes
+sources:
+  - https://github.com/SynologyOpenSource/synology-csi
+maintainers:
+  - name: cbown75
+    email: cbown75@example.com

@@ -1,35 +1,33 @@
 ---
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: GitRepository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
 metadata:
-  name: infrastructure-storage
+  name: synology-csi
   namespace: flux-system
 spec:
-  interval: 1h0m0s
-  ref:
-    branch: main
-  url: https://github.com/cbown75/kubernetes
+  interval: 10m
+  url: https://zebernst.github.io/synology-csi-talos
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: nfs-csi-driver
+  name: synology-csi-driver
   namespace: flux-system
 spec:
   interval: 30m
   timeout: 15m
-  targetNamespace: nfs-csi-driver
   chart:
     spec:
-      chart: infrastructure/storage/nfs-csi-driver
+      chart: synology-csi
+      version: "*"
       sourceRef:
-        kind: GitRepository
-        name: infrastructure-storage
+        kind: HelmRepository
+        name: synology-csi
         namespace: flux-system
       interval: 12h
-      reconcileStrategy: Revision
+  targetNamespace: kube-system
   install:
-    createNamespace: true
+    createNamespace: false
     timeout: 10m
     remediation:
       retries: 3
@@ -37,16 +35,74 @@ spec:
     timeout: 10m
     remediation:
       retries: 3
+  dependsOn:
+    - name: sealed-secrets
+      namespace: kube-system
   values:
-    nas:
-      holocron:
-        server: holocron.home.cwbtech.net
-      sith:
-        server: sith.home.cwbtech.net
+    # Use newer CSI sidecar images for compatibility
+    images:
+      attacher:
+        repository: registry.k8s.io/sig-storage/csi-attacher
+        tag: v4.6.1
+      provisioner:
+        repository: registry.k8s.io/sig-storage/csi-provisioner
+        tag: v5.0.1
+      resizer:
+        repository: registry.k8s.io/sig-storage/csi-resizer
+        tag: v1.11.1
+      snapshotter:
+        repository: registry.k8s.io/sig-storage/csi-snapshotter
+        tag: v8.0.1
+      registrar:
+        repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+        tag: v2.11.1
+      plugin:
+        repository: synology/synology-csi
+        tag: v1.1.0
 
+    # Create storage classes for your configured iSCSI targets
     storageClasses:
-      defaultClass: nfs-holocron-fast
+      retain:
+        - name: synology-holocron-general
+          reclaimPolicy: Retain
+          volumeBindingMode: Immediate
+          allowVolumeExpansion: true
+          parameters:
+            dsm: "holocron.home.cwbtech.net"
+            location: "/volume1"
+      delete:
+        - name: synology-holocron-fast
+          reclaimPolicy: Delete
+          volumeBindingMode: Immediate
+          allowVolumeExpansion: true
+          isDefault: true
+          parameters:
+            dsm: "holocron.home.cwbtech.net"
+            location: "/volume1"
 
-      sith:
-        media:
-          enabled: false
+    # Resource limits for the CSI components
+    controller:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 10m
+          memory: 64Mi
+
+    node:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 10m
+          memory: 64Mi
+
+    # Security context for CSI pods
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65532
+      fsGroup: 65532
+      seccompProfile:
+        type: RuntimeDefault
