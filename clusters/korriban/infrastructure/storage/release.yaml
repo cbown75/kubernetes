@@ -26,6 +26,7 @@ spec:
         name: synology-csi-local
         namespace: flux-system
       interval: 12h
+      reconcileStrategy: Revision # Changed from ChartVersion to Revision
   targetNamespace: kube-system
   install:
     createNamespace: false
