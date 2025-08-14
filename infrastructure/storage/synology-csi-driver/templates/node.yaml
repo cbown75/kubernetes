@@ -68,8 +68,8 @@ spec:
           args:
             - --endpoint=$(CSI_ENDPOINT)
             - --nodeid=$(NODE_ID)
-            - --logtostderr
-            - --v=2
+            - --client-info=/etc/synology/client-info.yml
+            - --log-level=info
           env:
             - name: CSI_ENDPOINT
               value: unix://{{ .Values.kubelet.socketPath }}/plugins/csi.san.synology.com/csi.sock
