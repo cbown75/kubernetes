@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   # Core infrastructure (order matters for dependencies)
-  - node-labels
   - storage
   - sealed-secrets
   - cert-manager
