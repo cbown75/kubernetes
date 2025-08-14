@@ -52,13 +52,13 @@ spec:
         port: 5000
         https: false
 
-    # CSI Driver Configuration - Updated for Talos
+    # CSI Driver Configuration - Updated for Talos with cbown75 custom image
     csiDriver:
       name: synology-csi-driver
       image:
-        repository: ghcr.io/zebernst/synology-csi-talos
-        tag: v1.1.0 # FIXED: Changed from synology-csi-0.9.4 to v1.1.0
-        pullPolicy: IfNotPresent
+        repository: ghcr.io/cbown75/synology-csi
+        tag: latest
+        pullPolicy: Always
 
     # Kubelet configuration
     kubelet:
