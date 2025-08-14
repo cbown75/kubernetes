@@ -1,1 +1,2 @@
 .envrc
+infrastructure/storage/synology-csi-driver/templates/client-info.yml
