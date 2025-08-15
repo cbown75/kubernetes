@@ -55,7 +55,7 @@ spec:
   values:
     global:
       imageRegistry: ""
-      storageClass: "proxmox-korriban-holocron-fast"
+      storageClass: "synology-holocron-fast"
 
     prometheus:
       replicaCount: 1
@@ -76,7 +76,7 @@ spec:
 
       persistence:
         enabled: true
-        storageClass: "proxmox-korriban-holocron-fast"
+        storageClass: "synology-holocron-fast"
         accessMode: ReadWriteOnce
         size: 50Gi
 
