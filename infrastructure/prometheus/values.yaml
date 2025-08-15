@@ -226,4 +226,41 @@ networkPolicy:
         - protocol: TCP
           port: 9090
     - from:
-        -
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []
+initContainers:
+  - name: fix-permissions
+    image: busybox:1.35
+    command:
+      [
+        "sh",
+        "-c",
+        "chown -R 65534:65534 /prometheus && chmod -R 755 /prometheus",
+      ]
+    volumeMounts:
+      - name: storage-volume
+        mountPath: /prometheus
+    securityContext:
+      runAsUser: 0
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+env: []
+nameOverride: ""
+fullnameOverride: ""
