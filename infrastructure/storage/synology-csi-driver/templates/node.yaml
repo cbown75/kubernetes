@@ -17,8 +17,8 @@ spec:
         {{- include "synology-csi-driver.node.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "synology-csi-driver.node.serviceAccountName" . }}
-      hostPID: true
       hostNetwork: true
+      hostPID: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         kubernetes.io/os: linux
