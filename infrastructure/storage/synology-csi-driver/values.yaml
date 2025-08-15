@@ -1,13 +1,12 @@
-# Synology NAS Configuration
 synology:
   holocron:
     host: holocron.home.cwbtech.net
-    port: 5000
-    https: false
+    port: 443
+    https: true
   sith:
     host: sith.home.cwbtech.net
-    port: 5000
-    https: false
+    port: 443
+    https: true
 
 # CSI Driver Configuration - Updated for Talos
 csiDriver:
@@ -53,7 +52,6 @@ storageClasses:
       reclaimPolicy: Retain
       allowVolumeExpansion: true
 
-  # Future Sith configuration
   sith:
     fast:
       enabled: false
@@ -87,9 +85,9 @@ node:
 
 # Security Context - Updated for Talos compatibility
 securityContext:
-  runAsNonRoot: false # Changed: Talos CSI fork needs root
-  runAsUser: 0 # Changed: Must run as root for mount operations
-  fsGroup: 0 # Changed: Root group required
+  runAsNonRoot: false
+  runAsUser: 0
+  fsGroup: 0
   seccompProfile:
     type: RuntimeDefault
 

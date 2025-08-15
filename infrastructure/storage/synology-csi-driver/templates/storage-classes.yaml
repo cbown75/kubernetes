@@ -17,6 +17,8 @@ provisioner: csi.san.synology.com
 parameters:
   dsm: {{ .Values.synology.holocron.host | quote }}
   location: "/volume1"
+  protocol: "iscsi"
+  fsType: "ext4"
 reclaimPolicy: {{ .Values.storageClasses.holocron.fast.reclaimPolicy }}
 allowVolumeExpansion: {{ .Values.storageClasses.holocron.fast.allowVolumeExpansion }}
 volumeBindingMode: Immediate
@@ -41,6 +43,8 @@ provisioner: csi.san.synology.com
 parameters:
   dsm: {{ .Values.synology.holocron.host | quote }}
   location: "/volume1"
+  protocol: "iscsi"
+  fsType: "ext4"
 reclaimPolicy: {{ .Values.storageClasses.holocron.general.reclaimPolicy }}
 allowVolumeExpansion: {{ .Values.storageClasses.holocron.general.allowVolumeExpansion }}
 volumeBindingMode: Immediate
@@ -65,6 +69,8 @@ provisioner: csi.san.synology.com
 parameters:
   dsm: {{ .Values.synology.sith.host | quote }}
   location: "/volume1"
+  protocol: "iscsi"
+  fsType: "ext4"
 reclaimPolicy: {{ .Values.storageClasses.sith.fast.reclaimPolicy }}
 allowVolumeExpansion: {{ .Values.storageClasses.sith.fast.allowVolumeExpansion }}
 volumeBindingMode: Immediate
@@ -89,6 +95,8 @@ provisioner: csi.san.synology.com
 parameters:
   dsm: {{ .Values.synology.sith.host | quote }}
   location: "/volume1"
+  protocol: "iscsi"
+  fsType: "ext4"
 reclaimPolicy: {{ .Values.storageClasses.sith.general.reclaimPolicy }}
 allowVolumeExpansion: {{ .Values.storageClasses.sith.general.allowVolumeExpansion }}
 volumeBindingMode: Immediate
