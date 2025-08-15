@@ -57,6 +57,9 @@ spec:
       imageRegistry: ""
       storageClass: "synology-holocron-fast"
 
+    # FIX: Override any default init containers that might run as root
+    initContainers: []
+
     prometheus:
       replicaCount: 1
 
@@ -157,26 +160,13 @@ spec:
           hosts:
             - prometheus.home.cwbtech.net
 
-    serviceMonitor:
-      enabled: false
-      interval: 30s
-      scrapeTimeout: 10s
-      labels:
-        app.kubernetes.io/part-of: monitoring-stack
-
-    sealedSecrets:
-      enabled: true
-      secrets:
-        prometheus-basic-auth:
-          auth: "AgCvwFftjWB+/BxnGRMzRtJZPqbA6DdXnGK/j2WxHCHGfVGuIeyQ05+nep9cQwTKfT/V81CB1GaGqUFs68FqHaFEHv4krH0JPgxgHxMjjIsRKZJYMG1Bpg2RxIlwPKiMoAY5a2VPGk+STnwNMwCD8f3QpyEu1wX7gSA7SX7NEdf3XdQJmXLb7lRC1N/erJLoDzNewOeH759u/r4Wkebl3m8IHeKNs6RkbD7PgQhnWZuLHudIxH4J1qQ1c8/klOhKuKdvHV9+v458eDscdzkKd2rsLgtXvw0zg43JxWKy6PpUaWWJKt5gOzbAKyAdkU942A3bfxot4FfTotoFIOGFJ3FlENX2wHXU0pKHYmBxhO+LqW3DbeksVMoHmX33NrgvvjMMe3waLn11UusOdNpZen/GqT54kVEYoKJ1GBySb5aiJRtONSGQC0owrYm6Y6djiPNEwifh3X4dnATqx9hA/UfcXE6ZdW5k8ZANfalDbGAgoNOpvO6Cs5bba1/ShFQuoelM3T+5bpdUBNnvgny2jXAQMy1N4gQY6cWQonUAyTMTOTg8fm7rAN4C7nanf5q12C7MCXoBRgopbQLG8pPkYHRFs06ViZ7FIjh1AaDqnpmUCQCY/7f0FukpownvQzsWRtEKUEVNQxpG2Lc303wRBA0BK5wK5Nq3oJlP+Bwj1Hv1vi+pojo3M7/tEemZlIWy310pd+FXW1SWxmXDnqnddlNaiD3rrncMUKhtZkTscpFKnE4+BHvMFInqKtl9"
-
     networkPolicy:
       enabled: true
       ingress:
         - from:
             - namespaceSelector:
                 matchLabels:
-                  name: traefik-system
+                  name: traefik
           ports:
             - protocol: TCP
               port: 9090
@@ -187,8 +177,3 @@ spec:
           ports:
             - protocol: TCP
               port: 9090
-
-    podAnnotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "9090"
-      prometheus.io/path: "/metrics"
