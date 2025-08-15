@@ -1,76 +1,89 @@
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "local-path"
+
 prometheus:
-  replicaCount: 1
-
-  deploymentStrategy:
-    type: Recreate
-
   image:
     registry: docker.io
     repository: prom/prometheus
-    tag: v2.51.2
+    tag: "v2.51.2"
     pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi
+
+  replicaCount: 1
+
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 50Gi
+    storageClass: ""
+    annotations: {}
 
   podSecurityContext:
+    fsGroup: 65534
     runAsNonRoot: true
     runAsUser: 65534
-    runAsGroup: 65534
-    fsGroup: 65534
     seccompProfile:
       type: RuntimeDefault
 
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
-      drop: ["ALL"]
+      drop:
+        - ALL
     readOnlyRootFilesystem: true
     runAsNonRoot: true
     runAsUser: 65534
-
-  resources:
-    limits:
-      cpu: 2
-      memory: 4Gi
-    requests:
-      cpu: 500m
-      memory: 2Gi
 
   probes:
     liveness:
       httpGet:
         path: /-/healthy
         port: http
-        scheme: HTTP
       initialDelaySeconds: 30
-      periodSeconds: 10
       timeoutSeconds: 10
-      failureThreshold: 3
+      periodSeconds: 10
       successThreshold: 1
+      failureThreshold: 3
     readiness:
       httpGet:
         path: /-/ready
         port: http
-        scheme: HTTP
       initialDelaySeconds: 30
-      periodSeconds: 10
       timeoutSeconds: 10
-      failureThreshold: 3
+      periodSeconds: 10
       successThreshold: 1
+      failureThreshold: 3
 
-  # Storage configuration
-  persistence:
-    enabled: true
-    accessMode: ReadWriteOnce
-    size: 50Gi
-    storageClass: synology-holocron-fast # Your existing storage class
-    annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
-  # Prometheus configuration (your existing config)
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    maxUnavailable: ""
+
   config:
     global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      evaluation_interval: 30s
+      external_labels:
+        cluster: "korriban"
+        environment: "production"
 
-    rule_files: []
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
 
     scrape_configs:
       - job_name: "prometheus"
@@ -100,6 +113,7 @@ prometheus:
         scheme: https
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         relabel_configs:
           - action: labelmap
@@ -117,6 +131,7 @@ prometheus:
         scheme: https
         tls_config:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         relabel_configs:
           - action: labelmap
@@ -164,58 +179,6 @@ prometheus:
             action: replace
             target_label: kubernetes_name
 
-      - job_name: "kubernetes-services"
-        kubernetes_sd_configs:
-          - role: service
-        metrics_path: /probe
-        params:
-          module: [http_2xx]
-        relabel_configs:
-          - source_labels:
-              [__meta_kubernetes_service_annotation_prometheus_io_probe]
-            action: keep
-            regex: true
-          - source_labels: [__address__]
-            target_label: __param_target
-          - target_label: __address__
-            replacement: blackbox-exporter.example.com:9115
-          - source_labels: [__param_target]
-            target_label: instance
-          - action: labelmap
-            regex: __meta_kubernetes_service_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: kubernetes_namespace
-          - source_labels: [__meta_kubernetes_service_name]
-            target_label: kubernetes_name
-
-      - job_name: "kubernetes-ingresses"
-        kubernetes_sd_configs:
-          - role: ingress
-        relabel_configs:
-          - source_labels:
-              [__meta_kubernetes_ingress_annotation_prometheus_io_probe]
-            action: keep
-            regex: true
-          - source_labels:
-              [
-                __meta_kubernetes_ingress_scheme,
-                __address__,
-                __meta_kubernetes_ingress_path,
-              ]
-            regex: (.+);(.+);(.+)
-            replacement: ${1}://${2}${3}
-            target_label: __param_target
-          - target_label: __address__
-            replacement: blackbox-exporter.example.com:9115
-          - source_labels: [__param_target]
-            target_label: instance
-          - action: labelmap
-            regex: __meta_kubernetes_ingress_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: kubernetes_namespace
-          - source_labels: [__meta_kubernetes_ingress_name]
-            target_label: kubernetes_name
-
       - job_name: "kubernetes-pods"
         kubernetes_sd_configs:
           - role: pod
@@ -257,3 +220,88 @@ prometheus:
     - --web.enable-admin-api
     - --web.route-prefix=/
     - --storage.tsdb.wal-compression
+
+service:
+  type: ClusterIP
+  port: 9090
+  targetPort: 9090
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+  labels: {}
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+  extraRules: []
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Prometheus"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  hosts:
+    - host: prometheus.korriban.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: prometheus-tls
+      hosts:
+        - prometheus.korriban.local
+
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 30s
+  scrapeTimeout: 10s
+  labels:
+    app.kubernetes.io/part-of: monitoring-stack
+  annotations: {}
+
+sealedSecrets:
+  enabled: false
+  secrets: {}
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 9090
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []
+initContainers: []
+env: []
+nameOverride: ""
+fullnameOverride: ""
