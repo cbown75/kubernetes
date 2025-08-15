@@ -7,6 +7,8 @@ metadata:
     {{- include "prometheus.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.prometheus.replicaCount }}
+  strategy:
+    {{- toYaml .Values.prometheus.deploymentStrategy | nindent 4 }}
   selector:
     matchLabels:
       {{- include "prometheus.selectorLabels" . | nindent 6 }}
