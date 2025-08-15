@@ -113,6 +113,16 @@ spec:
       podDisruptionBudget:
         enabled: false
 
+      extraArgs:
+        - --storage.tsdb.retention.time=15d
+        - --storage.tsdb.retention.size=45GB
+        - --web.console.libraries=/etc/prometheus/console_libraries
+        - --web.console.templates=/etc/prometheus/consoles
+        - --web.enable-lifecycle
+        - --web.enable-admin-api
+        - --web.route-prefix=/
+        - --storage.tsdb.wal-compression
+
     service:
       type: ClusterIP
       port: 9090
