@@ -17,6 +17,7 @@ spec:
         {{- include "synology-csi-driver.node.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "synology-csi-driver.node.serviceAccountName" . }}
+      hostPID: true
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
