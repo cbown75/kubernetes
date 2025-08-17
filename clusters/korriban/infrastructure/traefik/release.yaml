@@ -18,21 +18,6 @@ spec:
   interval: 24h
   url: https://traefik.github.io/charts
 ---
-apiVersion: bitnami.com/v1alpha1
-kind: SealedSecret
-metadata:
-  creationTimestamp: null
-  name: traefik-cloudflare
-  namespace: traefik-system
-spec:
-  encryptedData:
-    CF_API_TOKEN: AgBGuUI9Tql/EMdkrevUwfj1JpzXBfvMAskxLEK6DQM3p+zYdg63jHP0jph+99E0asYzNPSVMYSpbEkGVFKTDrP7UFxK53UcLPx7xHPTTmhcBcWqYx15ypqL1Fu2ptlOuUQ+YHN+eFZnvYL7JXhq89i2Ibngs065P39WhnMB99ixkdchZF6lR9GhXT1IqSrM1VlMn7QjMSM6h3YkWvl0wVjIhxQj4UJ/c04PmJwk7c1+xUgNlcL1BxMT1Phnk7lfwzIlCgwVJaJC1PBLe6Hiag+ITAMTjiT6x0Pmwtwk61Z/kKBJJmIX9MOMXutKYbla7ZRPeqZJd7KI3sVGAa9QZkENou9EPUy7EAi3i04GCflBnppHSKCQlMPCukLexiign6hZjwGh2DPwdmiwkWSTJZ/ftiUAsnuqXQwPGtnsQFxtD2CgIPKvmr1JsrVg0mdhqD9zk+j/cAN1fhT91Q41D2vuVr7qdJ7YCfOyOHM7l4+tzHP+JGOrFAEoA0oFYwn6XtspPc4Xlt4QQrlSlCx7RYLg0w5pYSbHNsbSkrH2q+w4UlZPJ7TV1IBGfzSWy13EcLaDNOWhE4BFYREUDKfhezud6OiD1OxqZ7+dQWHpd4tB7kDxmNb+zqs06RzHXTv3ZkdHtgaBchyukCu49eMZZ9YyjH1ZGChSTccLDblHfV34Z2zEZFMU/grWOTz7pTJTvMA1i/O3onuN0lEtg40Zqng5yg9Xdw/rDLS7pt3Mr2/tqosExK1ThWmU
-  template:
-    metadata:
-      creationTimestamp: null
-      name: traefik-cloudflare
-      namespace: traefik-system
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -140,7 +125,12 @@ spec:
         addRoutersLabels: true
 
     persistence:
-      enabled: false
+      enabled: true
+      name: data
+      accessMode: ReadWriteOnce
+      size: 1Gi
+      storageClass: synology-holocron-general
+      path: /data
 
     securityContext:
       capabilities:
@@ -178,10 +168,3 @@ spec:
         level: INFO
       access:
         enabled: true
-
-    env:
-      - name: CF_API_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: traefik-cloudflare
-            key: CF_API_TOKEN
