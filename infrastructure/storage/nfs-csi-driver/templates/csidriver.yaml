@@ -1,0 +1,17 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: nfs.csi.k8s.io
+  labels:
+    {{- include "nfs-csi-driver.labels" . | nindent 4 }}
+spec:
+  attachRequired: false
+  volumeLifecycleModes:
+    - Persistent
+  {{- if .Values.feature.enableFSGroupPolicy }}
+  fsGroupPolicy: File
+  {{- end }}
+  {{- if .Values.feature.enableInlineVolume }}
+  podInfoOnMount: true
+  {{- end }}
