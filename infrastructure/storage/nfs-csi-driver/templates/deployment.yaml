@@ -141,14 +141,15 @@ spec:
               mountPath: /csi
             - name: pods-mount-dir
               mountPath: {{ .Values.kubeletDir }}/pods
-              mountPropagation: "Bidirectional"
+              mountPropagation: "HostToContainer"
           resources:
             {{- toYaml .Values.controller.resources.nfs | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
+            allowPrivilegeEscalation: true
             capabilities:
-              drop:
-                - ALL
+              add:
+                - SYS_ADMIN
+            runAsUser: 0
       volumes:
         - name: socket-dir
           emptyDir: {}

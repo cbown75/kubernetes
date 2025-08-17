@@ -29,9 +29,7 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       {{- end }}
-      securityContext:
-        seccompProfile:
-          type: RuntimeDefault
+      hostNetwork: true
       containers:
         - name: liveness-probe
           image: {{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}
@@ -104,11 +102,7 @@ spec:
             timeoutSeconds: 10
             periodSeconds: 30
           securityContext:
-            allowPrivilegeEscalation: true
-            capabilities:
-              add:
-                - SYS_ADMIN
-            readOnlyRootFilesystem: true
+            privileged: true
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

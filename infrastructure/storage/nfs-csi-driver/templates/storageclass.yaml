@@ -10,13 +10,17 @@ metadata:
     {{- with $config.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+  {{- if eq $config.name $.Values.defaultStorageClass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+    {{- with $config.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- else }}
   {{- with $config.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- if eq $config.name $.Values.defaultStorageClass }}
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
   {{- end }}
 provisioner: nfs.csi.k8s.io
 parameters:
