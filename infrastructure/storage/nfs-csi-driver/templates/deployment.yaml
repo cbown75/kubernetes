@@ -168,7 +168,7 @@ spec:
           args:
             - "-v={{ .Values.controller.logLevel }}"
             - "--nodeid=$(NODE_ID)"
-            - "--endpoint=/var/lib/csi/sockets/pluginproxy/csi.sock"
+            - "--endpoint=unix:///var/lib/csi/sockets/pluginproxy/csi.sock"
           env:
             - name: NODE_ID
               valueFrom:
