@@ -161,7 +161,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: CSI_ENDPOINT
-              value: unix:/csi/csi.sock
+              value: /csi/csi.sock
           ports:
             - containerPort: 29652
               name: healthz
