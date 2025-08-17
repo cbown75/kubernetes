@@ -41,7 +41,7 @@ spec:
           imagePullPolicy: {{ .Values.image.csiProvisioner.pullPolicy }}
           args:
             - "-v={{ .Values.controller.logLevel }}"
-            - "--csi-address=$(ADDRESS)"
+            - "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock"
             - "--leader-election"
             - "--leader-election-namespace={{ .Release.Namespace }}"
             - "--extra-create-metadata=true"
@@ -49,17 +49,20 @@ spec:
             - "--timeout=1200s"
             - "--retry-interval-max=30m"
           env:
-            - name: ADDRESS
-              value: /csi/csi.sock
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
+              mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            {{- toYaml .Values.controller.resources.csiProvisioner | nindent 12 }}
+            limits:
+              memory: 512Mi
+              cpu: 200m
+            requests:
+              cpu: 50m
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -73,23 +76,26 @@ spec:
           imagePullPolicy: {{ .Values.image.csiSnapshotter.pullPolicy }}
           args:
             - "--v={{ .Values.controller.logLevel }}"
-            - "--csi-address=$(ADDRESS)"
+            - "--csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock"
             - "--leader-election-namespace={{ .Release.Namespace }}"
             - "--leader-election"
             - "--timeout=1200s"
             - "--retry-interval-max=30m"
           env:
-            - name: ADDRESS
-              value: /csi/csi.sock
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
+              mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            {{- toYaml .Values.controller.resources.csiSnapshotter | nindent 12 }}
+            limits:
+              memory: 256Mi
+              cpu: 100m
+            requests:
+              cpu: 25m
+              memory: 64Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -102,23 +108,26 @@ spec:
           image: {{ .Values.image.csiResizer.repository }}:{{ .Values.image.csiResizer.tag }}
           imagePullPolicy: {{ .Values.image.csiResizer.pullPolicy }}
           args:
-            - "-csi-address=$(ADDRESS)"
+            - "-csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock"
             - "-v={{ .Values.controller.logLevel }}"
             - "-leader-election"
             - "--leader-election-namespace={{ .Release.Namespace }}"
             - "-handle-volume-inuse-error=false"
           env:
-            - name: ADDRESS
-              value: /csi/csi.sock
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
+              mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            {{- toYaml .Values.controller.resources.csiResizer | nindent 12 }}
+            limits:
+              memory: 512Mi
+              cpu: 200m
+            requests:
+              cpu: 50m
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -131,15 +140,20 @@ spec:
           image: {{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           args:
-            - --csi-address=/csi/csi.sock
-            - --probe-timeout=3s
+            - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
+            - --probe-timeout=10s
             - --http-endpoint=localhost:29652
             - --v={{ .Values.controller.logLevel }}
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
+              mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            {{- toYaml .Values.controller.resources.livenessProbe | nindent 12 }}
+            limits:
+              memory: 128Mi
+              cpu: 50m
+            requests:
+              cpu: 10m
+              memory: 32Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -154,14 +168,12 @@ spec:
           args:
             - "-v={{ .Values.controller.logLevel }}"
             - "--nodeid=$(NODE_ID)"
-            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--endpoint=/var/lib/csi/sockets/pluginproxy/csi.sock"
           env:
             - name: NODE_ID
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: CSI_ENDPOINT
-              value: unix:///csi/csi.sock
           ports:
             - containerPort: 29652
               name: healthz
@@ -174,11 +186,24 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 10
             periodSeconds: 30
+          readinessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
           volumeMounts:
             - name: socket-dir
-              mountPath: /csi
+              mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            {{- toYaml .Values.controller.resources.nfs | nindent 12 }}
+            limits:
+              memory: 256Mi
+              cpu: 200m
+            requests:
+              cpu: 50m
+              memory: 64Mi
           securityContext:
             allowPrivilegeEscalation: false
             runAsUser: 0

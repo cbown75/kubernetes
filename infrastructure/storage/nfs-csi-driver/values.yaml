@@ -13,7 +13,7 @@ nfsServers:
       general: "/volume1/k8s-general"
       backup: "/volume1/k8s-backup"
 
-# CSI Driver Configuration
+# CSI Driver Configuration - Updated for socket connection fix
 image:
   nfs:
     repository: registry.k8s.io/sig-storage/nfsplugin
@@ -45,74 +45,91 @@ image:
     tag: v2.13.0
     pullPolicy: IfNotPresent
 
-# Kubelet directory path (adjust for your cluster)
+# Kubelet directory path
 kubeletDir: /var/lib/kubelet
+
+# Service Account Names
+serviceAccount:
+  controller: csi-nfs-controller-sa
+  node: csi-nfs-node-sa
 
 # Feature gates
 feature:
   enableFSGroupPolicy: true
   enableInlineVolume: false
 
-# Controller configuration
+# Linux node selector
+linux:
+  enabled: true
+
+# Controller configuration - Increased resources for stability
 controller:
   replicas: 1
   logLevel: 2
   resources:
     csiProvisioner:
       limits:
-        memory: 400Mi
+        memory: 512Mi
+        cpu: 200m
       requests:
-        cpu: 10m
-        memory: 20Mi
+        cpu: 50m
+        memory: 128Mi
     csiSnapshotter:
       limits:
-        memory: 200Mi
+        memory: 256Mi
+        cpu: 100m
       requests:
-        cpu: 10m
-        memory: 20Mi
+        cpu: 25m
+        memory: 64Mi
     csiResizer:
       limits:
-        memory: 400Mi
+        memory: 512Mi
+        cpu: 200m
       requests:
-        cpu: 10m
-        memory: 20Mi
+        cpu: 50m
+        memory: 128Mi
     livenessProbe:
       limits:
-        memory: 100Mi
+        memory: 128Mi
+        cpu: 50m
       requests:
         cpu: 10m
-        memory: 20Mi
+        memory: 32Mi
     nfs:
       limits:
-        memory: 200Mi
+        memory: 256Mi
+        cpu: 200m
       requests:
-        cpu: 10m
-        memory: 20Mi
+        cpu: 50m
+        memory: 64Mi
 
-# Node configuration
+# Node configuration - Increased resources for stability
 node:
   logLevel: 2
   resources:
     livenessProbe:
       limits:
-        memory: 100Mi
+        memory: 128Mi
+        cpu: 50m
       requests:
         cpu: 10m
-        memory: 20Mi
+        memory: 32Mi
     nodeDriverRegistrar:
       limits:
-        memory: 100Mi
+        memory: 128Mi
+        cpu: 50m
       requests:
         cpu: 10m
-        memory: 20Mi
+        memory: 32Mi
     nfs:
       limits:
-        memory: 300Mi
+        memory: 256Mi
+        cpu: 200m
       requests:
-        cpu: 10m
-        memory: 20Mi
+        cpu: 50m
+        memory: 64Mi
 
-# Storage Classes
+# Storage Classes - Updated configuration
 storageClasses:
   # Holocron NFS Storage Classes
   holocronFast:
@@ -127,6 +144,8 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
+      - timeo=600
+      - retrans=2
     annotations: {}
     labels:
       nas: holocron
@@ -144,6 +163,8 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
+      - timeo=600
+      - retrans=2
     annotations: {}
     labels:
       nas: holocron
@@ -161,6 +182,8 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
+      - timeo=600
+      - retrans=2
     annotations: {}
     labels:
       nas: holocron
@@ -179,6 +202,8 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
+      - timeo=600
+      - retrans=2
     annotations: {}
     labels:
       nas: sith
@@ -196,6 +221,8 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
+      - timeo=600
+      - retrans=2
     annotations: {}
     labels:
       nas: sith
@@ -213,52 +240,9 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
+      - timeo=600
+      - retrans=2
     annotations: {}
     labels:
       nas: sith
       tier: backup
-
-# Default Storage Class
-defaultStorageClass: nfs-holocron-fast
-
-# RBAC
-rbac:
-  create: true
-
-# Service Account
-serviceAccount:
-  create: true
-  controller: csi-nfs-controller-sa
-  node: csi-nfs-node-sa
-
-# Node selector (for Linux nodes only)
-linux:
-  enabled: true
-
-# Tolerations for controller pod
-tolerations:
-  - key: CriticalAddonsOnly
-    operator: Exists
-  - key: node-role.kubernetes.io/control-plane
-    operator: Exists
-    effect: NoSchedule
-  - key: node-role.kubernetes.io/controlplane
-    operator: Exists
-    effect: NoSchedule
-  - key: node-role.kubernetes.io/master
-    operator: Exists
-    effect: NoSchedule
-
-# Priority class
-priorityClassName: system-cluster-critical
-
-# Security context
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 65534
-  seccompProfile:
-    type: RuntimeDefault
-
-# Override settings
-nameOverride: ""
-fullnameOverride: ""
