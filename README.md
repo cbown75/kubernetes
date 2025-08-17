@@ -4,37 +4,37 @@ A GitOps-based Kubernetes infrastructure configuration using FluxCD v2 for autom
 
 ## Overview
 
-This repository contains the complete Kubernetes infrastructure configuration for the `korriban` cluster, managed through GitOps principles with FluxCD. The setup includes automatic drift detection that reverts any manual cluster changes back to the git-defined state.
+This repository contains the complete Kubernetes infrastructure configuration for your cluster, managed through GitOps principles with FluxCD. The setup includes automatic drift detection that reverts any manual cluster changes back to the git-defined state.
 
 ## Repository Structure
 
 ```
-├── clusters/korriban/           # Cluster-specific configurations
-│   ├── flux-system/            # Core FluxCD system files
-│   ├── apps/                   # Application deployments
-│   └── infrastructure/         # Infrastructure components
-│       ├── storage/            # Storage CSI drivers
-│       ├── sealed-secrets/     # Secret encryption
-│       ├── cert-manager/       # TLS certificate management
-│       ├── traefik/           # Ingress controller
-│       └── prometheus/        # Monitoring stack
-├── infrastructure/             # Shared infrastructure components
-│   └── storage/               # Storage Helm charts
-├── charts/                    # Custom Helm charts
-└── README.md                  # This file
+├── clusters/your-cluster/          # Cluster-specific configurations
+│   ├── flux-system/               # Core FluxCD system files
+│   ├── apps/                      # Application deployments
+│   └── infrastructure/            # Infrastructure components
+│       ├── storage/               # Storage CSI drivers
+│       ├── sealed-secrets/        # Secret encryption
+│       ├── cert-manager/          # TLS certificate management
+│       ├── traefik/              # Ingress controller
+│       └── prometheus/           # Monitoring stack
+├── infrastructure/                # Shared infrastructure components
+│   └── storage/                  # Storage Helm charts
+├── charts/                       # Custom Helm charts
+└── README.md                     # This file
 ```
 
 ## 📚 Component Documentation
 
 Each major system has detailed documentation:
 
-- **[FluxCD](clusters/korriban/fluxcd/README.md)** - GitOps controller with debugging commands
-- **[Infrastructure Overview](clusters/korriban/infrastructure/README.md)** - All infrastructure components
+- **[FluxCD](clusters/your-cluster/flux-system/README.md)** - GitOps controller with debugging commands
+- **[Infrastructure Overview](clusters/your-cluster/infrastructure/README.md)** - All infrastructure components
 - **[Storage Systems](infrastructure/storage/README.md)** - NFS & Synology CSI drivers
-- **[Sealed Secrets](clusters/korriban/sealed-secrets/README.md)** - Secret encryption management
-- **[Cert Manager](clusters/korriban/infrastructure/cert-manager/README.md)** - TLS certificate automation
-- **[Traefik](clusters/korriban/infrastructure/traefik/README.md)** - Ingress controller
-- **[Prometheus](clusters/korriban/infrastructure/prometheus/README.md)** - Monitoring stack
+- **[Sealed Secrets](clusters/your-cluster/infrastructure/sealed-secrets/README.md)** - Secret encryption management
+- **[Cert Manager](clusters/your-cluster/infrastructure/cert-manager/README.md)** - TLS certificate automation
+- **[Traefik](clusters/your-cluster/infrastructure/traefik/README.md)** - Ingress controller
+- **[Prometheus](clusters/your-cluster/infrastructure/prometheus/README.md)** - Monitoring stack
 
 ## Quick Reference
 

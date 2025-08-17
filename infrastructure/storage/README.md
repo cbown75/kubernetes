@@ -50,7 +50,7 @@ The `korriban` cluster implements a multi-tier storage strategy using Container 
 synology-holocron-fast:
   provisioner: csi.san.synology.com
   parameters:
-    dsm: "192.168.1.100" # Your Synology NAS IP
+    dsm: "your-nas-ip" # Your Synology NAS IP
     fsType: ext4
     location: /volume1
   reclaimPolicy: Retain
@@ -110,7 +110,7 @@ kubectl get pvc -A
 nfs-storage:
   provisioner: nfs.csi.k8s.io
   parameters:
-    server: "192.168.1.200" # NFS server IP
+    server: "your-nfs-server-ip" # NFS server IP
     share: "/mnt/nfs/kubernetes"
   reclaimPolicy: Retain
   mountOptions:
@@ -146,7 +146,7 @@ kubectl logs -n nfs-csi-driver -l app=csi-nfs-controller
 
 # Test NFS connectivity
 kubectl run nfs-test --image=busybox --rm -it --restart=Never -- \
-  sh -c "mount -t nfs 192.168.1.200:/mnt/nfs/kubernetes /mnt && ls -la /mnt"
+  sh -c "mount -t nfs your-nfs-server:/mnt/nfs/kubernetes /mnt && ls -la /mnt"
 ```
 
 ## Volume Operations
