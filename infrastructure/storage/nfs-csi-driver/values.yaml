@@ -42,7 +42,7 @@ image:
 
   nodeDriverRegistrar:
     repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-    tag: v2.14.1
+    tag: v2.13.0
     pullPolicy: IfNotPresent
 
 # Kubelet directory path (adjust for your cluster)
