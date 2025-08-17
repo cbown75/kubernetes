@@ -15,6 +15,7 @@ spec:
         name: kubernetes-infrastructure
         namespace: flux-system
       interval: 5m
+      reconcileStrategy: Revision
   install:
     createNamespace: false
     remediation:
