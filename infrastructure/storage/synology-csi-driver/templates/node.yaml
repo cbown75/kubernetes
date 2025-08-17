@@ -103,10 +103,10 @@ spec:
             - name: lib-modules
               mountPath: /lib/modules
               readOnly: true
-            # FIX: Add /proc mount for Talos Linux nsenter support
-            - name: host-proc
-              mountPath: /proc
-              readOnly: true
+            # CRITICAL: Mount host root for Talos nsenter access
+            - name: host-root
+              mountPath: /host
+              mountPropagation: "Bidirectional"
           resources:
             {{- toYaml .Values.node.resources | nindent 12 }}
       volumes:
@@ -137,8 +137,8 @@ spec:
           hostPath:
             path: /lib/modules
             type: ""
-        # FIX: Add /proc volume for Talos Linux nsenter support
-        - name: host-proc
+        # CRITICAL: Mount entire host root for Talos nsenter commands
+        - name: host-root
           hostPath:
-            path: /proc
+            path: /
             type: ""
