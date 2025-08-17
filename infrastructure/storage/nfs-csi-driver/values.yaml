@@ -13,6 +13,10 @@ nfsServers:
       general: "/volume1/k8s-general"
       backup: "/volume1/k8s-backup"
 
+# RBAC Configuration
+rbac:
+  create: true
+
 # CSI Driver Configuration - Updated for socket connection fix
 image:
   nfs:
