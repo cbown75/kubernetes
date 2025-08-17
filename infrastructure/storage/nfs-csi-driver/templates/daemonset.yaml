@@ -25,11 +25,15 @@ spec:
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
       serviceAccountName: {{ .Values.serviceAccount.node }}
+      hostNetwork: true
+      dnsPolicy: Default
       {{- if .Values.linux.enabled }}
       nodeSelector:
         kubernetes.io/os: linux
       {{- end }}
-      hostNetwork: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: liveness-probe
           image: {{ .Values.image.livenessProbe.repository }}:{{ .Values.image.livenessProbe.tag }}
@@ -47,6 +51,8 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
             capabilities:
               drop:
                 - ALL
@@ -72,6 +78,7 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsUser: 0
             capabilities:
               drop:
                 - ALL
@@ -103,6 +110,9 @@ spec:
             periodSeconds: 30
           securityContext:
             privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
