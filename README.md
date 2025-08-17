@@ -13,28 +13,100 @@ This repository contains the complete Kubernetes infrastructure configuration fo
 │   ├── flux-system/            # Core FluxCD system files
 │   ├── apps/                   # Application deployments
 │   └── infrastructure/         # Infrastructure components
+│       ├── storage/            # Storage CSI drivers
+│       ├── sealed-secrets/     # Secret encryption
+│       ├── cert-manager/       # TLS certificate management
+│       ├── traefik/           # Ingress controller
+│       └── prometheus/        # Monitoring stack
 ├── infrastructure/             # Shared infrastructure components
-│   └── storage/               # Storage solutions
+│   └── storage/               # Storage Helm charts
 ├── charts/                    # Custom Helm charts
 └── README.md                  # This file
 ```
 
+## 📚 Component Documentation
+
+Each major system has detailed documentation:
+
+- **[FluxCD](clusters/korriban/fluxcd/README.md)** - GitOps controller with debugging commands
+- **[Infrastructure Overview](clusters/korriban/infrastructure/README.md)** - All infrastructure components
+- **[Storage Systems](infrastructure/storage/README.md)** - NFS & Synology CSI drivers
+- **[Sealed Secrets](clusters/korriban/sealed-secrets/README.md)** - Secret encryption management
+- **[Cert Manager](clusters/korriban/infrastructure/cert-manager/README.md)** - TLS certificate automation
+- **[Traefik](clusters/korriban/infrastructure/traefik/README.md)** - Ingress controller
+- **[Prometheus](clusters/korriban/infrastructure/prometheus/README.md)** - Monitoring stack
+
+## Quick Reference
+
+### 🔍 Cluster Status Check
+
+```bash
+# Overall FluxCD health
+flux get all
+
+# Check all infrastructure components
+kubectl get kustomizations -A
+
+# Monitor real-time changes
+kubectl get kustomizations -A -w
+
+# Check all pods across infrastructure
+kubectl get pods -A | grep -E "(flux-system|cert-manager|traefik-system|monitoring|nfs-csi-driver)"
+```
+
+### 🚀 Common FluxCD Debug Commands
+
+```bash
+# Force reconciliation
+flux reconcile kustomization flux-system
+
+# Check logs
+kubectl logs -n flux-system -l app=kustomize-controller
+
+# Suspend/Resume (emergency)
+flux suspend kustomization flux-system
+flux resume kustomization flux-system
+```
+
 ## Key Features
 
-- **Automatic Drift Detection**: FluxCD monitors cluster state and automatically reverts manual changes
-- **GitOps Workflow**: All cluster changes must go through Git for traceability
-- **Sealed Secrets**: Secure secret management with encrypted secrets in git
-- **Storage Solutions**: NFS CSI driver and Synology CSI support
-- **Infrastructure as Code**: Everything defined in version-controlled manifests
+- **🔄 Automatic Drift Detection**: FluxCD monitors cluster state and automatically reverts manual changes
+- **📜 GitOps Workflow**: All cluster changes must go through Git for traceability
+- **🔐 Sealed Secrets**: Secure secret management with encrypted secrets in git
+- **💾 Multi-Tier Storage**: NFS CSI driver and Synology CSI for different storage needs
+- **🏗️ Infrastructure as Code**: Everything defined in version-controlled manifests
+- **📊 Monitoring**: Prometheus stack for metrics and alerting
+- **🌐 TLS Automation**: Automatic certificate management with Let's Encrypt
+
+## Infrastructure Components
+
+### Core Systems
+
+| Component          | Namespace        | Purpose              | Status Check                                                        |
+| ------------------ | ---------------- | -------------------- | ------------------------------------------------------------------- |
+| **FluxCD**         | `flux-system`    | GitOps controller    | `flux get all`                                                      |
+| **Sealed Secrets** | `kube-system`    | Secret encryption    | `kubectl get pods -n kube-system -l name=sealed-secrets-controller` |
+| **Cert Manager**   | `cert-manager`   | TLS certificates     | `kubectl get pods -n cert-manager`                                  |
+| **Traefik**        | `traefik-system` | Ingress/LoadBalancer | `kubectl get pods -n traefik-system`                                |
+| **Prometheus**     | `monitoring`     | Metrics/Monitoring   | `kubectl get pods -n monitoring`                                    |
+
+### Storage Tiers
+
+| Storage Class                   | Type      | Access Mode | Use Case                |
+| ------------------------------- | --------- | ----------- | ----------------------- |
+| `synology-holocron-fast`        | iSCSI SSD | RWO         | High-performance apps   |
+| `synology-iscsi-storage-delete` | iSCSI     | RWO         | Standard block storage  |
+| `nfs-storage`                   | NFS       | RWX         | Shared file storage     |
+| `nfs-fast`                      | NFS       | RWX         | High-performance shared |
 
 ## FluxCD Configuration
 
 The cluster is configured with aggressive drift detection:
 
-- **Reconciliation Interval**: 1 minute (fast drift detection)
-- **Force Mode**: Enabled to recreate drifted resources
-- **Health Checks**: Waits for resources to be ready before completing
-- **Garbage Collection**: Automatically removes deleted resources
+- **⏱️ Reconciliation Interval**: 1 minute (fast drift detection)
+- **💪 Force Mode**: Enabled to recreate drifted resources
+- **🏥 Health Checks**: Waits for resources to be ready before completing
+- **🗑️ Garbage Collection**: Automatically removes deleted resources
 
 ### Drift Detection Behavior
 
@@ -68,24 +140,6 @@ kubectl describe kustomization flux-system -n flux-system
 # View FluxCD logs
 kubectl logs -n flux-system -l app=kustomize-controller
 ```
-
-## Components
-
-### Core Infrastructure
-
-- **FluxCD v2**: GitOps operator with drift detection
-- **Sealed Secrets**: Encrypted secret management
-- **Cert Manager**: Automatic TLS certificate management
-- **Traefik**: Ingress controller and load balancer
-
-### Storage
-
-- **NFS CSI Driver**: Network File System storage
-- **Synology CSI**: Synology NAS integration
-
-### Applications
-
-Application deployments are managed in the `clusters/korriban/apps/` directory and automatically synchronized with the cluster.
 
 ## Making Changes
 
@@ -131,57 +185,91 @@ If you need to make emergency changes:
    - Check if you have competing controllers modifying the same resources
    - Review resource definitions for conflicts with autoscalers
 
-3. **FluxCD not detecting changes**
+3. **Storage issues**
+
    ```bash
-   # Force reconciliation
-   kubectl annotate kustomization flux-system -n flux-system reconcile.fluxcd.io/requestedAt="$(date +%s)"
+   kubectl get pvc -A
+   kubectl logs -n kube-system -l app=synology-csi-controller
    ```
 
-### Useful Commands
+4. **Certificate issues**
+   ```bash
+   kubectl get certificates -A
+   kubectl describe clusterissuer letsencrypt-cloudflare
+   ```
+
+## Monitoring and Observability
+
+### Prometheus Dashboard
 
 ```bash
-# Suspend reconciliation for maintenance
-kubectl patch kustomization flux-system -n flux-system --type='merge' -p='{"spec":{"suspend":true}}'
-
-# Resume reconciliation
-kubectl patch kustomization flux-system -n flux-system --type='merge' -p='{"spec":{"suspend":false}}'
-
-# Check git repository status
-kubectl get gitrepositories -A
-
-# View reconciliation events
-kubectl get events -n flux-system --sort-by='.lastTimestamp'
+kubectl port-forward -n monitoring svc/prometheus 9090:9090
+# Open http://localhost:9090
 ```
 
-## Security Considerations
+### Traefik Dashboard
 
-- All secrets are encrypted using Sealed Secrets before being stored in git
-- RBAC is properly configured for FluxCD service accounts
-- Network policies should be implemented for production environments
-- Regular security scanning is recommended for container images
+```bash
+kubectl port-forward -n traefik-system svc/traefik 9000:9000
+# Open http://localhost:9000/dashboard/
+```
+
+### Key Metrics to Monitor
+
+- **FluxCD reconciliation** status and duration
+- **Storage usage** and performance
+- **Certificate expiration** dates
+- **Ingress traffic** patterns
+- **Pod resource usage** across infrastructure
+
+## Security Features
+
+- **🔐 Encrypted Secrets**: All secrets encrypted with Sealed Secrets
+- **🛡️ Network Policies**: Traffic restriction between namespaces
+- **🔒 RBAC**: Least-privilege access controls
+- **🌐 TLS Everywhere**: Automatic HTTPS with Let's Encrypt
+- **👮 Pod Security Standards**: Restricted security contexts
+
+## Backup and Recovery
+
+### GitOps Backup
+
+All configuration is version-controlled in Git repositories.
+
+### Volume Snapshots
+
+```bash
+# Create snapshot
+kubectl apply -f volume-snapshot.yaml
+
+# List snapshots
+kubectl get volumesnapshots -A
+```
+
+### Disaster Recovery
+
+1. **Restore cluster** to working state
+2. **Bootstrap FluxCD** with original repository
+3. **Verify component deployment** order
+4. **Check all dependencies** are satisfied
+
+## Support and Resources
+
+- **FluxCD Documentation**: https://fluxcd.io/docs/
+- **Kubernetes Documentation**: https://kubernetes.io/docs/
+- **Synology CSI**: https://github.com/SynologyOpenSource/synology-csi
+- **Cert Manager**: https://cert-manager.io/docs/
+- **Traefik**: https://doc.traefik.io/traefik/
 
 ## Contributing
 
-1. Create a feature branch from `main`
-2. Make your changes and test locally if possible
-3. Submit a pull request with a clear description
-4. Monitor the deployment after merge
-
-## Documentation
-
-- [FluxCD Official Documentation](https://fluxcd.io/docs/)
-- [Sealed Secrets Documentation](https://sealed-secrets.netlify.app/)
-- [Component-specific READMEs](./clusters/korriban/) in subdirectories
-
-## Support
-
-For issues related to:
-
-- **FluxCD**: Check logs and kustomization status
-- **Storage**: Review CSI driver documentation
-- **Applications**: Check application-specific logs and configurations
+1. Create feature branch
+2. Make changes to infrastructure
+3. Test in development cluster
+4. Submit pull request
+5. Monitor deployment after merge
 
 ---
 
-**Note**: This cluster uses aggressive drift detection. Any manual changes will be automatically reverted within 1 minute.
+**⚠️ Remember**: This is a GitOps-managed cluster. All changes must go through Git!
 
