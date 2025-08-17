@@ -1,254 +1,217 @@
 # NFS CSI Driver
 
-This Helm chart deploys the official NFS CSI driver (`nfs.csi.k8s.io`) for Kubernetes, enabling dynamic provisioning of persistent volumes from NFS servers.
+Network File System (NFS) Container Storage Interface (CSI) driver for Kubernetes, providing persistent storage backed by NFS servers.
 
-## Features
+## Overview
 
-- **Dynamic Provisioning**: Automatically creates subdirectories on NFS server for each PVC
-- **Multiple Access Modes**: Supports ReadWriteMany, ReadWriteOnce, and ReadOnlyMany
-- **Volume Expansion**: Supports online volume expansion
-- **Snapshots**: Supports volume snapshots (if snapshot controller is installed)
-- **Vendor Agnostic**: Works with any NFS server (Synology, FreeNAS, standard Linux NFS, etc.)
+This NFS CSI driver enables Kubernetes to use NFS shares as persistent volumes with support for:
 
-## Prerequisites
+- **ReadWriteMany (RWX)** access mode - multiple pods can read/write simultaneously
+- **Dynamic provisioning** - automatic subdirectory creation on NFS shares
+- **Flexible storage classes** - support for multiple NFS servers and configurations
 
-1. **NFS Server**: A working NFS server with configured exports
-2. **Network Connectivity**: All Kubernetes nodes must be able to connect to the NFS server
-3. **NFS Client**: NFS client utilities installed on all nodes (usually pre-installed on most distributions)
+## Architecture
 
-## Configuration
-
-### NFS Server Setup
-
-Before deploying, ensure your NFS server is properly configured:
-
-#### Synology NAS Example
-
-1. Open Control Panel → File Services → NFS
-2. Enable NFS service with NFSv4.1
-3. Create a shared folder (e.g., `/volume1/kubernetes`)
-4. Configure NFS permissions for your Kubernetes subnet
-
-#### Linux NFS Server Example
-
-```bash
-# Install NFS server
-sudo apt-get install nfs-kernel-server
-
-# Create export directory
-sudo mkdir -p /srv/nfs/kubernetes
-sudo chown nobody:nogroup /srv/nfs/kubernetes
-
-# Configure exports
-echo '/srv/nfs/kubernetes 10.0.0.0/24(rw,sync,no_subtree_check,no_root_squash)' | sudo tee -a /etc/exports
-
-# Apply exports
-sudo exportfs -a
-sudo systemctl restart nfs-kernel-server
-```
-
-### Chart Configuration
-
-The chart supports multiple NFS servers with multiple shares each. Update `clusters/korriban/infrastructure/storage/nfs-csi/release.yaml`:
-
-```yaml
-values:
-  nfsServers:
-    holocron:
-      host: "holocron.home.cwbtech.net"
-      shares:
-        fast: "/volume1/k8s-fast"
-        general: "/volume1/k8s-general"
-        backup: "/volume1/k8s-backup"
-    sith:
-      host: "sith.home.cwbtech.net"
-      shares:
-        fast: "/volume1/k8s-fast"
-        general: "/volume1/k8s-general"
-        backup: "/volume1/k8s-backup"
-```
-
-## Deployment
-
-1. **Update NFS server details** in `clusters/korriban/infrastructure/storage/nfs-csi/release.yaml`
-2. **Commit to git** and push changes
-3. **FluxCD will automatically deploy** the driver
+- **Controller**: Manages volume lifecycle (create, delete, expand)
+- **Node Plugin**: Handles volume mounting/unmounting on worker nodes
+- **Storage Classes**: Define NFS server endpoints and mount options
 
 ## Storage Classes
 
-The chart creates six storage classes across two NFS servers:
+This deployment includes multiple storage classes for different NFS servers:
 
-### Holocron NAS (holocron.home.cwbtech.net)
+### Available Storage Classes
 
-- **nfs-holocron-fast** (Default): Fast storage, Delete policy
-- **nfs-holocron-general**: General storage, Retain policy
-- **nfs-holocron-backup**: Backup storage, Retain policy
+- `nfs-holocron-general` - General purpose storage
+- `nfs-holocron-media` - Media/large file storage
+- `nfs-holocron-backups` - Backup storage
+- `nfs-holocron-plex` - Plex media server storage
 
-### Sith NAS (sith.home.cwbtech.net)
-
-- **nfs-sith-fast**: Fast storage, Delete policy
-- **nfs-sith-general**: General storage, Retain policy
-- **nfs-sith-backup**: Backup storage, Retain policy
-
-All storage classes support:
-
-- **Access Modes**: ReadWriteMany, ReadWriteOnce, ReadOnlyMany
-- **Volume Expansion**: Enabled
-- **Mount Options**: hard, nfsvers=4.1, intr
-
-## Usage Examples
-
-### Fast Storage (Temporary/Cache)
+### Example Usage
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: app-cache-pvc
-spec:
-  storageClassName: nfs-holocron-fast # or nfs-sith-fast
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 5Gi
-```
-
-### General Storage (Persistent Data)
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: app-data-pvc
-spec:
-  storageClassName: nfs-holocron-general # or nfs-sith-general
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 10Gi
-```
-
-### Backup Storage (Long-term Retention)
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: app-backup-pvc
-spec:
-  storageClassName: nfs-sith-backup # or nfs-holocron-backup
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 50Gi
-```
-
-### Application with Multiple Storage Tiers
-
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: app-cache
-spec:
-  storageClassName: nfs-holocron-fast
-  accessModes: [ReadWriteMany]
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: app-data
+  name: my-nfs-pvc
 spec:
   storageClassName: nfs-holocron-general
   accessModes: [ReadWriteMany]
   resources:
     requests:
       storage: 10Gi
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: multi-tier-app
-spec:
-  containers:
-    - name: app
-      image: nginx:latest
-      volumeMounts:
-        - name: cache
-          mountPath: /cache
-        - name: data
-          mountPath: /data
-  volumes:
-    - name: cache
-      persistentVolumeClaim:
-        claimName: app-cache
-    - name: data
-      persistentVolumeClaim:
-        claimName: app-data
 ```
 
-### Load-Balanced App Across Multiple NAS
+## Features
+
+### Dynamic Provisioning
+
+The driver automatically creates subdirectories on the NFS share for each PVC:
+
+- Path format: `/{pvc-uuid}`
+- Automatic cleanup when PVC is deleted
+- Supports multiple concurrent PVCs on same NFS export
+
+### Access Modes
+
+- **ReadWriteMany (RWX)**: Multiple pods can mount the same volume simultaneously
+- **ReadOnlyMany (ROX)**: Multiple pods can mount read-only
+- **ReadWriteOnce (RWO)**: Single pod exclusive access
+
+### Volume Operations
+
+- **Create**: Provision new NFS subdirectory
+- **Delete**: Remove NFS subdirectory
+- **Mount**: Mount NFS share in pod containers
+- **Unmount**: Clean unmount from containers
+
+## Configuration
+
+### NFS Server Requirements
+
+1. **NFS Server**: Version 3 or 4 supported
+2. **Network Access**: Kubernetes nodes must reach NFS server on port 2049
+3. **Export Configuration**: Proper NFS exports with appropriate permissions
+4. **Client Tools**: `nfs-utils` package on all worker nodes
+
+### Example NFS Server Export
+
+```bash
+# /etc/exports on NFS server
+/path/to/share *(rw,sync,no_subtree_check,no_root_squash)
+```
+
+### Node Prerequisites
+
+Ensure NFS client tools are installed on all worker nodes:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install nfs-common
+
+# RHEL/CentOS
+sudo yum install nfs-utils
+
+# Alpine (for some container runtimes)
+apk add nfs-utils
+```
+
+## Usage Examples
+
+### Basic PVC
 
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: distributed-app
-spec:
-  replicas: 4
-  selector:
-    matchLabels:
-      app: distributed-app
-  template:
-    metadata:
-      labels:
-        app: distributed-app
-    spec:
-      containers:
-        - name: app
-          image: nginx:latest
-          volumeMounts:
-            - name: shared-content
-              mountPath: /usr/share/nginx/html
-      volumes:
-        - name: shared-content
-          persistentVolumeClaim:
-            claimName: shared-content-pvc
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: shared-content-pvc
+  name: basic-nfs-storage
 spec:
-  storageClassName: nfs-holocron-general # All replicas share same storage
+  storageClassName: nfs-holocron-general
   accessModes: [ReadWriteMany]
   resources:
     requests:
       storage: 5Gi
 ```
 
-## Testing
+### Shared Storage Across Pods
 
-Test examples are available in `examples/test-pod.yaml`:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shared-storage-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: shared-app
+  template:
+    metadata:
+      labels:
+        app: shared-app
+    spec:
+      containers:
+        - name: app
+          image: nginx:latest
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: basic-nfs-storage
+```
+
+### Media Server Storage
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-media-pvc
+spec:
+  storageClassName: nfs-holocron-plex
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plex
+  template:
+    metadata:
+      labels:
+        app: plex
+    spec:
+      containers:
+        - name: plex
+          image: plexinc/pms-docker:latest
+          volumeMounts:
+            - name: plex-media
+              mountPath: /data
+            - name: plex-config
+              mountPath: /config
+      volumes:
+        - name: plex-media
+          persistentVolumeClaim:
+            claimName: plex-media-pvc
+        - name: plex-config
+          persistentVolumeClaim:
+            claimName: plex-config-pvc
+```
+
+## Monitoring and Maintenance
+
+### Check Driver Status
 
 ```bash
-# Apply test resources
-kubectl apply -f infrastructure/storage/nfs-csi-driver/examples/test-pod.yaml
+# Verify CSI driver pods
+kubectl get pods -n kube-system -l app=csi-nfs-controller
+kubectl get pods -n kube-system -l app=csi-nfs-node
 
-# Check PVC status
-kubectl get pvc
+# Check storage classes
+kubectl get storageclass | grep nfs
 
-# Check pod logs
-kubectl logs test-nfs-pod
+# Monitor PVCs
+kubectl get pvc -A | grep nfs
+```
 
-# Verify files on NFS server
-# Files should appear in your NFS share under subdirectories
+### Driver Logs
+
+```bash
+# Controller logs
+kubectl logs -n kube-system -l app=csi-nfs-controller -c csi-provisioner
+kubectl logs -n kube-system -l app=csi-nfs-controller -c nfs
+
+# Node plugin logs
+kubectl logs -n kube-system -l app=csi-nfs-node -c nfs
 ```
 
 ## Troubleshooting
@@ -256,67 +219,116 @@ kubectl logs test-nfs-pod
 ### Common Issues
 
 1. **PVC Stuck in Pending**
-   - Check NFS server connectivity: `telnet <nfs-server> 2049`
-   - Verify NFS exports: `showmount -e <nfs-server>`
-   - Check driver logs: `kubectl logs -n kube-system -l app=csi-nfs-controller`
+
+   ```bash
+   # Check events
+   kubectl describe pvc <pvc-name>
+
+   # Verify NFS connectivity
+   kubectl exec -it <any-pod> -- telnet <nfs-server> 2049
+   ```
 
 2. **Mount Failures**
-   - Verify NFS client tools: `which mount.nfs`
-   - Check node logs: `kubectl logs -n kube-system -l app=csi-nfs-node`
-   - Test manual mount: `sudo mount -t nfs4 <server>:<share> /mnt/test`
+
+   ```bash
+   # Check node logs
+   kubectl logs -n kube-system -l app=csi-nfs-node -c nfs
+
+   # Test manual mount
+   sudo mount -t nfs4 <server>:<path> /mnt/test
+   ```
 
 3. **Permission Issues**
-   - NFS export permissions (check `no_root_squash` if needed)
-   - Directory permissions on NFS server
-   - Pod security contexts and fsGroup settings
 
-### Useful Commands
+   ```bash
+   # Check NFS export permissions
+   showmount -e <nfs-server>
 
-```bash
-# View all NFS storage classes
-kubectl get storageclass -l app.kubernetes.io/name=nfs-csi-driver
+   # Verify directory permissions on NFS server
+   ls -la /path/to/nfs/export
+   ```
 
-# Check specific NAS connectivity
-kubectl run nfs-test --image=busybox --rm -it -- nslookup holocron.home.cwbtech.net
-kubectl run nfs-test --image=busybox --rm -it -- nslookup sith.home.cwbtech.net
+### Performance Tuning
 
-# Test NFS mount manually
-kubectl run nfs-test --image=busybox --rm -it -- mount -t nfs4 holocron.home.cwbtech.net:/volume1/k8s-fast /mnt
-```
+#### Mount Options
 
-## Benefits over In-Tree NFS
-
-- **Future-Proof**: CSI is the standard, in-tree drivers are deprecated
-- **Better Maintenance**: Independent release cycle from Kubernetes
-- **Enhanced Features**: Snapshots, volume expansion, better error handling
-- **Improved Security**: Reduced attack surface in Kubernetes core
-
-## Mount Options
-
-The chart uses optimized mount options by default:
-
-- `hard`: Hard mount (operations wait if server unavailable)
-- `nfsvers=4.1`: Use NFSv4.1 for better performance and security
-- `intr`: Allow interruption of NFS operations
-
-Additional options can be added in the values file:
+Optimize mount options in storage class for your workload:
 
 ```yaml
-storageClasses:
-  nfsCsi:
-    mountOptions:
-      - hard
-      - nfsvers=4.1
-      - intr
-      - rsize=1048576 # 1MB read size
-      - wsize=1048576 # 1MB write size
-      - timeo=14 # Timeout value
-      - retrans=2 # Number of retries
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-optimized
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: nfs-server.example.com
+  share: /path/to/share
+mountOptions:
+  - nfsvers=4.1
+  - rsize=1048576
+  - wsize=1048576
+  - hard
+  - intr
+  - timeo=600
+```
+
+#### Network Optimization
+
+- Use dedicated network for NFS traffic
+- Configure jumbo frames if supported
+- Monitor network latency and throughput
+
+### Recovery Procedures
+
+#### Stale Mount Recovery
+
+```bash
+# If pods have stale NFS mounts
+kubectl delete pod <pod-name>
+
+# Force unmount if needed (on node)
+sudo umount -f /path/to/mount
+```
+
+#### Driver Restart
+
+```bash
+# Restart CSI driver components
+kubectl rollout restart daemonset csi-nfs-node -n kube-system
+kubectl rollout restart deployment csi-nfs-controller -n kube-system
 ```
 
 ## Security Considerations
 
-- Ensure proper NFS export security
-- Network security between Kubernetes cluster and NFS server
-- Consider using NFSv4 with Kerberos for production environments
-- Review and adjust mount options for your security requirements
+- **Network Security**: Implement firewall rules restricting NFS port access
+- **Export Security**: Use specific IP ranges in NFS exports, avoid wildcards
+- **Authentication**: Consider Kerberos for enhanced security
+- **Encryption**: Use NFSv4 with sec=krb5p for encrypted transfers
+- **Access Control**: Implement proper file permissions on NFS server
+
+## Best Practices
+
+1. **Storage Planning**: Size PVCs appropriately for your workload
+2. **Backup Strategy**: Regular backups of NFS data
+3. **Monitoring**: Monitor NFS server performance and capacity
+4. **Network**: Dedicated NFS network for performance
+5. **Testing**: Regular disaster recovery testing
+
+## Migration and Upgrades
+
+### Version Compatibility
+
+- CSI Driver: v4.5.0+
+- Kubernetes: v1.20+
+- NFS Server: v3/v4
+
+### Upgrade Process
+
+1. Review release notes for breaking changes
+2. Test in non-production environment
+3. Update CSI driver using GitOps workflow
+4. Monitor for any mount issues post-upgrade
+
+---
+
+**Note**: This NFS CSI driver is managed by FluxCD. Manual changes will be automatically reverted.
