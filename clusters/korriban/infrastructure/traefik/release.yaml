@@ -125,12 +125,7 @@ spec:
         addRoutersLabels: true
 
     persistence:
-      enabled: true
-      name: data
-      accessMode: ReadWriteOnce
-      size: 1Gi
-      storageClass: synology-holocron-general
-      path: /data
+      enabled: false
 
     securityContext:
       capabilities:
