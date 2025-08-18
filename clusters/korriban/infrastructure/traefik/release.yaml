@@ -124,20 +124,36 @@ spec:
         addServicesLabels: true
         addRoutersLabels: true
 
+    # NFS PERSISTENCE CONFIGURATION
     persistence:
-      enabled: false
+      enabled: true
+      name: traefik-data
+      accessMode: ReadWriteMany # RWX for multiple replicas
+      size: 5Gi
+      storageClass: nfs-holocron-general # Using NFS storage
+      path: /data
+      annotations:
+        helm.sh/resource-policy: keep
 
+    # Volume mounts for the persistence
+    additionalVolumeMounts:
+      - name: data
+        mountPath: /data
+        subPath: ""
+
+    # Security context with proper permissions for NFS
     securityContext:
       capabilities:
         drop: [ALL]
         add: [NET_BIND_SERVICE]
-      readOnlyRootFilesystem: true
+      readOnlyRootFilesystem: false # Changed to false for persistence
       runAsGroup: 65532
       runAsNonRoot: true
       runAsUser: 65532
 
     podSecurityContext:
       fsGroup: 65532
+      fsGroupChangePolicy: "OnRootMismatch"
       seccompProfile:
         type: RuntimeDefault
 
