@@ -1,0 +1,62 @@
+---
+# Fast NFS Storage - For performance-sensitive workloads
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-fast
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: holocron.home.cwbtech.net
+  share: /volume1/kubernetes-fast
+mountOptions:
+  - hard
+  - nfsvers=4.1
+  - rsize=262144
+  - wsize=262144
+  - timeo=600
+  - retrans=2
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+
+---
+# General Purpose NFS Storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-general
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: holocron.home.cwbtech.net
+  share: /volume1/kubernetes
+mountOptions:
+  - hard
+  - nfsvers=4.1
+  - rsize=131072
+  - wsize=131072
+  - timeo=600
+  - retrans=2
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+
+---
+# Backup Storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-backup
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: holocron.home.cwbtech.net
+  share: /volume1/kubernetes-backup
+mountOptions:
+  - hard
+  - nfsvers=4.1
+  - rsize=65536
+  - wsize=65536
+  - timeo=600
+  - retrans=2
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Retain

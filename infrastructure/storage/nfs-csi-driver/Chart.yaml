@@ -1,6 +1,0 @@
-apiVersion: v2
-name: nfs-csi-driver
-description: A Helm chart for NFS CSI Driver
-type: application
-version: 0.1.0
-appVersion: "4.11.0"
