@@ -43,9 +43,11 @@ spec:
     force: true
 
   values:
-    # Admin user
-    adminUser: admin
-    adminPassword: changeme123! # Change this!
+    # Admin user - credentials come from sealed secret
+    admin:
+      existingSecret: grafana-admin-secret
+      userKey: admin-user
+      passwordKey: admin-password
 
     # NFS Storage - Simple and straightforward
     persistence:
@@ -54,6 +56,10 @@ spec:
       accessModes:
         - ReadWriteOnce
       size: 10Gi
+
+    # Disable init container that violates pod security policy
+    initChownData:
+      enabled: false
 
     # Resources
     resources:
