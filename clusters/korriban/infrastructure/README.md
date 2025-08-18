@@ -14,8 +14,14 @@ This directory contains the core infrastructure components for the `korriban` cl
           │                        │                        │
           ▼                        ▼                        ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Traefik       │    │  Storage CSI     │    │  Prometheus     │
-│   (Ingress)     │────│  (Persistent)    │────│  (Monitoring)   │
+│   MetalLB       │    │     Traefik      │    │    Storage      │
+│   (Load LB)     │────│    (Ingress)     │────│  (CSI Drivers)  │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+          │                        │                        │
+          ▼                        ▼                        ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Prometheus    │    │     Grafana      │    │   Applications  │
+│   (Monitoring)  │────│  (Visualization) │────│   (Workloads)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
@@ -26,8 +32,10 @@ The infrastructure components are deployed in dependency order:
 1. **Storage** - NFS & Synology CSI drivers
 2. **Sealed Secrets** - Secret encryption and management
 3. **Cert Manager** - TLS certificate automation
-4. **Traefik** - Ingress controller and load balancer
-5. **Prometheus** - Monitoring and metrics collection
+4. **MetalLB** - Load balancer for bare metal
+5. **Traefik** - Ingress controller and routing
+6. **Prometheus** - Monitoring and metrics collection
+7. **Grafana** - Metrics visualization
 
 ## Components
 
@@ -72,7 +80,20 @@ The infrastructure components are deployed in dependency order:
   - Automatic certificate renewal
   - Multiple issuers (staging/production)
 
-### 4. Traefik Ingress Controller
+### 4. MetalLB (NEW)
+
+- **Purpose**: Load balancer implementation for bare metal clusters
+- **Namespace**: `metallb-system`
+- **Features**:
+  - Layer 2 (ARP/NDP) mode
+  - IP address pool management
+  - Automatic IP assignment
+  - High availability failover
+- **IP Ranges**:
+  - Default pool: `10.10.7.200-250` (Public services)
+  - Internal pool: `10.10.7.100-150` (Internal services)
+
+### 5. Traefik Ingress Controller
 
 - **Purpose**: HTTP/HTTPS ingress and load balancing
 - **Namespace**: `traefik-system`
@@ -81,8 +102,9 @@ The infrastructure components are deployed in dependency order:
   - TLS termination
   - Dashboard and API
   - Metrics export
+  - **LoadBalancer IP**: `10.10.7.200` (via MetalLB)
 
-### 5. Prometheus Monitoring
+### 6. Prometheus Monitoring
 
 - **Purpose**: Metrics collection and monitoring
 - **Namespace**: `monitoring`
@@ -91,6 +113,36 @@ The infrastructure components are deployed in dependency order:
   - Time-series database
   - Web UI with queries
   - Persistent storage
+  - **Access**: https://prometheus.home.cwbtech.net
+
+### 7. Grafana Visualization
+
+- **Purpose**: Metrics visualization and dashboards
+- **Namespace**: `monitoring`
+- **Features**:
+  - Custom dashboards
+  - Prometheus integration
+  - Alert management
+  - User authentication
+  - **Access**: https://grafana.home.cwbtech.net
+
+## Network Architecture
+
+```
+Internet
+    │
+    ▼
+Router (10.10.7.1)
+    │
+    ├── DHCP Range: 10.10.7.10-199 (Reserved for dynamic allocation)
+    ├── Node IPs: 10.10.7.2-8 (Static assignments)
+    ├── MetalLB Range: 10.10.7.200-250 (Reserved for LoadBalancer IPs)
+    └── Internal Services: 10.10.7.100-150 (Optional internal pool)
+
+Current Assignments:
+- 10.10.7.200: Traefik (Main Ingress)
+- 10.10.7.201-250: Available for future services
+```
 
 ## Quick Status Checks
 
@@ -101,10 +153,10 @@ The infrastructure components are deployed in dependency order:
 kubectl get kustomizations -n flux-system
 
 # Check all namespaces
-kubectl get namespaces | grep -E "(flux-system|cert-manager|traefik-system|monitoring|nfs-csi-driver)"
+kubectl get namespaces | grep -E "(flux-system|cert-manager|traefik-system|monitoring|metallb-system|nfs-csi-driver)"
 
 # Check all pods across infrastructure namespaces
-kubectl get pods -A | grep -E "(flux-system|cert-manager|traefik-system|monitoring|nfs-csi-driver)"
+kubectl get pods -A | grep -E "(flux-system|cert-manager|traefik-system|monitoring|metallb-system|nfs-csi-driver)"
 ```
 
 ### Per-Component Health Checks
@@ -134,6 +186,15 @@ kubectl get clusterissuers
 kubectl get certificates -A
 ```
 
+#### MetalLB
+
+```bash
+# MetalLB status
+kubectl get pods -n metallb-system
+kubectl get ipaddresspool -n metallb-system
+kubectl get svc -A | grep LoadBalancer
+```
+
 #### Traefik
 
 ```bash
@@ -141,6 +202,7 @@ kubectl get certificates -A
 kubectl get pods -n traefik-system
 kubectl get svc -n traefik-system
 kubectl get ingressroutes -A
+# Should show EXTERNAL-IP from MetalLB (10.10.7.200)
 ```
 
 #### Storage
@@ -152,10 +214,10 @@ kubectl get pods -n kube-system | grep synology
 kubectl get storageclasses
 ```
 
-#### Prometheus
+#### Prometheus & Grafana
 
 ```bash
-# Prometheus monitoring
+# Monitoring stack
 kubectl get pods -n monitoring
 kubectl get pvc -n monitoring
 kubectl get ingress -n monitoring
@@ -172,8 +234,18 @@ If components fail to start, check dependency order:
 kubectl get kustomizations -n flux-system -o custom-columns=NAME:.metadata.name,READY:.status.conditions[0].status,MESSAGE:.status.conditions[0].message
 
 # Force reconciliation in dependency order
-flux reconcile kustomization flux-system
-kubectl wait --for=condition=ready kustomization/flux-system -n flux-system --timeout=300s
+flux reconcile kustomization infrastructure --with-source
+```
+
+### LoadBalancer IP Issues
+
+```bash
+# Check if service has external IP
+kubectl get svc -n traefik-system traefik-system-traefik
+
+# If stuck in Pending, check MetalLB
+kubectl logs -n metallb-system deployment/metallb-controller
+kubectl describe ipaddresspool -n metallb-system
 ```
 
 ### Storage Issues
@@ -208,6 +280,10 @@ kubectl describe clusterissuer letsencrypt-cloudflare
 kubectl get ingressroutes -A
 kubectl describe ingressroute <route-name> -n <namespace>
 
+# Test connectivity to LoadBalancer IP
+curl -v http://10.10.7.200
+curl -v https://10.10.7.200
+
 # Check Traefik logs
 kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
 ```
@@ -218,161 +294,100 @@ kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
 
 All infrastructure changes must go through Git:
 
-1. **Edit YAML files** in the infrastructure directory
-2. **Commit and push** to main branch
-3. **FluxCD automatically applies** changes within 1 minute
-4. **Monitor status** with `kubectl get kustomizations -A`
+1. **Make changes** in `clusters/korriban/infrastructure/`
+2. **Commit and push** to repository
+3. **FluxCD reconciles** automatically (or force with `flux reconcile`)
+4. **Verify deployment** with status checks
 
-### Infrastructure Modifications
+### Adding New Infrastructure
 
-To modify infrastructure components:
+1. Create directory under `infrastructure/`
+2. Add `release.yaml` with Namespace, HelmRepository, and HelmRelease
+3. Add `config.yaml` for additional resources if needed
+4. Create `kustomization.yaml` to bundle resources
+5. Update main `infrastructure/kustomization.yaml` to include new component
+6. Consider dependencies and add to HelmRelease `dependsOn` if needed
+
+## Network Requirements
+
+### Router Configuration
+
+Required DHCP exclusions to prevent IP conflicts:
+
+- `10.10.7.2-8`: Node IPs (static)
+- `10.10.7.100-150`: Internal service pool (MetalLB)
+- `10.10.7.200-250`: Default service pool (MetalLB)
+
+### DNS Configuration
+
+Point these domains to `10.10.7.200` (Traefik LoadBalancer IP):
+
+- `*.home.cwbtech.net` (wildcard)
+- Or individual entries:
+  - `prometheus.home.cwbtech.net`
+  - `grafana.home.cwbtech.net`
+  - `traefik.home.cwbtech.net`
+
+### Firewall Rules
+
+For external access, forward ports to `10.10.7.200`:
+
+- Port 80 → 10.10.7.200:80 (HTTP)
+- Port 443 → 10.10.7.200:443 (HTTPS)
+
+## Monitoring and Maintenance
+
+### Resource Usage
 
 ```bash
-# Check current configuration
-kubectl get kustomization <component> -n flux-system -o yaml
-
-# Edit source files in Git repository
-git checkout -b infrastructure-update
-# Make changes to YAML files
-git add .
-git commit -m "Update infrastructure component"
-git push origin infrastructure-update
-
-# Monitor deployment after merge
-kubectl get kustomizations -A -w
+# Check resource consumption
+kubectl top nodes
+kubectl top pods -A | grep -E "(metallb|traefik|prometheus|grafana)"
 ```
+
+### Update Management
+
+```bash
+# Check for updates
+flux get helmreleases -A
+
+# Update a component (edit version in release.yaml, then)
+git add infrastructure/<component>/release.yaml
+git commit -m "Update <component> to version X.Y.Z"
+git push
+```
+
+### Backup Considerations
+
+Critical components to backup:
+
+- Sealed Secrets keys (automatic via Git)
+- Prometheus data (PVC)
+- Grafana dashboards (ConfigMaps)
+- Cert Manager certificates (Secrets)
 
 ## Security Considerations
 
-### Network Policies
+1. **Network Policies**: Implemented for namespace isolation
+2. **TLS Everywhere**: Automatic HTTPS with cert-manager
+3. **Secret Encryption**: All secrets encrypted with Sealed Secrets
+4. **RBAC**: Proper role-based access control
+5. **Resource Limits**: All components have defined resource limits
+6. **Security Contexts**: Non-root users, read-only filesystems where possible
 
-Infrastructure components use network policies to restrict traffic:
+## Performance Tuning
 
-```bash
-# Check network policies
-kubectl get networkpolicies -A
+- **MetalLB**: Minimal overhead, scales with number of services
+- **Traefik**: 2 replicas for HA, anti-affinity rules
+- **Prometheus**: 15-day retention, 50GB storage
+- **Grafana**: Configured for efficient query caching
 
-# Verify traffic flow
-kubectl exec -n <source-namespace> <pod> -- nc -zv <target-service> <port>
-```
+## References
 
-### RBAC
-
-Components use least-privilege RBAC:
-
-```bash
-# Check service accounts
-kubectl get serviceaccounts -A | grep -E "(flux|cert-manager|traefik|prometheus)"
-
-# Check cluster roles
-kubectl get clusterroles | grep -E "(flux|cert-manager|traefik|prometheus)"
-```
-
-### Secret Management
-
-All secrets are encrypted using Sealed Secrets:
-
-```bash
-# List sealed secrets
-kubectl get sealedsecrets -A
-
-# Verify secret decryption
-kubectl get secrets -A | grep -v kubernetes.io
-```
-
-## Monitoring and Alerts
-
-### Prometheus Metrics
-
-Access Prometheus dashboard:
-
-```bash
-# Port forward to Prometheus
-kubectl port-forward -n monitoring svc/prometheus 9090:9090
-# Open http://localhost:9090
-```
-
-### Traefik Dashboard
-
-Access Traefik dashboard:
-
-```bash
-# Port forward to Traefik
-kubectl port-forward -n traefik-system svc/traefik 9000:9000
-# Open http://localhost:9000/dashboard/
-```
-
-### Log Aggregation
-
-View logs from all infrastructure components:
-
-```bash
-# FluxCD logs
-kubectl logs -n flux-system -l app.kubernetes.io/part-of=flux
-
-# Cert Manager logs
-kubectl logs -n cert-manager -l app.kubernetes.io/name=cert-manager
-
-# Traefik logs
-kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
-```
-
-## Backup and Recovery
-
-### Configuration Backup
-
-All configuration is stored in Git, but also backup critical resources:
-
-```bash
-# Backup FluxCD configuration
-kubectl get kustomizations -A -o yaml > backup/kustomizations.yaml
-kubectl get gitrepositories -A -o yaml > backup/gitrepositories.yaml
-
-# Backup certificates
-kubectl get certificates -A -o yaml > backup/certificates.yaml
-
-# Backup storage classes
-kubectl get storageclasses -o yaml > backup/storageclasses.yaml
-```
-
-### Disaster Recovery
-
-In case of cluster failure:
-
-1. **Restore cluster** to working state
-2. **Bootstrap FluxCD** with original repository
-3. **Verify component deployment** order
-4. **Check all dependencies** are satisfied
-5. **Test application functionality**
-
-## Maintenance
-
-### Update Procedures
-
-To update infrastructure components:
-
-1. **Check for new versions** of Helm charts or images
-2. **Test updates** in a development environment
-3. **Update configuration** in Git repository
-4. **Monitor deployment** through FluxCD
-5. **Verify functionality** after updates
-
-### Health Monitoring
-
-Regular health checks:
-
-```bash
-# Daily infrastructure check
-./scripts/infrastructure-health-check.sh
-
-# Weekly dependency audit
-kubectl get kustomizations -A --sort-by=.metadata.creationTimestamp
-```
-
-## Support and Documentation
-
-- **FluxCD**: https://fluxcd.io/docs/
-- **Cert Manager**: https://cert-manager.io/docs/
-- **Traefik**: https://doc.traefik.io/traefik/
-- **Prometheus**: https://prometheus.io/docs/
-- **Kubernetes CSI**: https://kubernetes-csi.github.io/docs/
+- [FluxCD Documentation](https://fluxcd.io/docs/)
+- [MetalLB Documentation](https://metallb.universe.tf/)
+- [Traefik Documentation](https://doc.traefik.io/traefik/)
+- [Prometheus Documentation](https://prometheus.io/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Cert Manager Documentation](https://cert-manager.io/docs/)
+- [Sealed Secrets Documentation](https://sealed-secrets.netlify.app/)

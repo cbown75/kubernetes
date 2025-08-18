@@ -6,5 +6,6 @@ resources:
   - storage
   - sealed-secrets
   - cert-manager
+  - metallb
   - traefik
   - prometheus

@@ -16,23 +16,30 @@ Traefik is a modern HTTP reverse proxy and load balancer that makes deploying mi
 ## Architecture
 
 ```
-Internet → NodePort/LoadBalancer → Traefik → Services → Pods
-    ↓              ↓                   ↓          ↓        ↓
-  Port 80/443   External LB         Routing   Service   Application
+Internet → LoadBalancer (MetalLB) → Traefik → Services → Pods
+    ↓              ↓                    ↓          ↓        ↓
+  Port 80/443   10.10.7.200         Routing   Service   Application
 ```
 
 ## Configuration
 
 ### Service Configuration
 
-Traefik is deployed as a NodePort service with MetalLB integration:
+Traefik is deployed as a LoadBalancer service with MetalLB integration:
 
 ```yaml
 service:
-  type: NodePort
+  type: LoadBalancer
   annotations:
     metallb.universe.tf/address-pool: default
+  externalTrafficPolicy: Local # Preserves client IPs
 ```
+
+### Network Details
+
+- **LoadBalancer IP**: `10.10.7.200` (assigned by MetalLB)
+- **External Access**: Standard ports 80 (HTTP) and 443 (HTTPS)
+- **Internal Access**: Dashboard on port 9000, Metrics on port 9100
 
 ### Entry Points
 
@@ -69,10 +76,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - app.home.example.com
+        - app.home.cwbtech.net
       secretName: app-tls
   rules:
-    - host: app.home.example.com
+    - host: app.home.cwbtech.net
       http:
         paths:
           - path: /
@@ -86,26 +93,23 @@ spec:
 
 ### IngressRoute (Traefik CRD)
 
-For advanced routing, use Traefik's custom resources:
-
 ```yaml
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: app-ingressroute
+  namespace: default
 spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`app.home.example.com`)
+    - match: Host(`app.home.cwbtech.net`)
       kind: Rule
       services:
         - name: app-service
           port: 80
-      middlewares:
-        - name: auth-middleware
   tls:
-    secretName: app-tls
+    certResolver: letsencrypt
 ```
 
 ### Middleware Examples
@@ -119,7 +123,7 @@ metadata:
   name: basic-auth
 spec:
   basicAuth:
-    secret: auth-secret
+    secret: auth-secret # Secret containing htpasswd
 ```
 
 #### Rate Limiting
@@ -131,60 +135,30 @@ metadata:
   name: rate-limit
 spec:
   rateLimit:
-    burst: 100
-    average: 50
+    average: 100
+    burst: 50
 ```
 
-#### Headers
+#### HTTPS Redirect (Already Configured Globally)
 
 ```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-  name: security-headers
-spec:
-  headers:
-    customRequestHeaders:
-      X-Forwarded-Proto: https
-    customResponseHeaders:
-      X-Frame-Options: DENY
-      X-Content-Type-Options: nosniff
+# Automatic redirect from HTTP to HTTPS is enabled by default
+ports:
+  web:
+    redirections:
+      entryPoint:
+        to: websecure
+        scheme: https
+        permanent: true
 ```
 
-## Dashboard Access
+## Access URLs
 
-### Port Forward (Development)
+With MetalLB providing the LoadBalancer IP (10.10.7.200), services are accessible at:
 
-```bash
-# Access dashboard locally
-kubectl port-forward -n traefik-system svc/traefik 9000:9000
-# Open http://localhost:9000/dashboard/
-```
-
-### Secure Dashboard (Production)
-
-Create an IngressRoute with authentication:
-
-```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: traefik-dashboard
-  namespace: traefik-system
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`traefik.home.example.com`)
-      kind: Rule
-      services:
-        - name: api@internal
-          kind: TraefikService
-      middlewares:
-        - name: auth-middleware
-  tls:
-    secretName: traefik-dashboard-tls
-```
+- **Traefik Dashboard**: http://10.10.7.200:9000/dashboard/
+- **Any Ingress**: https://<hostname>.home.cwbtech.net
+- **Direct IP Access**: https://10.10.7.200 (will show default backend or 404)
 
 ## Monitoring and Troubleshooting
 
@@ -194,8 +168,9 @@ spec:
 # Check Traefik pods
 kubectl get pods -n traefik-system
 
-# Check Traefik service
+# Check Traefik service and LoadBalancer IP
 kubectl get svc -n traefik-system
+# Should show EXTERNAL-IP as 10.10.7.200
 
 # Check ingress resources
 kubectl get ingress -A
@@ -205,11 +180,28 @@ kubectl get ingressroutes -A
 ### Service Status
 
 ```bash
-# Check Traefik configuration
+# Check Traefik logs
 kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
 
-# View Traefik configuration dump
+# Follow logs in real-time
+kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik -f
+
+# Check Traefik configuration
 kubectl exec -n traefik-system deployment/traefik -- traefik version
+```
+
+### Test Connectivity
+
+```bash
+# Test LoadBalancer IP
+curl -v http://10.10.7.200
+curl -v https://10.10.7.200
+
+# Test specific service
+curl -v https://prometheus.home.cwbtech.net
+
+# Check certificate
+openssl s_client -connect prometheus.home.cwbtech.net:443 -servername prometheus.home.cwbtech.net
 ```
 
 ### Common Issues and Solutions
@@ -229,6 +221,9 @@ kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
 
 # Verify service endpoints
 kubectl get endpoints <service-name> -n <namespace>
+
+# Check LoadBalancer IP
+kubectl get svc -n traefik-system traefik-system-traefik
 ```
 
 **Solutions**:
@@ -236,7 +231,7 @@ kubectl get endpoints <service-name> -n <namespace>
 - Verify service is running and has endpoints
 - Check ingress annotations and rules
 - Ensure correct ingress class
-- Verify TLS configuration
+- Verify DNS points to 10.10.7.200
 
 #### TLS Certificate Issues
 
@@ -262,42 +257,28 @@ openssl s_client -connect <host>:443 -servername <host>
 - Ensure DNS is properly configured
 - Wait for certificate issuance
 
-#### Load Balancer Not Accessible
+#### LoadBalancer IP Not Assigned
 
-**Symptoms**: External access to Traefik fails
+**Symptoms**: Service shows <pending> for EXTERNAL-IP
 
 **Diagnosis**:
 
 ```bash
-# Check service type and external IP
-kubectl get svc -n traefik-system
+# Check MetalLB is running
+kubectl get pods -n metallb-system
 
-# Check MetalLB configuration
-kubectl get configmap -n metallb-system
+# Check IP pool availability
+kubectl describe ipaddresspool -n metallb-system
 
-# Check node ports
-kubectl get svc traefik -n traefik-system -o yaml
+# Check service events
+kubectl describe svc traefik-system-traefik -n traefik-system
 ```
 
 **Solutions**:
 
-- Verify MetalLB is running
-- Check firewall rules
-- Verify network connectivity
-- Check cloud provider load balancer configuration
-
-### Logs and Debugging
-
-```bash
-# Traefik access logs
-kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
-
-# Follow logs in real-time
-kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik -f
-
-# Check Traefik configuration
-kubectl exec -n traefik-system deployment/traefik -- cat /etc/traefik/traefik.yml
-```
+- Ensure MetalLB is deployed and running
+- Verify IP pool has available addresses
+- Check MetalLB controller logs
 
 ## Performance Tuning
 
@@ -318,6 +299,8 @@ resources:
 ```yaml
 deployment:
   replicas: 2 # For high availability
+  affinity:
+    podAntiAffinity: # Spread across nodes
 ```
 
 ### Connection Limits
@@ -325,13 +308,11 @@ deployment:
 ```yaml
 entryPoints:
   web:
-    address: ":80"
     transport:
       lifeCycle:
         requestAcceptGraceTimeout: 0s
         graceTimeOut: 10s
   websecure:
-    address: ":443"
     transport:
       lifeCycle:
         requestAcceptGraceTimeout: 0s
@@ -343,14 +324,14 @@ entryPoints:
 ### TLS Settings
 
 ```yaml
-tls:
-  options:
-    default:
-      minVersion: "VersionTLS12"
-      cipherSuites:
-        - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
-        - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
-        - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+tlsOptions:
+  default:
+    minVersion: VersionTLS12
+    sniStrict: true
+    cipherSuites:
+      - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+      - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 ```
 
 ### Security Context
@@ -366,146 +347,51 @@ securityContext:
   runAsUser: 65532
 ```
 
-### Network Policies
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: traefik-netpol
-  namespace: traefik-system
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: traefik
-  policyTypes:
-    - Ingress
-    - Egress
-  ingress:
-    - from: [] # Allow all ingress traffic
-  egress:
-    - to: [] # Allow all egress traffic
-```
-
 ## Integration with Other Components
 
-### Cert Manager Integration
+### MetalLB
 
-Automatic certificate management:
+- Provides LoadBalancer IP (10.10.7.200)
+- Handles ARP announcements
+- Manages failover between nodes
+
+### Cert-Manager
+
+- Automatic TLS certificate provisioning
+- Integration via annotations
+- Supports multiple ClusterIssuers
+
+### Prometheus
+
+- Metrics exported on port 9100
+- ServiceMonitor for automatic discovery
+- Key metrics: request rate, latency, errors
+
+## Maintenance
+
+### Updating Traefik
+
+Edit `infrastructure/traefik/release.yaml`:
 
 ```yaml
-annotations:
-  cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-```
-
-### Prometheus Integration
-
-Metrics are automatically exported on port 9100:
-
-```yaml
-metrics:
-  prometheus:
-    addEntryPointsLabels: true
-    addServicesLabels: true
-    addRoutersLabels: true
-```
-
-### External Secrets Integration
-
-For managing sensitive configuration:
-
-```yaml
-# Reference external secrets for middleware auth
 spec:
-  basicAuth:
-    secret: external-auth-secret
+  chart:
+    spec:
+      version: "28.2.0" # Update version
 ```
 
-## Advanced Configuration
+Then commit and push for GitOps deployment.
 
-### Custom Middleware Chain
-
-```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: advanced-route
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`app.home.cwbtech.net`)
-      kind: Rule
-      services:
-        - name: app-service
-          port: 80
-      middlewares:
-        - name: security-headers
-        - name: rate-limit
-        - name: basic-auth
-  tls:
-    secretName: app-tls
-```
-
-### TCP/UDP Services
-
-```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRouteTCP
-metadata:
-  name: database-tcp
-spec:
-  entryPoints:
-    - postgres
-  routes:
-    - match: HostSNI(`*`)
-      services:
-        - name: postgresql
-          port: 5432
-```
-
-## Backup and Recovery
-
-### Configuration Backup
+### Viewing Dashboard
 
 ```bash
-# Backup Traefik configuration
-kubectl get ingressroutes -A -o yaml > backup/ingressroutes-$(date +%Y%m%d).yaml
-kubectl get middlewares -A -o yaml > backup/middlewares-$(date +%Y%m%d).yaml
-kubectl get ingress -A -o yaml > backup/ingress-$(date +%Y%m%d).yaml
+# Port forward to access dashboard
+kubectl port-forward -n traefik-system deployment/traefik 9000:9000
 
-# Backup Traefik deployment
-kubectl get deployment traefik -n traefik-system -o yaml > backup/traefik-deployment-$(date +%Y%m%d).yaml
+# Access at http://localhost:9000/dashboard/
 ```
 
-### Disaster Recovery
-
-1. **Restore Traefik deployment**
-2. **Apply ingress configurations**
-3. **Verify certificate automation**
-4. **Test routing functionality**
-
-## Best Practices
-
-1. **Use HTTPS Everywhere**: Redirect HTTP to HTTPS
-2. **Implement Rate Limiting**: Protect against abuse
-3. **Security Headers**: Add security-focused HTTP headers
-4. **Monitor Metrics**: Use Prometheus integration
-5. **Health Checks**: Configure proper readiness/liveness probes
-6. **Resource Limits**: Set appropriate CPU/memory limits
-7. **Network Policies**: Restrict network access
-8. **Regular Updates**: Keep Traefik version current
-
-## Troubleshooting Checklist
-
-- [ ] Check Traefik pods are running
-- [ ] Verify service has external access
-- [ ] Confirm ingress resources are created
-- [ ] Check certificate status
-- [ ] Verify DNS resolution
-- [ ] Test backend service connectivity
-- [ ] Review Traefik logs for errors
-- [ ] Validate middleware configuration
+Or configure an IngressRoute for permanent access.
 
 ## Resources
 
