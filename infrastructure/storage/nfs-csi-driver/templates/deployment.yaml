@@ -57,12 +57,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            limits:
-              memory: 512Mi
-              cpu: 200m
-            requests:
-              cpu: 50m
-              memory: 128Mi
+            {{- toYaml .Values.controller.resources.csiProvisioner | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -90,12 +85,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            limits:
-              memory: 256Mi
-              cpu: 100m
-            requests:
-              cpu: 25m
-              memory: 64Mi
+            {{- toYaml .Values.controller.resources.csiSnapshotter | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -122,12 +112,7 @@ spec:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            limits:
-              memory: 512Mi
-              cpu: 200m
-            requests:
-              cpu: 50m
-              memory: 128Mi
+            {{- toYaml .Values.controller.resources.csiResizer | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -141,19 +126,14 @@ spec:
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           args:
             - --csi-address=/var/lib/csi/sockets/pluginproxy/csi.sock
-            - --probe-timeout=10s
-            - --http-endpoint=localhost:29652
+            - --probe-timeout=30s
+            - --health-port={{ .Values.controller.healthPort }}
             - --v={{ .Values.controller.logLevel }}
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            limits:
-              memory: 128Mi
-              cpu: 50m
-            requests:
-              cpu: 10m
-              memory: 32Mi
+            {{- toYaml .Values.controller.resources.livenessProbe | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -175,10 +155,18 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
           ports:
-            - containerPort: 29652
+            - containerPort: {{ .Values.controller.healthPort }}
               name: healthz
               protocol: TCP
           livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 60
+          readinessProbe:
             failureThreshold: 5
             httpGet:
               path: /healthz
@@ -186,24 +174,11 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 10
             periodSeconds: 30
-          readinessProbe:
-            failureThreshold: 5
-            httpGet:
-              path: /healthz
-              port: healthz
-            initialDelaySeconds: 10
-            timeoutSeconds: 5
-            periodSeconds: 10
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
           resources:
-            limits:
-              memory: 256Mi
-              cpu: 200m
-            requests:
-              cpu: 50m
-              memory: 64Mi
+            {{- toYaml .Values.controller.resources.nfs | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             runAsUser: 0

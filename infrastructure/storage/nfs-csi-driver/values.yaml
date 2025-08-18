@@ -13,15 +13,11 @@ nfsServers:
       general: "/volume1/k8s-general"
       backup: "/volume1/k8s-backup"
 
-# RBAC Configuration
-rbac:
-  create: true
-
-# CSI Driver Configuration - Updated for socket connection fix
+# CSI Driver Configuration
 image:
   nfs:
     repository: registry.k8s.io/sig-storage/nfsplugin
-    tag: v4.11.0
+    tag: v4.10.0 # Downgraded from v4.11.0 for stability
     pullPolicy: IfNotPresent
 
   csiProvisioner:
@@ -49,93 +45,78 @@ image:
     tag: v2.13.0
     pullPolicy: IfNotPresent
 
-# Kubelet directory path
+# Kubelet directory path (adjust for your cluster)
 kubeletDir: /var/lib/kubelet
-
-# Service Account Names
-serviceAccount:
-  controller: csi-nfs-controller-sa
-  node: csi-nfs-node-sa
 
 # Feature gates
 feature:
   enableFSGroupPolicy: true
   enableInlineVolume: false
 
-# Linux node selector
-linux:
-  enabled: true
-
-# Controller configuration - Increased resources for stability
+# Controller configuration
 controller:
   replicas: 1
   logLevel: 2
+  healthPort: 39652 # Custom port to avoid conflicts
   resources:
     csiProvisioner:
       limits:
-        memory: 512Mi
-        cpu: 200m
-      requests:
-        cpu: 50m
-        memory: 128Mi
-    csiSnapshotter:
-      limits:
-        memory: 256Mi
-        cpu: 100m
-      requests:
-        cpu: 25m
-        memory: 64Mi
-    csiResizer:
-      limits:
-        memory: 512Mi
-        cpu: 200m
-      requests:
-        cpu: 50m
-        memory: 128Mi
-    livenessProbe:
-      limits:
-        memory: 128Mi
-        cpu: 50m
+        memory: 400Mi
       requests:
         cpu: 10m
-        memory: 32Mi
+        memory: 20Mi
+    csiSnapshotter:
+      limits:
+        memory: 200Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    csiResizer:
+      limits:
+        memory: 400Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    livenessProbe:
+      limits:
+        memory: 100Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
     nfs:
       limits:
-        memory: 256Mi
-        cpu: 200m
+        memory: 200Mi
       requests:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 10m
+        memory: 20Mi
 
-# Node configuration - Increased resources for stability
+# Node configuration
 node:
   logLevel: 2
+  healthPort: 39653 # Custom port to avoid conflicts
   resources:
     livenessProbe:
       limits:
-        memory: 128Mi
-        cpu: 50m
+        memory: 100Mi
       requests:
         cpu: 10m
-        memory: 32Mi
+        memory: 20Mi
     nodeDriverRegistrar:
       limits:
-        memory: 128Mi
-        cpu: 50m
+        memory: 100Mi
       requests:
         cpu: 10m
-        memory: 32Mi
+        memory: 20Mi
     nfs:
       limits:
-        memory: 256Mi
-        cpu: 200m
+        memory: 300Mi
       requests:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 10m
+        memory: 20Mi
 
-# Storage Classes - Updated configuration
+# Storage Classes configuration
 storageClasses:
-  # Holocron NFS Storage Classes
+  # Holocron NAS storage classes
   holocronFast:
     enabled: true
     name: nfs-holocron-fast
@@ -148,8 +129,6 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
-      - timeo=600
-      - retrans=2
     annotations: {}
     labels:
       nas: holocron
@@ -167,8 +146,6 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
-      - timeo=600
-      - retrans=2
     annotations: {}
     labels:
       nas: holocron
@@ -186,14 +163,12 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
-      - timeo=600
-      - retrans=2
     annotations: {}
     labels:
       nas: holocron
       tier: backup
 
-  # Sith NFS Storage Classes
+  # Sith NAS storage classes
   sithFast:
     enabled: true
     name: nfs-sith-fast
@@ -206,8 +181,6 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
-      - timeo=600
-      - retrans=2
     annotations: {}
     labels:
       nas: sith
@@ -225,8 +198,6 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
-      - timeo=600
-      - retrans=2
     annotations: {}
     labels:
       nas: sith
@@ -244,9 +215,52 @@ storageClasses:
       - hard
       - nfsvers=4.1
       - intr
-      - timeo=600
-      - retrans=2
     annotations: {}
     labels:
       nas: sith
       tier: backup
+
+# Default Storage Class
+defaultStorageClass: nfs-holocron-fast
+
+# RBAC
+rbac:
+  create: true
+
+# Service Account
+serviceAccount:
+  create: true
+  controller: csi-nfs-controller-sa
+  node: csi-nfs-node-sa
+
+# Node selector (for Linux nodes only)
+linux:
+  enabled: true
+
+# Tolerations for controller pod
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/controlplane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# Priority class
+priorityClassName: system-cluster-critical
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  seccompProfile:
+    type: RuntimeDefault
+
+# Override settings
+nameOverride: ""
+fullnameOverride: ""

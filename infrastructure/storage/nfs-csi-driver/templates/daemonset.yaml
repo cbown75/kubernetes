@@ -40,19 +40,14 @@ spec:
           imagePullPolicy: {{ .Values.image.livenessProbe.pullPolicy }}
           args:
             - --csi-address=/csi/csi.sock
-            - --probe-timeout=10s
-            - --http-endpoint=localhost:29653
+            - --probe-timeout=30s
+            - --health-port={{ .Values.node.healthPort }}
             - --v={{ .Values.node.logLevel }}
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
           resources:
-            limits:
-              memory: 128Mi
-              cpu: 50m
-            requests:
-              cpu: 10m
-              memory: 32Mi
+            {{- toYaml .Values.node.resources.livenessProbe | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -79,15 +74,12 @@ spec:
             - name: registration-dir
               mountPath: /registration
           resources:
-            limits:
-              memory: 128Mi
-              cpu: 50m
-            requests:
-              cpu: 10m
-              memory: 32Mi
+            {{- toYaml .Values.node.resources.nodeDriverRegistrar | nindent 12 }}
           securityContext:
+            # CRITICAL FOR TALOS: Must run privileged for registration
             privileged: true
             allowPrivilegeEscalation: true
+            runAsUser: 0
             capabilities:
               add:
                 - SYS_ADMIN
@@ -97,32 +89,26 @@ spec:
           args:
             - "-v={{ .Values.node.logLevel }}"
             - "--nodeid=$(NODE_ID)"
-            - "--endpoint=unix:///csi/csi.sock"
+            - "--endpoint=$(CSI_ENDPOINT)"
           env:
             - name: NODE_ID
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
           ports:
-            - containerPort: 29653
+            - containerPort: {{ .Values.node.healthPort }}
               name: healthz
               protocol: TCP
           livenessProbe:
-            failureThreshold: 5
+            failureThreshold: 10
             httpGet:
               path: /healthz
               port: healthz
-            initialDelaySeconds: 30
-            timeoutSeconds: 10
-            periodSeconds: 30
-          readinessProbe:
-            failureThreshold: 5
-            httpGet:
-              path: /healthz
-              port: healthz
-            initialDelaySeconds: 10
-            timeoutSeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 60
           securityContext:
             privileged: true
             capabilities:
@@ -134,13 +120,12 @@ spec:
             - name: pods-mount-dir
               mountPath: {{ .Values.kubeletDir }}/pods
               mountPropagation: Bidirectional
+            # CRITICAL FOR TALOS: Need host root for nsenter operations
+            - name: host-root
+              mountPath: /host
+              mountPropagation: Bidirectional
           resources:
-            limits:
-              memory: 256Mi
-              cpu: 200m
-            requests:
-              cpu: 50m
-              memory: 64Mi
+            {{- toYaml .Values.node.resources.nfs | nindent 12 }}
       volumes:
         - name: socket-dir
           hostPath:
@@ -154,3 +139,8 @@ spec:
           hostPath:
             path: {{ .Values.kubeletDir }}/plugins_registry
             type: Directory
+        # CRITICAL FOR TALOS: Mount host root for nsenter operations
+        - name: host-root
+          hostPath:
+            path: /
+            type: ""
