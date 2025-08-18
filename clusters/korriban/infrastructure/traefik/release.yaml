@@ -124,7 +124,7 @@ spec:
         addServicesLabels: true
         addRoutersLabels: true
 
-    # NFS PERSISTENCE CONFIGURATION
+    # NFS PERSISTENCE CONFIGURATION - FIXED
     persistence:
       enabled: true
       name: traefik-data
@@ -132,8 +132,7 @@ spec:
       size: 5Gi
       storageClass: nfs-holocron-general # Using NFS storage
       path: /data
-      annotations:
-        helm.sh/resource-policy: keep
+      # Removed annotations section to avoid duplication
 
     # Volume mounts for the persistence
     additionalVolumeMounts:
