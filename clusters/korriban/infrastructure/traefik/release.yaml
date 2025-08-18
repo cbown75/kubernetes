@@ -28,7 +28,7 @@ spec:
   dependsOn:
     - name: sealed-secrets
       namespace: kube-system
-    - name: metallb              # Add MetalLB dependency
+    - name: metallb # Add MetalLB dependency
       namespace: flux-system
   interval: 10m
   timeout: 10m
@@ -61,43 +61,45 @@ spec:
       enabled: true
       kind: Deployment
       replicas: 2
-      
+      annotations:
+        reloader.stakater.com/auto: "true"
+
       # Pod disruption budget for high availability
       podDisruptionBudget:
         enabled: false
         minAvailable: 1
-      
+
       # Rolling update strategy
       strategy:
         type: RollingUpdate
         rollingUpdate:
           maxSurge: 1
           maxUnavailable: 0
-      
+
       # Init containers (if needed)
       initContainers: []
-      
+
       # Additional containers (if needed)
       additionalContainers: []
-      
+
       # Additional volumes
       additionalVolumes: []
-      
+
       # Lifecycle hooks
       lifecycle: {}
-      
+
       # Termination grace period
       terminationGracePeriodSeconds: 60
-      
+
       # DNS Policy
       dnsPolicy: ClusterFirst
-      
+
       # Host network
       hostNetwork: false
-      
+
       # Image pull secrets
       imagePullSecrets: []
-      
+
       # Share process namespace
       shareProcessNamespace: false
 
@@ -112,25 +114,25 @@ spec:
     # Service configuration - UPDATED FOR METALLB
     service:
       enabled: true
-      type: LoadBalancer  # Changed from NodePort to LoadBalancer
+      type: LoadBalancer # Changed from NodePort to LoadBalancer
       annotations:
         metallb.universe.tf/address-pool: default
         # Optional: Request specific IP (first IP in the pool)
         # metallb.universe.tf/loadBalancerIPs: "10.10.7.200"
-      
+
       # Preserve real client IPs
       externalTrafficPolicy: Local
-      
+
       # Labels
       labels: {}
-      
+
       # LoadBalancer class (if needed for cloud providers)
       # loadBalancerClass: ""
-      
+
       # LoadBalancer source ranges (restrict access if needed)
       # loadBalancerSourceRanges:
       #   - 10.10.7.0/24
-      
+
       # Cluster IP (let Kubernetes assign)
       # clusterIP: ""
 
@@ -379,7 +381,7 @@ spec:
 
     # Volume configuration
     volumes: []
-    
+
     # Additional volume mounts
     additionalVolumeMounts: []
 
@@ -393,11 +395,6 @@ spec:
       volumeName: ""
       path: /data
       annotations: {}
-
-    # Deployment annotations
-    deployment:
-      annotations:
-        reloader.stakater.com/auto: "true"
 
     # Update strategy
     updateStrategy:
