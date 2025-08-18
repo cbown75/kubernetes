@@ -1,0 +1,142 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+    app.kubernetes.io/part-of: monitoring-stack
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+    network-policy/monitoring: "true"
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: grafana
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: https://grafana.github.io/helm-charts
+
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: grafana
+  namespace: flux-system
+spec:
+  targetNamespace: monitoring
+  dependsOn:
+    - name: traefik
+      namespace: flux-system
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: grafana
+      version: "8.4.x"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+      interval: 5m
+
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
+
+  values:
+    # Admin user
+    adminUser: admin
+    adminPassword: changeme123! # Change this!
+
+    # NFS Storage - Simple and straightforward
+    persistence:
+      enabled: true
+      storageClassName: nfs-holocron-general # Your NFS storage class
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+
+    # Resources
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+    # Security context - Required for NFS
+    securityContext:
+      runAsUser: 472
+      runAsGroup: 472
+      fsGroup: 472
+      runAsNonRoot: true
+
+    # Traefik Ingress with Basic Auth middleware
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      hosts:
+        - grafana.home.cwbtech.net
+      tls:
+        - secretName: grafana-tls
+          hosts:
+            - grafana.home.cwbtech.net
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.middlewares: monitoring-grafana-auth@kubernetescrd
+
+    # Default Prometheus datasource
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            url: http://prometheus.monitoring.svc.cluster.local:9090
+            access: proxy
+            isDefault: true
+
+    # Service monitor for Prometheus to scrape Grafana
+    serviceMonitor:
+      enabled: true
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+
+    # Dashboard auto-discovery
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        searchNamespace: ALL
+      datasources:
+        enabled: true
+        label: grafana_datasource
+        searchNamespace: ALL
+
+    # Basic Grafana configuration
+    grafana.ini:
+      analytics:
+        check_for_updates: false
+        reporting_enabled: false
+      server:
+        root_url: https://grafana.home.cwbtech.net
+      security:
+        disable_gravatar: true
+        cookie_secure: true
+      users:
+        allow_sign_up: false
