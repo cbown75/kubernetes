@@ -19,9 +19,6 @@ spec:
   addresses:
     - 10.10.7.100-10.10.7.150
   autoAssign: false
-  serviceSelector:
-    matchLabels:
-      metallb-pool: internal
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
