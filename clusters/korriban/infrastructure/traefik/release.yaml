@@ -355,6 +355,7 @@ spec:
           additionalLabels: {}
           namespace: ""
           rules: []
+        addRoutersLabels: false
 
     # Global arguments
     globalArguments:
