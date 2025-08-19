@@ -130,6 +130,7 @@ spec:
 
     # Prometheus monitoring
     prometheus:
+      namespace: monitoring
       serviceAccount: metallb-controller
       app.kubernetes.io/part-of: monitoring-stack
       serviceMonitor:
