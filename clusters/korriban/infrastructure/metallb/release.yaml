@@ -25,7 +25,7 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: metallb
-  namespace: metallb
+  namespace: metallb-system
 spec:
   targetNamespace: metallb-system
   interval: 15m
