@@ -174,40 +174,36 @@ spec:
       storageClass: "nfs-holocron-general"
       path: /data
 
-    # ---- Metrics (Prometheus) ----
     metrics:
       prometheus:
-        # Prom endpoint on entryPoint "metrics" (port 9100 above)
         entryPoint: metrics
         addEntryPointsLabels: true
         addServicesLabels: true
         addRoutersLabels: false
-        buckets: [0.1, 0.3, 1.2, 5.0]
 
-        # Service that exposes /metrics (ClusterIP)
+        # Buckets must be a string (comma-separated), not an array
+        buckets: "0.1,0.3,1.2,5.0"
+
         service:
           enabled: true
 
-        # ServiceMonitor for kube-prometheus-stack
         serviceMonitor:
           enabled: true
           additionalLabels:
-            release: prometheus-stack # <-- change if your stack uses a different selector
+            release: prometheus-stack
             app.kubernetes.io/part-of: monitoring-stack
-          namespace: "monitoring" # where your Prometheus Operator watches
+          namespace: "monitoring"
           jobLabel: "traefik"
           interval: 30s
           honorLabels: true
           metricRelabelings: []
           relabelings: []
 
-        # PrometheusRule is intentionally disabled to avoid empty-spec errors.
-        # If you want alerts, set enabled: true and provide rule groups.
         prometheusRule:
           enabled: false
-          additionalLabels: {}
           namespace: "monitoring"
-          rules: [] # supply valid groups if you enable this
+          additionalLabels: {}
+          rules: []
 
     # ---- TLS defaults (optional) ----
     tlsOptions:
