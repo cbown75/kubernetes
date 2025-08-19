@@ -16,7 +16,7 @@ apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
   name: metallb
-  namespace: flux-system
+  namespace: flux-system # THIS WAS MISSING - HelmRepository goes in flux-system
 spec:
   interval: 24h
   url: https://metallb.github.io/metallb
@@ -25,9 +25,9 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: metallb
-  namespace: metallb-system
+  namespace: flux-system # HelmRelease goes in flux-system, NOT metallb-system
 spec:
-  targetNamespace: metallb-system
+  targetNamespace: metallb-system # This deploys the actual pods to metallb-system
   interval: 15m
   timeout: 10m
   chart:
@@ -109,21 +109,22 @@ spec:
           cpu: 50m
           memory: 64Mi
 
-      # Tolerations to run on all nodes including control plane
+      # Tolerations for all nodes including control plane
       tolerations:
         - effect: NoSchedule
           operator: Exists
         - effect: NoExecute
           operator: Exists
 
-      # Security context - speaker needs network capabilities
+      # Security context - speaker needs elevated privileges
       securityContext:
+        runAsUser: 0
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true
         capabilities:
           add:
-            - NET_RAW # Required for ARP
-            - NET_ADMIN # Required for network manipulation
+            - NET_RAW
+            - NET_ADMIN
           drop:
             - ALL
 
@@ -133,13 +134,12 @@ spec:
         enabled: true
         additionalLabels:
           app.kubernetes.io/part-of: monitoring-stack
-
       prometheusRule:
         enabled: true
         additionalLabels:
           app.kubernetes.io/part-of: monitoring-stack
 
-    # CRD configuration
+    # CRD management
     crds:
       enabled: true
       validationFailurePolicy: Fail
