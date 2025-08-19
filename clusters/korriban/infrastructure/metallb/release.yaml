@@ -130,6 +130,8 @@ spec:
 
     # Prometheus monitoring
     prometheus:
+      serviceAccount: metallb-controller
+      app.kubernetes.io/part-of: monitoring-stack
       serviceMonitor:
         enabled: true
         additionalLabels:
