@@ -5,19 +5,11 @@ metadata:
   name: default
   namespace: metallb-system
 spec:
-  # IP range for your 10.10.7.x subnet
-  # Reserve .200-.250 for LoadBalancer IPs
-  # This keeps them separate from your node IPs (.2-.8)
   addresses:
     - 10.10.7.200-10.10.7.250
-
-  # Auto-assign IPs to services requesting LoadBalancer
   autoAssign: true
-
-  # Avoid conflicts with specific IPs if needed
   avoidBuggyIPs: true
 ---
-# Optional: Separate pool for internal services
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
@@ -26,11 +18,7 @@ metadata:
 spec:
   addresses:
     - 10.10.7.100-10.10.7.150
-
-  # Require explicit pool selection via annotation
   autoAssign: false
-
-  # Target specific services
   serviceSelector:
     matchLabels:
       metallb-pool: internal

@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   - release.yaml
-  #- config.yaml
+  - config.yaml
 
 commonLabels:
   app.kubernetes.io/name: metallb
