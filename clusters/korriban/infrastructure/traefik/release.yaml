@@ -4,10 +4,10 @@ kind: Namespace
 metadata:
   name: traefik-system
   labels:
-    name: traefik-system
     app.kubernetes.io/name: traefik
     app.kubernetes.io/part-of: traefik
     network-policy/traefik: "true"
+
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
@@ -17,6 +17,7 @@ metadata:
 spec:
   interval: 24h
   url: https://traefik.github.io/charts
+
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -25,23 +26,29 @@ metadata:
   namespace: flux-system
 spec:
   targetNamespace: traefik-system
+
+  # Optional: keep your deps
   dependsOn:
     - name: sealed-secrets
       namespace: kube-system
-    - name: metallb # Add MetalLB dependency
+    - name: metallb
       namespace: flux-system
+
   interval: 10m
   timeout: 10m
+
   chart:
     spec:
       chart: traefik
-      version: "28.1.0"
+      # Use a current v3 chart (example: 37.x). Pin what you’ve tested.
+      version: "37.0.0"
       sourceRef:
         kind: HelmRepository
         name: traefik
         namespace: flux-system
       interval: 5m
 
+  # If you do NOT use the optional traefik-crds chart, keep CRDs managed here:
   install:
     createNamespace: true
     crds: CreateReplace
@@ -56,230 +63,79 @@ spec:
     force: true
 
   values:
-    # Deployment configuration
+    # ---- Deployment / scheduling ----
     deployment:
-      enabled: true
       kind: Deployment
       replicas: 2
       annotations:
         reloader.stakater.com/auto: "true"
-
-      # Pod disruption budget for high availability
-      podDisruptionBudget:
-        enabled: false
-        minAvailable: 1
-
-      # Rolling update strategy
       strategy:
         type: RollingUpdate
-        rollingUpdate:
-          maxSurge: 1
-          maxUnavailable: 0
+        rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
 
-      # Init containers (if needed)
-      initContainers: []
-
-      # Additional containers (if needed)
-      additionalContainers: []
-
-      # Additional volumes
-      additionalVolumes: []
-
-      # Lifecycle hooks
-      lifecycle: {}
-
-      # Termination grace period
-      terminationGracePeriodSeconds: 60
-
-      # DNS Policy
-      dnsPolicy: ClusterFirst
-
-      # Host network
-      hostNetwork: false
-
-      # Image pull secrets
-      imagePullSecrets: []
-
-      # Share process namespace
-      shareProcessNamespace: false
-
-    # Pod configuration
-    podAnnotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "9100"
-      prometheus.io/path: "/metrics"
-
-    podLabels: {}
-
-    # Service configuration - UPDATED FOR METALLB
+    # ---- Service (MetalLB) ----
     service:
       enabled: true
-      type: LoadBalancer # Changed from NodePort to LoadBalancer
+      type: LoadBalancer
       annotations:
         metallb.universe.tf/address-pool: default
-        # Optional: Request specific IP (first IP in the pool)
-        # metallb.universe.tf/loadBalancerIPs: "10.10.7.200"
-
-      # Preserve real client IPs
       externalTrafficPolicy: Local
 
-      # Labels
-      labels: {}
-
-      # LoadBalancer class (if needed for cloud providers)
-      # loadBalancerClass: ""
-
-      # LoadBalancer source ranges (restrict access if needed)
-      # loadBalancerSourceRanges:
-      #   - 10.10.7.0/24
-
-      # Cluster IP (let Kubernetes assign)
-      # clusterIP: ""
-
-    # Ingress class configuration
+    # ---- IngressClass ----
     ingressClass:
       enabled: true
       isDefaultClass: true
       name: traefik
 
-    # RBAC configuration
-    rbac:
-      enabled: true
-      namespaced: false
+    # ---- Providers ----
+    providers:
+      kubernetesCRD:
+        enabled: true
+        allowCrossNamespace: false
+        allowExternalNameServices: false
+        allowEmptyServices: false
+      kubernetesIngress:
+        enabled: true
+        allowExternalNameServices: false
+        allowEmptyServices: false
+        # Let Traefik publish the LB service for status
+        publishedService:
+          enabled: true
+          pathOverride: "traefik-system/traefik"
 
-    # Service Account
-    serviceAccount:
-      create: true
-      name: ""
-
-    # Resource limits
-    resources:
-      requests:
-        cpu: 100m
-        memory: 50Mi
-      limits:
-        cpu: 300m
-        memory: 150Mi
-
-    # Affinity rules for pod placement
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - traefik
-              topologyKey: kubernetes.io/hostname
-
-    # Node selector
-    nodeSelector: {}
-
-    # Tolerations
-    tolerations: []
-
-    # Priority class
-    priorityClassName: ""
-
-    # Security context
-    securityContext:
-      capabilities:
-        drop: [ALL]
-        add: [NET_BIND_SERVICE]
-      readOnlyRootFilesystem: true
-      runAsGroup: 65532
-      runAsNonRoot: true
-      runAsUser: 65532
-
-    podSecurityContext:
-      fsGroup: 65532
-      fsGroupChangePolicy: "OnRootMismatch"
-      runAsGroup: 65532
-      runAsNonRoot: true
-      runAsUser: 65532
-
-    # Entry points configuration
+    # ---- EntryPoints / Ports (including metrics) ----
     ports:
       web:
         port: 8000
-        expose:
-          default: true
+        expose: { default: true }
         exposedPort: 80
         protocol: TCP
-        # Redirect HTTP to HTTPS
         redirections:
-          entryPoint:
-            to: websecure
-            scheme: https
-            permanent: true
+          entryPoint: { to: websecure, scheme: https, permanent: true }
       websecure:
         port: 8443
-        expose:
-          default: true
+        expose: { default: true }
         exposedPort: 443
         protocol: TCP
         tls:
           enabled: true
-          options: ""
-          certResolver: ""
-          domains: []
-        # Middleware for HTTPS
-        middlewares: []
       traefik:
         port: 9000
-        expose:
-          default: false
+        expose: { default: false }
         exposedPort: 9000
         protocol: TCP
       metrics:
         port: 9100
-        expose:
-          default: false
+        expose: { default: false }
         exposedPort: 9100
         protocol: TCP
 
-    # TLS options
-    tlsOptions:
-      default:
-        minVersion: VersionTLS12
-        sniStrict: true
-        cipherSuites:
-          - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-          - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
-          - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-          - TLS_AES_256_GCM_SHA384
-          - TLS_AES_128_GCM_SHA256
-          - TLS_CHACHA20_POLY1305_SHA256
-
-    # TLS Store
-    tlsStore:
-      default:
-        defaultCertificate:
-          secretName: ""
-
-    # Pilot configuration (Traefik telemetry)
-    pilot:
-      enabled: false
-      token: ""
-
-    # Experimental features
-    experimental:
-      v3:
-        enabled: false
-      plugins: {}
-      kubernetesGateway:
-        enabled: false
-
-    # API and Dashboard
+    # ---- API & dashboard ----
     api:
       dashboard: true
       debug: false
       insecure: false
 
-    # Dashboard IngressRoute
     ingressRoute:
       dashboard:
         enabled: true
@@ -288,164 +144,78 @@ spec:
         middlewares: []
         tls: {}
 
-    # Health checks
-    ping:
-      entryPoint: "traefik"
-      manualRouting: false
+    # ---- Security contexts ----
+    securityContext:
+      capabilities: { drop: [ALL], add: [NET_BIND_SERVICE] }
+      readOnlyRootFilesystem: true
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
+    podSecurityContext:
+      fsGroup: 65532
+      fsGroupChangePolicy: "OnRootMismatch"
+      runAsUser: 65532
+      runAsGroup: 65532
+      runAsNonRoot: true
 
-    # Providers configuration
-    providers:
-      kubernetesCRD:
-        enabled: true
-        allowCrossNamespace: false
-        allowExternalNameServices: false
-        allowEmptyServices: false
-        namespaces: []
-      kubernetesIngress:
-        enabled: true
-        allowExternalNameServices: false
-        allowEmptyServices: false
-        namespaces: []
-        publishedService:
-          enabled: true
-          pathOverride: "traefik-system/traefik-system-traefik"
-
-    # Logs
+    # ---- Logs ----
     logs:
-      general:
-        level: ERROR
-        format: json
+      general: { level: ERROR, format: json }
       access:
         enabled: false
         format: json
-        filters: {}
-        fields:
-          general:
-            defaultmode: keep
-            headers:
-              defaultmode: drop
 
-    # Metrics
-    metrics:
-      prometheus:
-        entryPoint: metrics
-        addEntryPointsLabels: true
-        addServicesLabels: true
-        addRoutersLabels: false
-        buckets:
-          - 0.1
-          - 0.3
-          - 1.2
-          - 5.0
-        service:
-          enabled: true
-        serviceMonitor:
-          enabled: false
-          additionalLabels:
-            app.kubernetes.io/part-of: monitoring-stack
-          namespace: ""
-          namespaceSelector: {}
-          metricRelabelings: []
-          relabelings: []
-          jobLabel: ""
-          interval: 30s
-          honorLabels: true
-        prometheusRule:
-          enabled: false
-          additionalLabels: {}
-          namespace: ""
-          rules: []
-
-    # Global arguments
-    globalArguments:
-      - "--global.checknewversion=false"
-      - "--global.sendanonymoususage=false"
-
-    # Additional arguments
-    additionalArguments: []
-
-    # Environment variables
-    env:
-      - name: POD_NAME
-        valueFrom:
-          fieldRef:
-            fieldPath: metadata.name
-      - name: POD_NAMESPACE
-        valueFrom:
-          fieldRef:
-            fieldPath: metadata.namespace
-
-    # Additional environment from secrets or configmaps
-    envFrom: []
-
-    # Volume configuration
-    volumes: []
-
-    # Additional volume mounts
-    additionalVolumeMounts: []
-
-    # Persistent storage configuration
+    # ---- Persistence (optional; remove if you don’t want it) ----
     persistence:
       enabled: true
       name: data
       accessMode: ReadWriteMany
       size: 5Gi
       storageClass: "nfs-holocron-general"
-      volumeName: ""
       path: /data
-      annotations: {}
 
-    # Update strategy
-    updateStrategy:
-      type: RollingUpdate
-      rollingUpdate:
-        maxUnavailable: 0
-        maxSurge: 1
+    # ---- Metrics (Prometheus) ----
+    metrics:
+      prometheus:
+        # Prom endpoint on entryPoint "metrics" (port 9100 above)
+        entryPoint: metrics
+        addEntryPointsLabels: true
+        addServicesLabels: true
+        addRoutersLabels: false
+        buckets: [0.1, 0.3, 1.2, 5.0]
 
-    # Readiness probe
-    readinessProbe:
-      failureThreshold: 1
-      initialDelaySeconds: 2
-      periodSeconds: 10
-      successThreshold: 1
-      timeoutSeconds: 2
+        # Service that exposes /metrics (ClusterIP)
+        service:
+          enabled: true
 
-    # Liveness probe
-    livenessProbe:
-      failureThreshold: 3
-      initialDelaySeconds: 2
-      periodSeconds: 10
-      successThreshold: 1
-      timeoutSeconds: 2
+        # ServiceMonitor for kube-prometheus-stack
+        serviceMonitor:
+          enabled: true
+          additionalLabels:
+            release: prometheus-stack # <-- change if your stack uses a different selector
+            app.kubernetes.io/part-of: monitoring-stack
+          namespace: "monitoring" # where your Prometheus Operator watches
+          jobLabel: "traefik"
+          interval: 30s
+          honorLabels: true
+          metricRelabelings: []
+          relabelings: []
 
-    # Host aliases
-    hostAliases: []
+        # PrometheusRule is intentionally disabled to avoid empty-spec errors.
+        # If you want alerts, set enabled: true and provide rule groups.
+        prometheusRule:
+          enabled: false
+          additionalLabels: {}
+          namespace: "monitoring"
+          rules: [] # supply valid groups if you enable this
 
-    # Extra objects to deploy
-    extraObjects: []
+    # ---- TLS defaults (optional) ----
+    tlsOptions:
+      default:
+        minVersion: VersionTLS12
+        sniStrict: true
 
-    # Autoscaling (HPA)
-    autoscaling:
-      enabled: false
-      minReplicas: 2
-      maxReplicas: 10
-      metrics:
-        - type: Resource
-          resource:
-            name: cpu
-            target:
-              type: Utilization
-              averageUtilization: 80
-        - type: Resource
-          resource:
-            name: memory
-            target:
-              type: Utilization
-              averageUtilization: 80
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 300
-          policies:
-            - type: Pods
-              value: 1
-              periodSeconds: 60
+    # ---- Global args ----
+    globalArguments:
+      - "--global.checknewversion=false"
+      - "--global.sendanonymoususage=false"
