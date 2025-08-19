@@ -269,8 +269,7 @@ spec:
     experimental:
       v3:
         enabled: false
-      plugins:
-        enabled: false
+      plugins: {}
       kubernetesGateway:
         enabled: false
 
