@@ -34,6 +34,7 @@ spec:
     spec:
       chart: metallb
       version: "0.14.8"
+      reconcileStrategy: Revision
       sourceRef:
         kind: HelmRepository
         name: metallb

@@ -1,7 +1,7 @@
 global:
   imageRegistry: ""
   imagePullSecrets: []
-  storageClass: "local-path"
+  storageClass: "synology-holocron-fast"
 
 prometheus:
   image:
