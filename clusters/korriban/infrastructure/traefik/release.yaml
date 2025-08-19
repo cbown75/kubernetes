@@ -389,8 +389,8 @@ spec:
       enabled: true
       name: data
       accessMode: ReadWriteOnce
-      size: 128Mi
-      storageClass: "local-path"
+      size: 5Gi
+      storageClass: "nfs-holocron-general"
       volumeName: ""
       path: /data
       annotations: {}
