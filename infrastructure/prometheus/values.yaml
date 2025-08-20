@@ -107,6 +107,22 @@ prometheus:
             action: keep
             regex: default;kubernetes;https
 
+      # NEW: Node Exporter scrape configuration
+      - job_name: "node-exporter"
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          # Use node's internal IP and port 9100
+          - source_labels: [__meta_kubernetes_node_address_InternalIP]
+            target_label: __address__
+            replacement: "${1}:9100"
+          # Add node name as instance label
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: instance
+          # Copy all node labels
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
       - job_name: "kubernetes-nodes"
         kubernetes_sd_configs:
           - role: node
