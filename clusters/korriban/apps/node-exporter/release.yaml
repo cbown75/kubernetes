@@ -106,7 +106,6 @@ spec:
         path: /metrics
         additionalLabels:
           release: prometheus
-          app.kubernetes.io/part-of: monitoring-stack
         relabelings:
           - sourceLabels: [__meta_kubernetes_pod_node_name]
             targetLabel: instance
