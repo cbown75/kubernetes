@@ -25,7 +25,10 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: metallb
-  namespace: flux-system
+  namespace: metallb-system
+  labels:
+    app.kubernetes.io/name: metallb
+    app.kubernetes.io/part-of: metallb
 spec:
   targetNamespace: metallb-system
   interval: 15m
