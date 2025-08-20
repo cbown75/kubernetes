@@ -53,6 +53,16 @@ spec:
       namespace: traefik-system
 
   values:
+    # Disable other components (deployed separately)
+    alertmanager:
+      enabled: false
+    kube-state-metrics:
+      enabled: false
+    prometheus-node-exporter:
+      enabled: false
+    prometheus-pushgateway:
+      enabled: false
+
     # Prometheus server configuration
     server:
       # Image configuration
@@ -165,14 +175,6 @@ spec:
     # Prometheus configuration file
     serverFiles:
       prometheus.yml:
-        global:
-          scrape_interval: 30s
-          scrape_timeout: 10s
-          evaluation_interval: 30s
-          external_labels:
-            cluster: "korriban"
-            environment: "production"
-
         rule_files:
           - "/etc/prometheus/rules/*.yml"
 
@@ -199,20 +201,18 @@ spec:
                 action: keep
                 regex: default;kubernetes;https
 
-          # Node Exporter - discover via node IPs
-          - job_name: "node-exporter"
+          - job_name: node-exporter
             kubernetes_sd_configs:
               - role: node
             relabel_configs:
               - source_labels: [__meta_kubernetes_node_address_InternalIP]
-                target_label: __address__
                 replacement: "${1}:9100"
+                target_label: __address__
               - source_labels: [__meta_kubernetes_node_name]
                 target_label: instance
               - action: labelmap
                 regex: __meta_kubernetes_node_label_(.+)
 
-          # Services with Prometheus annotations
           - job_name: "kubernetes-services"
             kubernetes_sd_configs:
               - role: service
@@ -232,9 +232,9 @@ spec:
                     __meta_kubernetes_service_annotation_prometheus_io_port,
                   ]
                 action: replace
-                target_label: __address__
                 regex: ([^:]+)(?::\d+)?;(\d+)
                 replacement: ${1}:${2}
+                target_label: __address__
               - action: labelmap
                 regex: __meta_kubernetes_service_label_(.+)
               - source_labels: [__meta_kubernetes_namespace]
@@ -244,7 +244,6 @@ spec:
                 action: replace
                 target_label: kubernetes_service_name
 
-          # cAdvisor metrics (container metrics from kubelet)
           - job_name: "kubernetes-cadvisor"
             kubernetes_sd_configs:
               - role: node
@@ -263,7 +262,6 @@ spec:
                 target_label: __metrics_path__
                 replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
 
-          # Kubernetes nodes (kubelet metrics)
           - job_name: "kubernetes-nodes"
             kubernetes_sd_configs:
               - role: node
@@ -282,7 +280,6 @@ spec:
                 target_label: __metrics_path__
                 replacement: /api/v1/nodes/${1}/proxy/metrics
 
-          # Pods with Prometheus annotations
           - job_name: "kubernetes-pods"
             kubernetes_sd_configs:
               - role: pod
@@ -302,9 +299,9 @@ spec:
                     __meta_kubernetes_pod_annotation_prometheus_io_port,
                   ]
                 action: replace
-                target_label: __address__
-                regex: ([^:]+)(?::\d+)?;(\d+)
+                regex: ([^:]+)(?:\d+)?;(\d+)
                 replacement: ${1}:${2}
+                target_label: __address__
               - action: labelmap
                 regex: __meta_kubernetes_pod_label_(.+)
               - source_labels: [__meta_kubernetes_namespace]
@@ -313,19 +310,3 @@ spec:
               - source_labels: [__meta_kubernetes_pod_name]
                 action: replace
                 target_label: kubernetes_pod_name
-
-    # Disable components we don't need (you have separate charts)
-    alertmanager:
-      enabled: false
-
-    kube-state-metrics:
-      enabled: false
-
-    prometheus-node-exporter:
-      enabled: false
-
-    prometheus-pushgateway:
-      enabled: false
-
-    # No extra volumes or secrets needed
-    extraSecretMounts: []
