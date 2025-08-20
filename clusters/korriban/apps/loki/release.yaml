@@ -3,9 +3,8 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: loki
-  namespace: flux-system
+  namespace: monitoring
 spec:
-  targetNamespace: monitoring
   dependsOn:
     - name: traefik
       namespace: flux-system
