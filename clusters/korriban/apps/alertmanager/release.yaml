@@ -1,14 +1,3 @@
----
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: HelmRepository
-metadata:
-  name: prometheus-community
-  namespace: flux-system
-spec:
-  interval: 24h
-  url: https://prometheus-community.github.io/helm-charts
-
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -18,14 +7,6 @@ metadata:
     app.kubernetes.io/name: alertmanager
     app.kubernetes.io/part-of: monitoring-stack
 spec:
-  targetNamespace: monitoring
-  dependsOn:
-    - name: prometheus
-      namespace: monitoring
-    - name: traefik
-      namespace: traefik-system
-  interval: 10m
-  timeout: 10m
   chart:
     spec:
       chart: alertmanager
@@ -35,7 +16,13 @@ spec:
         name: prometheus-community
         namespace: flux-system
       interval: 5m
-
+  interval: 10m
+  timeout: 10m
+  dependsOn:
+    - name: prometheus
+      namespace: monitoring
+    - name: traefik
+      namespace: traefik-system
   install:
     createNamespace: false
     remediation:
@@ -44,47 +31,49 @@ spec:
     remediation:
       retries: 3
   rollback:
-    recreate: true
     force: true
-
+    recreate: true
   values:
-    # Use StatefulSet for HA clustering
+    # High availability configuration
     replicaCount: 3
 
-    # NFS Storage - matches your pattern
+    # Storage configuration
     persistence:
       enabled: true
-      storageClass: nfs-holocron-general
+      storageClass: "nfs-holocron-general"
       accessMode: ReadWriteOnce
       size: 5Gi
 
-    # Resources
-    resources:
-      limits:
-        cpu: 300m
-        memory: 256Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
-
-    # Security context for NFS compatibility
-    securityContext:
-      runAsUser: 65534
-      runAsGroup: 65534
-      fsGroup: 65534
-      runAsNonRoot: true
-
-    # Pod security context
+    # Security context
     podSecurityContext:
       runAsUser: 65534
       runAsGroup: 65534
-      fsGroup: 65534
       runAsNonRoot: true
+      fsGroup: 65534
 
-    # Traefik Ingress - no basic auth, just TLS
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      fsGroup: 65534
+
+    # Resource requests and limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+
+    # Ingress configuration
     ingress:
       enabled: true
       className: traefik
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
       hosts:
         - host: alertmanager.home.cwbtech.net
           paths:
@@ -94,22 +83,17 @@ spec:
         - secretName: alertmanager-tls
           hosts:
             - alertmanager.home.cwbtech.net
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: "true"
 
-    # ServiceMonitor for Prometheus scraping
+    # ServiceMonitor for Prometheus integration
     serviceMonitor:
       enabled: true
       additionalLabels:
         app.kubernetes.io/part-of: monitoring-stack
 
-    # Use external secrets
+    # Mount secrets for Slack webhook and webhook password
     extraSecretMounts:
       - name: alertmanager-secrets
         secretName: alertmanager-secrets
-        defaultMode: 0440
         mountPath: /etc/alertmanager/secrets
         readOnly: true
 
@@ -119,11 +103,6 @@ spec:
         resolve_timeout: 5m
         # Slack webhook URL from sealed secret
         slack_api_url_file: "/etc/alertmanager/secrets/slack-webhook-url"
-        # SMTP settings only if you plan to use email notifications
-        # smtp_smarthost: 'smtp.home.cwbtech.net:587'
-        # smtp_from: 'alertmanager@cwbtech.net'
-        # smtp_auth_username: 'alertmanager@cwbtech.net'
-        # smtp_auth_password_file: '/etc/alertmanager/secrets/smtp-password'
 
       route:
         receiver: "default"
@@ -166,18 +145,6 @@ spec:
               send_resolved: true
 
         - name: "critical"
-          # Uncomment email config if you want email notifications
-          # email_configs:
-          #   - to: 'admin@cwbtech.net'
-          #     subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
-          #     body: |
-          #       {{ range .Alerts.Firing }}
-          #       Alert: {{ .Labels.alertname }}
-          #       Instance: {{ .Labels.instance }}
-          #       Severity: {{ .Labels.severity }}
-          #       Summary: {{ .Annotations.summary }}
-          #       Description: {{ .Annotations.description }}
-          #       {{ end }}
           webhook_configs:
             - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/critical"
               send_resolved: true
@@ -185,10 +152,6 @@ spec:
                 basic_auth:
                   username: "alertmanager"
                   password_file: "/etc/alertmanager/secrets/webhook-password"
-          # Add email config here when ready
-          # email_configs:
-          #   - to: 'admin@cwbtech.net'
-          #     subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
 
         - name: "warning"
           webhook_configs:
@@ -212,20 +175,6 @@ spec:
           target_matchers:
             - severity="warning"
           equal: ["alertname", "cluster", "service"]
-
-    # HA clustering configuration
-    extraArgs:
-      storage.path: /alertmanager
-      web.external-url: https://alertmanager.home.cwbtech.net
-      cluster.listen-address: 0.0.0.0:9094
-      cluster.advertise-address: $(POD_IP):9094
-
-    # Environment variables for clustering
-    extraEnv:
-      - name: POD_IP
-        valueFrom:
-          fieldRef:
-            fieldPath: status.podIP
 
     # Pod anti-affinity for HA
     affinity:
