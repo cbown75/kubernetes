@@ -1,0 +1,241 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: prometheus-community
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: https://prometheus-community.github.io/helm-charts
+
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  targetNamespace: monitoring
+  dependsOn:
+    - name: prometheus
+      namespace: monitoring
+    - name: traefik
+      namespace: traefik-system
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: alertmanager
+      version: "1.24.x"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+      interval: 5m
+
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
+
+  values:
+    # Use StatefulSet for HA clustering
+    replicaCount: 3
+
+    # NFS Storage - matches your pattern
+    persistence:
+      enabled: true
+      storageClass: nfs-holocron-general
+      accessMode: ReadWriteOnce
+      size: 5Gi
+
+    # Resources
+    resources:
+      limits:
+        cpu: 300m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    # Security context for NFS compatibility
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      fsGroup: 65534
+      runAsNonRoot: true
+
+    # Pod security context
+    podSecurityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      fsGroup: 65534
+      runAsNonRoot: true
+
+    # Traefik Ingress - no basic auth, just TLS
+    ingress:
+      enabled: true
+      className: traefik
+      hosts:
+        - host: alertmanager.home.cwbtech.net
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: alertmanager-tls
+          hosts:
+            - alertmanager.home.cwbtech.net
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+
+    # ServiceMonitor for Prometheus scraping
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        app.kubernetes.io/part-of: monitoring-stack
+
+    # Use external secrets
+    extraSecretMounts:
+      - name: alertmanager-secrets
+        secretName: alertmanager-secrets
+        defaultMode: 0440
+        mountPath: /etc/alertmanager/secrets
+        readOnly: true
+
+    # AlertManager configuration
+    config:
+      global:
+        resolve_timeout: 5m
+        # Slack webhook URL from sealed secret
+        slack_api_url_file: "/etc/alertmanager/secrets/slack-webhook-url"
+        # SMTP settings only if you plan to use email notifications
+        # smtp_smarthost: 'smtp.home.cwbtech.net:587'
+        # smtp_from: 'alertmanager@cwbtech.net'
+        # smtp_auth_username: 'alertmanager@cwbtech.net'
+        # smtp_auth_password_file: '/etc/alertmanager/secrets/smtp-password'
+
+      route:
+        receiver: "default"
+        group_by: ["alertname", "cluster", "service"]
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+        routes:
+          # Critical alerts - immediate notification
+          - matchers:
+              - severity="critical"
+            receiver: "critical"
+            group_wait: 10s
+            repeat_interval: 1h
+            continue: true
+
+          # Warning alerts - grouped notifications
+          - matchers:
+              - severity="warning"
+            receiver: "warning"
+            group_wait: 2m
+            repeat_interval: 12h
+
+          # Infrastructure alerts
+          - matchers:
+              - alertname=~"Node.*|Disk.*|Memory.*|CPU.*"
+            receiver: "infrastructure"
+            group_by: ["alertname", "instance"]
+
+          # Application alerts
+          - matchers:
+              - alertname=~"Pod.*|Container.*|Service.*"
+            receiver: "application"
+            group_by: ["alertname", "namespace", "pod"]
+
+      receivers:
+        - name: "default"
+          webhook_configs:
+            - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/alerts"
+              send_resolved: true
+
+        - name: "critical"
+          # Uncomment email config if you want email notifications
+          # email_configs:
+          #   - to: 'admin@cwbtech.net'
+          #     subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+          #     body: |
+          #       {{ range .Alerts.Firing }}
+          #       Alert: {{ .Labels.alertname }}
+          #       Instance: {{ .Labels.instance }}
+          #       Severity: {{ .Labels.severity }}
+          #       Summary: {{ .Annotations.summary }}
+          #       Description: {{ .Annotations.description }}
+          #       {{ end }}
+          webhook_configs:
+            - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/critical"
+              send_resolved: true
+              http_config:
+                basic_auth:
+                  username: "alertmanager"
+                  password_file: "/etc/alertmanager/secrets/webhook-password"
+          # Add email config here when ready
+          # email_configs:
+          #   - to: 'admin@cwbtech.net'
+          #     subject: '[CRITICAL] {{ .GroupLabels.alertname }}'
+
+        - name: "warning"
+          webhook_configs:
+            - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/warning"
+              send_resolved: true
+
+        - name: "infrastructure"
+          webhook_configs:
+            - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/infrastructure"
+              send_resolved: true
+
+        - name: "application"
+          webhook_configs:
+            - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/application"
+              send_resolved: true
+
+      inhibit_rules:
+        # Inhibit warning alerts when critical alerts are firing
+        - source_matchers:
+            - severity="critical"
+          target_matchers:
+            - severity="warning"
+          equal: ["alertname", "cluster", "service"]
+
+    # HA clustering configuration
+    extraArgs:
+      - --storage.path=/alertmanager
+      - --web.external-url=https://alertmanager.home.cwbtech.net
+      - --cluster.listen-address=0.0.0.0:9094
+      - --cluster.advertise-address=$(POD_IP):9094
+
+    # Environment variables for clustering
+    extraEnv:
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+
+    # Pod anti-affinity for HA
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values: ["alertmanager"]
+              topologyKey: kubernetes.io/hostname
