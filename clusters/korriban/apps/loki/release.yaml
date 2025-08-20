@@ -9,11 +9,11 @@ spec:
     - name: traefik
       namespace: flux-system
   interval: 10m
-  timeout: 15m # Extended timeout for initial deployment
+  timeout: 15m
   chart:
     spec:
       chart: loki
-      version: "6.30.x" # Avoid 6.35+ due to S3 breaking changes
+      version: "6.30.x"
       sourceRef:
         kind: HelmRepository
         name: grafana
@@ -32,12 +32,29 @@ spec:
     force: true
 
   values:
-    # Deployment mode - SingleBinary for filesystem storage
+    # Deployment mode
     deploymentMode: SingleBinary
 
-    # Loki configuration
+    # Global Loki configuration with enhanced security contexts
     loki:
       auth_enabled: false
+
+      # Global Pod Security Context
+      podSecurityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Global Container Security Context
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
 
       # Critical: replication_factor must be 1 for single replica
       commonConfig:
@@ -50,10 +67,10 @@ spec:
       storage:
         type: filesystem
 
-      # Schema configuration - quoted dates prevent parsing issues
+      # Schema configuration
       schemaConfig:
         configs:
-          - from: "2024-04-01" # Quoted to prevent Flux date conversion
+          - from: "2024-04-01"
             store: tsdb
             object_store: filesystem
             schema: v13
@@ -63,11 +80,10 @@ spec:
 
       # Limits configuration
       limits_config:
-        retention_period: 168h # 7 days
+        retention_period: 168h
         enforce_metric_name: false
         reject_old_samples: true
         reject_old_samples_max_age: 168h
-        # Prevent excessive memory usage
         max_entries_limit_per_query: 5000
         max_streams_per_user: 10000
         max_global_streams_per_user: 10000
@@ -79,23 +95,11 @@ spec:
         retention_enabled: true
         retention_delete_delay: 1h
 
-    # Sidecar containers security context
-    sidecar:
-      rules:
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
-          seccompProfile:
-            type: RuntimeDefault
-
     # SingleBinary specific configuration
     singleBinary:
       replicas: 1
 
-      # Reasonable resource limits (avoid chart defaults)
+      # Resource limits
       resources:
         limits:
           cpu: 500m
@@ -103,25 +107,6 @@ spec:
         requests:
           cpu: 250m
           memory: 512Mi
-
-      # Pod security context - required for restricted pod security
-      podSecurityContext:
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
-
-      # Container security contexts
-      containerSecurityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        readOnlyRootFilesystem: true
-        seccompProfile:
-          type: RuntimeDefault
 
       # Persistence using NFS
       persistence:
@@ -137,7 +122,7 @@ spec:
         - name: GOMEMLIMIT
           value: 900MiB
 
-    # Explicitly disable other deployment modes to prevent validation errors
+    # Explicitly disable other deployment modes
     backend:
       replicas: 0
     read:
@@ -145,10 +130,11 @@ spec:
     write:
       replicas: 0
 
-    # Gateway configuration - avoid common issues
+    # Gateway configuration with enhanced security context
     gateway:
       enabled: true
-      # Reduced resources (chart defaults are excessive)
+
+      # Resource limits
       resources:
         limits:
           cpu: 100m
@@ -156,46 +142,64 @@ spec:
         requests:
           cpu: 50m
           memory: 64Mi
-      # Security context for restricted pod security
+
+      # Gateway-specific security context
       podSecurityContext:
-        runAsUser: 101
+        fsGroup: 101
         runAsGroup: 101
         runAsNonRoot: true
-        fsGroup: 101
+        runAsUser: 101
         seccompProfile:
           type: RuntimeDefault
+
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:
           drop:
             - ALL
         readOnlyRootFilesystem: true
+
+    # Memcached configuration with proper security contexts
+    memcached:
+      # Security context for memcached processes
+      podSecurityContext:
+        fsGroup: 11211
+        runAsGroup: 11211
+        runAsNonRoot: true
+        runAsUser: 11211
         seccompProfile:
           type: RuntimeDefault
 
-    # Disable MinIO completely for filesystem storage
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+
+    # Disable MinIO for filesystem storage
     minio:
       enabled: false
 
-    # Fix memcached excessive memory requests
+    # Cache configuration
     chunksCache:
       enabled: true
-      allocatedMemory: 1024 # 1GB instead of 9.8GB default
+      allocatedMemory: 1024
 
     resultsCache:
       enabled: true
-      allocatedMemory: 512 # 512MB instead of excessive default
+      allocatedMemory: 512
 
-    # ServiceMonitor - disable problematic self-monitoring
+    # ServiceMonitor configuration
     monitoring:
       selfMonitoring:
-        enabled: false # Avoids Grafana Agent Operator dependency
+        enabled: false
       serviceMonitor:
         enabled: true
         labels:
           app.kubernetes.io/part-of: monitoring-stack
 
-    # Simplified ingress (avoid complex host/path structures)
+    # Ingress configuration
     ingress:
       enabled: true
       ingressClassName: traefik
@@ -210,9 +214,9 @@ spec:
           hosts:
             - loki.home.cwbtech.net
 
-    # Disable problematic RBAC features
+    # RBAC configuration
     rbac:
-      pspEnabled: false # Avoid deprecated PodSecurityPolicy
+      pspEnabled: false
 
     # Disable test pods
     test:
