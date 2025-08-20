@@ -45,19 +45,34 @@ spec:
         cpu: 100m
         memory: 64Mi
 
+    # Override default volumes to remove Docker-specific mounts
+    defaultVolumes:
+      - name: run
+        hostPath:
+          path: /run/promtail
+      - name: pods
+        hostPath:
+          path: /var/log/pods
+
+    defaultVolumeMounts:
+      - name: run
+        mountPath: /run/promtail
+      - name: pods
+        mountPath: /var/log/pods
+        readOnly: true
+
     # Security context for Talos
-    securityContext:
+    containerSecurityContext:
       runAsUser: 0
       runAsGroup: 0
-      fsGroup: 0
-      privileged: false
-      allowPrivilegeEscalation: false
+      fsGroup: 4
       capabilities:
-        drop:
-          - ALL
         add:
           - DAC_READ_SEARCH
+        drop:
+          - ALL
       readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
 
     # Promtail configuration
     config:
@@ -66,63 +81,67 @@ spec:
           tenant_id: ""
 
       positions:
-        filename: /tmp/positions.yaml
+        filename: /run/promtail/positions.yaml
 
       server:
         http_listen_port: 3101
         grpc_listen_port: 0
 
-      scrape_configs:
-        # Kubernetes pod logs for Talos/containerd
-        - job_name: kubernetes-pods
-          kubernetes_sd_configs:
-            - role: pod
-          pipeline_stages:
-            - cri: {}
-          relabel_configs:
-            - source_labels:
-                - __meta_kubernetes_pod_controller_name
-              regex: "([0-9a-z-.]+?)(-[0-9a-f]{8,10})?"
-              action: replace
-              target_label: __tmp_controller_name
-            - source_labels:
-                - __meta_kubernetes_pod_label_app_kubernetes_io_name
-                - __meta_kubernetes_pod_label_app
-                - __tmp_controller_name
-                - __meta_kubernetes_pod_name
-              regex: "(^[0-9a-z-.]+|;[0-9a-z-.]+|;[0-9a-z-.]+|;[0-9a-z-.]+).*"
-              action: replace
-              target_label: app
-            - source_labels:
-                - __meta_kubernetes_pod_label_app_kubernetes_io_version
-                - __meta_kubernetes_pod_label_version
-              regex: "(^[0-9a-z-.]+|;[0-9a-z-.]+).*"
-              action: replace
-              target_label: version
-            - action: replace
-              source_labels:
-                - __meta_kubernetes_namespace
-              target_label: namespace
-            - action: replace
-              source_labels:
-                - __meta_kubernetes_pod_name
-              target_label: pod
-            - action: replace
-              source_labels:
-                - __meta_kubernetes_pod_container_name
-              target_label: container
-            - action: replace
-              replacement: /var/log/pods/*$1/*.log
-              separator: /
-              source_labels:
-                - __meta_kubernetes_pod_uid
-                - __meta_kubernetes_pod_container_name
-              target_label: __path__
-            # Drop system namespaces to reduce noise
-            - action: drop
-              regex: kube-system|flux-system|metallb-system
-              source_labels:
-                - __meta_kubernetes_namespace
+      snippets:
+        pipelineStages:
+          - cri: {}
+
+        scrapeConfigs: |
+          # Kubernetes pod logs for Talos/containerd
+          - job_name: kubernetes-pods
+            kubernetes_sd_configs:
+              - role: pod
+            pipeline_stages:
+              - cri: {}
+            relabel_configs:
+              - source_labels:
+                  - __meta_kubernetes_pod_controller_name
+                regex: "([0-9a-z-.]+?)(-[0-9a-f]{8,10})?"
+                action: replace
+                target_label: __tmp_controller_name
+              - source_labels:
+                  - __meta_kubernetes_pod_label_app_kubernetes_io_name
+                  - __meta_kubernetes_pod_label_app
+                  - __tmp_controller_name
+                  - __meta_kubernetes_pod_name
+                regex: "(^[0-9a-z-.]+|;[0-9a-z-.]+|;[0-9a-z-.]+|;[0-9a-z-.]+).*"
+                action: replace
+                target_label: app
+              - source_labels:
+                  - __meta_kubernetes_pod_label_app_kubernetes_io_version
+                  - __meta_kubernetes_pod_label_version
+                regex: "(^[0-9a-z-.]+|;[0-9a-z-.]+).*"
+                action: replace
+                target_label: version
+              - action: replace
+                source_labels:
+                  - __meta_kubernetes_namespace
+                target_label: namespace
+              - action: replace
+                source_labels:
+                  - __meta_kubernetes_pod_name
+                target_label: pod
+              - action: replace
+                source_labels:
+                  - __meta_kubernetes_pod_container_name
+                target_label: container
+              - action: replace
+                replacement: /var/log/pods/*$1/*.log
+                separator: /
+                source_labels:
+                  - __meta_kubernetes_pod_uid
+                  - __meta_kubernetes_pod_container_name
+                target_label: __path__
+              # Drop system namespaces to reduce noise
+              - action: drop
+                regex: kube-system|flux-system|metallb-system
+                source_labels:
+                  - __meta_kubernetes_namespace
 
     # ServiceMonitor for Prometheus
     serviceMonitor:
@@ -130,5 +149,8 @@ spec:
       labels:
         app.kubernetes.io/part-of: monitoring-stack
 
-    # REMOVED extraVolumes and extraVolumeMounts for Docker
-    # Talos/containerd logs are available through /var/log/pods/ by default
+    # Tolerations to run on all nodes including control plane
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
