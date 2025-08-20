@@ -1,3 +1,4 @@
 .envrc
 infrastructure/storage/synology-csi-driver/templates/client-info.yml
 create-grafana-secrets.yaml
+create-sealed-secret.sh

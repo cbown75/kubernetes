@@ -48,17 +48,3 @@ metadata:
 spec:
   basicAuth:
     secret: traefik-dashboard-auth-secret
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: traefik-dashboard-auth-secret
-  namespace: traefik-system
-  labels:
-    app.kubernetes.io/name: traefik
-    app.kubernetes.io/part-of: infrastructure
-type: Opaque
-data:
-  # Default: admin/admin (change this!)
-  # Generated with: htpasswd -nb admin admin | base64 -w0
-  users: YWRtaW46JGFwcjEkSDZ1c3Z2bEUkcGF5WXNDUXVFSFV0bzdOaU56czI3cgAK

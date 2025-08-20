@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - release.yaml
   - dashboard-external.yaml
+  - sealed-secret.yaml
