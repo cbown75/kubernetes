@@ -24,6 +24,9 @@ kind: HelmRelease
 metadata:
   name: traefik
   namespace: traefik-system
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/part-of: traefik
 spec:
   targetNamespace: traefik-system
 
