@@ -1,4 +1,3 @@
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -6,20 +5,19 @@ metadata:
   namespace: monitoring
 spec:
   dependsOn:
-    - name: traefik
-      namespace: flux-system
+  - name: traefik
+    namespace: flux-system
   interval: 10m
   timeout: 10m
   chart:
     spec:
       chart: loki
-      version: "6.6.x"
+      version: 6.6.x
       sourceRef:
         kind: HelmRepository
         name: grafana
         namespace: flux-system
       interval: 5m
-
   install:
     createNamespace: false
     remediation:
@@ -30,12 +28,8 @@ spec:
   rollback:
     recreate: true
     force: true
-
   values:
-    # Use simple SingleBinary mode
     deploymentMode: SingleBinary
-
-    # Single binary configuration
     singleBinary:
       replicas: 1
       resources:
@@ -45,47 +39,33 @@ spec:
         requests:
           cpu: 250m
           memory: 512Mi
-
-      # Persistence using NFS
       persistence:
         enabled: true
         storageClass: nfs-holocron-general
-        accessModes:
-          - ReadWriteOnce
         size: 10Gi
-
-    # Minimal Loki config - let chart handle defaults
     loki:
       auth_enabled: false
-
-      # Basic limits
       limits_config:
         retention_period: 168h
-
-    # ServiceMonitor for Prometheus
     serviceMonitor:
       enabled: true
       labels:
         app.kubernetes.io/part-of: monitoring-stack
-
-    # Ingress
     ingress:
       enabled: true
       ingressClassName: traefik
       hosts:
-        - host: loki.home.cwbtech.net
-          paths:
-            - path: /
-              pathType: Prefix
+      - host: loki.home.cwbtech.net
+        paths:
+        - path: /
+          pathType: Prefix
       tls:
-        - secretName: loki-tls
-          hosts:
-            - loki.home.cwbtech.net
+      - secretName: loki-tls
+        hosts:
+        - loki.home.cwbtech.net
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-cloudflare
         traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: "true"
-
-    # Disable test pods
+        traefik.ingress.kubernetes.io/router.tls: 'true'
     test:
       enabled: false
