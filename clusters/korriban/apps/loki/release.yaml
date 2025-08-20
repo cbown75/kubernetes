@@ -35,11 +35,11 @@ spec:
     # Deployment mode
     deploymentMode: SingleBinary
 
-    # Global Loki configuration with enhanced security contexts
+    # Global Loki configuration
     loki:
       auth_enabled: false
 
-      # Global Pod Security Context
+      # Global security contexts - applied to all Loki components
       podSecurityContext:
         fsGroup: 10001
         runAsGroup: 10001
@@ -48,7 +48,6 @@ spec:
         seccompProfile:
           type: RuntimeDefault
 
-      # Global Container Security Context
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -56,14 +55,14 @@ spec:
             - ALL
         readOnlyRootFilesystem: true
 
-      # Critical: replication_factor must be 1 for single replica
+      # Common configuration
       commonConfig:
         replication_factor: 1
         ring:
           kvstore:
             store: inmemory
 
-      # Filesystem storage configuration
+      # Storage configuration
       storage:
         type: filesystem
 
@@ -88,7 +87,7 @@ spec:
         max_streams_per_user: 10000
         max_global_streams_per_user: 10000
 
-      # Compactor configuration for retention
+      # Compactor configuration
       compactor:
         working_directory: /var/loki/compactor
         compaction_interval: 10m
@@ -98,8 +97,6 @@ spec:
     # SingleBinary specific configuration
     singleBinary:
       replicas: 1
-
-      # Resource limits
       resources:
         limits:
           cpu: 500m
@@ -107,8 +104,6 @@ spec:
         requests:
           cpu: 250m
           memory: 512Mi
-
-      # Persistence using NFS
       persistence:
         enabled: true
         size: 10Gi
@@ -116,25 +111,39 @@ spec:
         accessModes:
           - ReadWriteOnce
         enableStatefulSetAutoDeletePVC: false
-
-      # Memory management
       extraEnv:
         - name: GOMEMLIMIT
           value: 900MiB
 
-    # Explicitly disable other deployment modes
+    # Critical: Explicitly disable all other deployment modes
     backend:
       replicas: 0
     read:
       replicas: 0
     write:
       replicas: 0
+    ingester:
+      replicas: 0
+    querier:
+      replicas: 0
+    queryFrontend:
+      replicas: 0
+    queryScheduler:
+      replicas: 0
+    distributor:
+      replicas: 0
+    compactor:
+      replicas: 0
+    indexGateway:
+      replicas: 0
+    bloomCompactor:
+      replicas: 0
+    bloomGateway:
+      replicas: 0
 
-    # Gateway configuration with enhanced security context
+    # Gateway configuration
     gateway:
       enabled: true
-
-      # Resource limits
       resources:
         limits:
           cpu: 100m
@@ -142,8 +151,6 @@ spec:
         requests:
           cpu: 50m
           memory: 64Mi
-
-      # Gateway-specific security context
       podSecurityContext:
         fsGroup: 101
         runAsGroup: 101
@@ -151,7 +158,6 @@ spec:
         runAsUser: 101
         seccompProfile:
           type: RuntimeDefault
-
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -159,9 +165,8 @@ spec:
             - ALL
         readOnlyRootFilesystem: true
 
-    # Memcached configuration with proper security contexts
+    # Memcached configuration
     memcached:
-      # Security context for memcached processes
       podSecurityContext:
         fsGroup: 11211
         runAsGroup: 11211
@@ -169,7 +174,6 @@ spec:
         runAsUser: 11211
         seccompProfile:
           type: RuntimeDefault
-
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -177,7 +181,7 @@ spec:
             - ALL
         readOnlyRootFilesystem: true
 
-    # Disable MinIO for filesystem storage
+    # Disable MinIO
     minio:
       enabled: false
 
@@ -190,7 +194,7 @@ spec:
       enabled: true
       allocatedMemory: 512
 
-    # ServiceMonitor configuration
+    # Monitoring configuration
     monitoring:
       selfMonitoring:
         enabled: false
