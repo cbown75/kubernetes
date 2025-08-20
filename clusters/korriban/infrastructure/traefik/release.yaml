@@ -27,7 +27,6 @@ metadata:
 spec:
   targetNamespace: traefik-system
 
-  # Optional: keep your deps
   dependsOn:
     - name: sealed-secrets
       namespace: kube-system

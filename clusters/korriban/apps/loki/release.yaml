@@ -10,7 +10,7 @@ metadata:
 spec:
   dependsOn:
     - name: traefik
-      namespace: flux-system
+      namespace: traefik-system
   interval: 10m
   timeout: 30m
   chart:
