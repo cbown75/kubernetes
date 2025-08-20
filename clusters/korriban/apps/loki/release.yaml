@@ -1,0 +1,149 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: grafana
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: https://grafana.github.io/helm-charts
+
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: flux-system
+spec:
+  targetNamespace: monitoring
+  dependsOn:
+    - name: traefik
+      namespace: flux-system
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: loki
+      version: "6.6.x"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+      interval: 5m
+
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
+
+  values:
+    # Deployment mode - using simple scalable for better resource usage
+    deploymentMode: SingleBinary
+
+    # Single binary configuration
+    singleBinary:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+
+      # Security context for NFS compatibility
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+
+      # Persistence using your NFS storage (same as Grafana)
+      persistence:
+        enabled: true
+        storageClass: nfs-holocron-general # Consistent with your Grafana setup
+        accessModes:
+          - ReadWriteOnce
+        size: 10Gi
+
+    # Loki configuration
+    loki:
+      auth_enabled: false
+
+      server:
+        http_listen_port: 3100
+        grpc_listen_port: 9095
+
+      common:
+        compactor_address: loki-loki
+        path_prefix: /var/loki
+        storage:
+          filesystem:
+            chunks_directory: /var/loki/chunks
+            rules_directory: /var/loki/rules
+        replication_factor: 1
+
+      schema_config:
+        configs:
+          - from: 2020-10-24
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+
+      storage_config:
+        tsdb_shipper:
+          active_index_directory: /var/loki/tsdb-index
+          cache_location: /var/loki/tsdb-cache
+
+      limits_config:
+        retention_period: 168h # 7 days retention
+        enforce_metric_name: false
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+
+      table_manager:
+        retention_deletes_enabled: true
+        retention_period: 168h
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 3100
+
+    # Service monitor for Prometheus scraping
+    serviceMonitor:
+      enabled: true
+      labels:
+        app.kubernetes.io/part-of: monitoring-stack
+
+    # Ingress configuration - NO BASIC AUTH (handled by internal access only)
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      hosts:
+        - host: loki.home.cwbtech.net
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: loki-tls
+          hosts:
+            - loki.home.cwbtech.net
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        # No basic auth middleware - Loki accessed primarily via Grafana
+
+    # Test configuration
+    test:
+      enabled: false
