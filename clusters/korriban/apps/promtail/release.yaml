@@ -32,11 +32,11 @@ spec:
     force: true
 
   values:
-    # DaemonSet configuration - runs on every node
+    # DaemonSet configuration
     daemonset:
       enabled: true
 
-    # Resources for DaemonSet pods
+    # Resources
     resources:
       limits:
         cpu: 200m
@@ -45,9 +45,9 @@ spec:
         cpu: 100m
         memory: 64Mi
 
-    # Security context
+    # Security context for Talos
     securityContext:
-      runAsUser: 0 # Required to read log files
+      runAsUser: 0
       runAsGroup: 0
       fsGroup: 0
       privileged: false
@@ -56,10 +56,10 @@ spec:
         drop:
           - ALL
         add:
-          - DAC_READ_SEARCH # Required to read log files
+          - DAC_READ_SEARCH
       readOnlyRootFilesystem: true
 
-    # No secrets needed - all internal cluster communication
+    # Promtail configuration
     config:
       clients:
         - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
@@ -73,7 +73,7 @@ spec:
         grpc_listen_port: 0
 
       scrape_configs:
-        # Kubernetes pod logs
+        # Kubernetes pod logs for Talos/containerd
         - job_name: kubernetes-pods
           kubernetes_sd_configs:
             - role: pod
@@ -118,57 +118,17 @@ spec:
                 - __meta_kubernetes_pod_uid
                 - __meta_kubernetes_pod_container_name
               target_label: __path__
-            # Drop logs for system pods to reduce noise
+            # Drop system namespaces to reduce noise
             - action: drop
               regex: kube-system|flux-system|metallb-system
               source_labels:
                 - __meta_kubernetes_namespace
 
-        # Kubernetes events
-        - job_name: kubernetes-events
-          kubernetes_sd_configs:
-            - role: pod
-              namespaces:
-                names:
-                  - monitoring
-                  - default
-                  - kube-system
-          pipeline_stages:
-            - match:
-                selector: '{job="kubernetes-events"}'
-                stages:
-                  - json:
-                      expressions:
-                        message: message
-                        reason: reason
-                        type: type
-                  - labels:
-                      reason:
-                      type:
-          relabel_configs:
-            - source_labels: [__meta_kubernetes_pod_label_component]
-              action: keep
-              regex: kube-apiserver|kube-controller-manager|kube-scheduler
-
-    # Service monitor for Prometheus
+    # ServiceMonitor for Prometheus
     serviceMonitor:
       enabled: true
       labels:
         app.kubernetes.io/part-of: monitoring-stack
 
-    # Mount host log directories
-    extraVolumes:
-      - name: varlog
-        hostPath:
-          path: /var/log
-      - name: varlibdockercontainers
-        hostPath:
-          path: /var/lib/docker/containers
-
-    extraVolumeMounts:
-      - name: varlog
-        mountPath: /var/log
-        readOnly: true
-      - name: varlibdockercontainers
-        mountPath: /var/lib/docker/containers
-        readOnly: true
+    # REMOVED extraVolumes and extraVolumeMounts for Docker
+    # Talos/containerd logs are available through /var/log/pods/ by default
