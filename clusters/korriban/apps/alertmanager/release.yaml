@@ -215,10 +215,10 @@ spec:
 
     # HA clustering configuration
     extraArgs:
-      - --storage.path=/alertmanager
-      - --web.external-url=https://alertmanager.home.cwbtech.net
-      - --cluster.listen-address=0.0.0.0:9094
-      - --cluster.advertise-address=$(POD_IP):9094
+      storage.path: /alertmanager
+      web.external-url: https://alertmanager.home.cwbtech.net
+      cluster.listen-address: 0.0.0.0:9094
+      cluster.advertise-address: $(POD_IP):9094
 
     # Environment variables for clustering
     extraEnv:
