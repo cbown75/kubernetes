@@ -1,3 +1,4 @@
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -5,19 +6,20 @@ metadata:
   namespace: monitoring
 spec:
   dependsOn:
-  - name: traefik
-    namespace: flux-system
+    - name: traefik
+      namespace: flux-system
   interval: 10m
   timeout: 10m
   chart:
     spec:
       chart: loki
-      version: 6.6.x
+      version: "6.x"
       sourceRef:
         kind: HelmRepository
         name: grafana
         namespace: flux-system
       interval: 5m
+
   install:
     createNamespace: false
     remediation:
@@ -28,10 +30,67 @@ spec:
   rollback:
     recreate: true
     force: true
+
   values:
+    # Deployment mode - SingleBinary for filesystem storage
     deploymentMode: SingleBinary
+
+    # Loki configuration
+    loki:
+      auth_enabled: false
+
+      # Critical: replication_factor must be 1 for single replica
+      commonConfig:
+        replication_factor: 1
+        ring:
+          kvstore:
+            store: inmemory
+
+      # Filesystem storage configuration
+      storage:
+        type: filesystem
+
+      # Schema configuration for Loki 3.x
+      schemaConfig:
+        configs:
+          - from: "2024-04-01"
+            store: tsdb # Required for Loki 3.x
+            object_store: filesystem
+            schema: v13 # Required for latest features
+            index:
+              prefix: loki_index_
+              period: 24h
+
+      # Limits configuration
+      limits_config:
+        retention_period: 168h # 7 days
+        max_entries_limit_per_query: 5000
+        max_streams_per_user: 10000
+        max_global_streams_per_user: 10000
+        enforce_metric_name: false
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+
+      # Ingester configuration
+      ingester:
+        chunk_encoding: snappy
+        chunk_target_size: 1536000 # ~1.5MB
+        max_chunk_age: 2h
+        chunk_idle_period: 30m
+
+      # Compactor configuration
+      compactor:
+        working_directory: /var/loki/compactor
+        compaction_interval: 10m
+        retention_enabled: true
+        retention_delete_delay: 1h
+        retention_delete_worker_count: 100
+
+    # SingleBinary specific configuration
     singleBinary:
       replicas: 1
+
+      # Resources
       resources:
         limits:
           cpu: 500m
@@ -39,43 +98,68 @@ spec:
         requests:
           cpu: 250m
           memory: 512Mi
+
+      # Persistence using NFS
       persistence:
         enabled: true
-        storageClass: nfs-holocron-general
         size: 10Gi
-    loki:
-      auth_enabled: false
-      limits_config:
-        retention_period: 168h
-      config: "auth_enabled: {{ .Values.loki.auth_enabled }}\nserver:\n  http_listen_port:\
-        \ 3100\n\ncommon:\n  path_prefix: /var/loki\n  storage:\n    filesystem:\n\
-        \      chunks_directory: /var/loki/chunks\n      rules_directory: /var/loki/rules\n\
-        \  ring:\n    kvstore:\n      store: memberlist\n\nschema_config:\n  configs:\n\
-        \    - from: 2020-10-24\n      store: tsdb\n      object_store: filesystem\n\
-        \      schema: v13\n      index:\n        prefix: index_\n        period:\
-        \ 24h\n\nruler:\n  storage:\n    type: local\n    local:\n      directory:\
-        \ /var/loki/rules\n"
+        storageClass: nfs-holocron-general
+        accessModes:
+          - ReadWriteOnce
+        enableStatefulSetAutoDeletePVC: false
+
+      # Environment variables for memory management
+      extraEnv:
+        - name: GOMEMLIMIT
+          value: 900MiB
+        - name: GOGC
+          value: "80"
+
+    # Disable other deployment modes (required for SingleBinary)
+    backend:
+      replicas: 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+
+    # Gateway (always enabled in v3.x)
+    gateway:
+      enabled: true
+
+    # Disable MinIO for filesystem storage
+    minio:
+      enabled: false
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 3100
+
+    # ServiceMonitor for Prometheus
     serviceMonitor:
       enabled: true
       labels:
         app.kubernetes.io/part-of: monitoring-stack
+
+    # Ingress configuration
     ingress:
       enabled: true
       ingressClassName: traefik
       hosts:
-      - host: loki.home.cwbtech.net
-        paths:
-        - path: /
-          pathType: Prefix
+        - host: loki.home.cwbtech.net
+          paths:
+            - path: /
+              pathType: Prefix
       tls:
-      - secretName: loki-tls
-        hosts:
-        - loki.home.cwbtech.net
+        - secretName: loki-tls
+          hosts:
+            - loki.home.cwbtech.net
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-cloudflare
         traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: 'true'
+        traefik.ingress.kubernetes.io/router.tls: "true"
+
+    # Disable test pods
     test:
-      enabled: false
-    enterprise:
       enabled: false
