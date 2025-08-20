@@ -107,7 +107,7 @@ prometheus:
             action: keep
             regex: default;kubernetes;https
 
-      # NEW: Node Exporter scrape configuration
+      # Node Exporter scrape configuration
       - job_name: "node-exporter"
         kubernetes_sd_configs:
           - role: node
@@ -123,6 +123,58 @@ prometheus:
           - action: labelmap
             regex: __meta_kubernetes_node_label_(.+)
 
+      # Kubernetes Services with annotations
+      - job_name: "kubernetes-services"
+        kubernetes_sd_configs:
+          - role: service
+        relabel_configs:
+          - source_labels:
+              [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels:
+              [__meta_kubernetes_service_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels:
+              [
+                __address__,
+                __meta_kubernetes_service_annotation_prometheus_io_port,
+              ]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: kubernetes_service_name
+
+      # cAdvisor metrics (container metrics from kubelet)
+      - job_name: "kubernetes-cadvisor"
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: true
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+      # Kubernetes nodes (kubelet metrics)
       - job_name: "kubernetes-nodes"
         kubernetes_sd_configs:
           - role: node
@@ -199,24 +251,21 @@ rbac:
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: "traefik"
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/auth-type: basic
-    nginx.ingress.kubernetes.io/auth-secret: prometheus-basic-auth
-    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - Prometheus"
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-prometheus-auth@kubernetescrd
   hosts:
-    - host: prometheus.korriban.local
+    - host: prometheus.home.cwbtech.net
       paths:
         - path: /
           pathType: Prefix
   tls:
     - secretName: prometheus-tls
       hosts:
-        - prometheus.korriban.local
+        - prometheus.home.cwbtech.net
 
 serviceMonitor:
   enabled: false
@@ -237,7 +286,7 @@ networkPolicy:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: ingress-nginx
+              name: traefik-system
       ports:
         - protocol: TCP
           port: 9090

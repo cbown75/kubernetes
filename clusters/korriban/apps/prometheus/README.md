@@ -1,58 +1,74 @@
-# Prometheus Monitoring Stack
+# Prometheus for Korriban Cluster
 
 ## Overview
 
-Prometheus is the core monitoring and alerting system for the `korriban` cluster. It collects metrics from various sources, stores them in a time-series database, and provides a powerful query interface.
+Prometheus deployment using the official `prometheus-community/prometheus` Helm chart. This provides metrics collection and storage for the monitoring stack with comprehensive Kubernetes monitoring.
+
+## Chart Information
+
+- **Chart**: `prometheus-community/prometheus`
+- **Version**: `>=25.0.0`
+- **App Version**: `v2.51.2`
+- **Repository**: https://prometheus-community.github.io/helm-charts
 
 ## Features
 
-- **Time-Series Database**: Efficient storage and retrieval of metrics
-- **Service Discovery**: Automatic discovery of monitoring targets
-- **PromQL**: Powerful query language for metrics analysis
-- **Web Interface**: Built-in web UI for queries and visualization
-- **Alerting**: Integration with Alertmanager for notifications
-- **Retention**: Configurable data retention policies
+- **Complete Kubernetes Monitoring**: Auto-discovery of nodes, pods, and services
+- **High Performance Storage**: Uses Synology CSI (`synology-holocron-fast`)
+- **Security Hardened**: Non-root containers with security contexts
+- **TLS Integration**: Automatic HTTPS with Cert Manager
+- **No Authentication**: Direct access for internal monitoring
+- **Resource Management**: 4Gi memory limit, 50Gi storage
+- **Data Retention**: 15-day retention with 45GB size limit
 
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Targets       │    │   Prometheus     │    │   Storage       │
-│   (metrics)     │────│   (scraper)      │────│   (TSDB)        │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-          │                        │                        │
-          ▼                        ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Services      │    │   PromQL         │    │   Synology      │
-│   Pods          │────│   (queries)      │────│   Fast SSD      │
-│   Nodes         │    │                  │    │   50GB Volume   │
+│   Prometheus    │────│   Target         │────│   Metrics       │
+│   (Server)      │    │   Discovery      │    │   (Endpoints)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
+
+## Monitoring Targets
+
+### Automatic Service Discovery
+
+Prometheus automatically discovers and monitors:
+
+- **Kubernetes API Server**: Cluster health and performance
+- **Node Exporter**: Host-level metrics (CPU, memory, disk, network)
+- **cAdvisor**: Container-level metrics from kubelet
+- **Kubelet**: Node and pod resource metrics
+- **Annotated Services**: Services with `prometheus.io/scrape: "true"`
+- **Annotated Pods**: Pods with `prometheus.io/scrape: "true"`
+
+### Scrape Jobs Configured
+
+1. **prometheus** - Self-monitoring
+2. **kubernetes-apiservers** - API server metrics
+3. **node-exporter** - Host metrics via node discovery (port 9100)
+4. **kubernetes-services** - Service discovery via annotations
+5. **kubernetes-cadvisor** - Container metrics via kubelet proxy
+6. **kubernetes-nodes** - Node metrics via kubelet proxy
+7. **kubernetes-pods** - Pod discovery via annotations
+
+## Access
+
+- **URL**: https://prometheus.home.cwbtech.net
+- **Authentication**: None (direct access)
+- **TLS**: Automatic Let's Encrypt certificate via Cert Manager
 
 ## Configuration
 
-### Storage Configuration
+### Storage
 
-Prometheus uses high-performance Synology storage:
+- **Storage Class**: `synology-holocron-fast` (high-performance NVMe)
+- **Size**: 50Gi per instance
+- **Access Mode**: ReadWriteOnce
+- **Retention**: 15 days / 45GB (whichever comes first)
 
-```yaml
-persistence:
-  enabled: true
-  storageClass: "synology-holocron-fast"
-  accessMode: ReadWriteOnce
-  size: 50Gi
-```
-
-### Retention Policy
-
-```yaml
-extraArgs:
-  - --storage.tsdb.retention.time=15d
-  - --storage.tsdb.retention.size=45GB
-  - --storage.tsdb.wal-compression
-```
-
-### Resource Limits
+### Resources
 
 ```yaml
 resources:
@@ -64,41 +80,244 @@ resources:
     memory: 2Gi
 ```
 
-## Access
+### Security Context
 
-### Web Interface
+- **User**: 65534 (nobody)
+- **Non-root**: true
+- **Read-only filesystem**: true
+- **Dropped capabilities**: ALL
+- **Seccomp profile**: RuntimeDefault
 
-Access Prometheus through secure ingress:
+## Integration with Monitoring Stack
 
-```bash
-# URL: https://prometheus.home.example.com
-# Authentication: Basic auth (configured via SealedSecret)
+### AlertManager Integration
+
+Prometheus sends alerts to AlertManager for:
+
+- Node health and resource usage
+- Pod failures and restarts
+- Storage capacity warnings
+- Kubernetes component health
+
+### Grafana Integration
+
+Grafana queries Prometheus for:
+
+- Infrastructure dashboards
+- Application metrics
+- Custom monitoring visualizations
+- Real-time metric exploration
+
+### Node Exporter Integration
+
+Discovers Node Exporter instances via:
+
+- **Role**: `node` (Kubernetes node discovery)
+- **Target**: `{node_ip}:9100`
+- **Relabeling**: Maps node labels to metric labels
+
+## Key Metrics Available
+
+### Infrastructure Metrics
+
+```promql
+# Node availability
+up{job="node-exporter"}
+
+# CPU usage by node
+rate(node_cpu_seconds_total[5m])
+
+# Memory usage
+node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+
+# Disk usage
+(node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes
 ```
 
-### Port Forwarding (Development)
+### Kubernetes Metrics
 
-```bash
-# Direct access for development
-kubectl port-forward -n monitoring svc/prometheus 9090:9090
-# Open http://localhost:9090
+```promql
+# Pod CPU usage
+rate(container_cpu_usage_seconds_total[5m])
+
+# Pod memory usage
+container_memory_working_set_bytes
+
+# Pod restart rate
+rate(kube_pod_container_status_restarts_total[5m])
 ```
 
-## Monitoring Targets
+### Cluster Health
 
-### Automatic Service Discovery
+```promql
+# API server availability
+up{job="kubernetes-apiservers"}
 
-Prometheus automatically discovers and monitors:
+# Node readiness
+kube_node_status_condition{condition="Ready"}
 
-- **Kubernetes API Server**: Cluster health and performance
-- **Node Exporter**: Host-level metrics (CPU, memory, disk, network)
-- **cAdvisor**: Container-level metrics
-- **FluxCD Controllers**: GitOps reconciliation metrics
-- **Traefik**: Ingress controller metrics
-- **Cert Manager**: Certificate management metrics
+# Cluster capacity
+cluster:node_cpu:ratio
+cluster:node_memory:ratio
+```
 
-### Custom Metrics
+## Deployment
 
-Services can expose metrics using annotations:
+### Prerequisites
+
+- Kubernetes cluster with RBAC enabled
+- Traefik ingress controller
+- Cert Manager for TLS certificates
+- Synology CSI driver
+- Node Exporter deployed separately
+
+### Installation
+
+The deployment is managed by FluxCD:
+
+```bash
+# Check deployment status
+kubectl get helmrelease prometheus -n monitoring
+
+# Check pod status
+kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus-server
+
+# Check service status
+kubectl get svc -n monitoring prometheus-server
+```
+
+### Sealed Secrets
+
+Generate sealed secrets (placeholder for future use):
+
+```bash
+# Run the script to create sealed secrets
+./scripts/create-prometheus-secrets.sh
+
+# Commit the generated sealed secret
+git add clusters/korriban/apps/prometheus/sealed-secret.yaml
+git commit -m "Add Prometheus sealed secrets"
+git push
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### **Pod Not Starting**
+
+```bash
+# Check pod events
+kubectl describe pod -n monitoring -l app.kubernetes.io/name=prometheus-server
+
+# Check logs
+kubectl logs -n monitoring -l app.kubernetes.io/name=prometheus-server
+```
+
+**Common causes:**
+
+- Storage class not available
+- Insufficient resources
+- Configuration errors
+
+#### **Targets Not Discovered**
+
+```bash
+# Check service discovery
+curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | select(.health != "up")'
+
+# Port forward to access Prometheus
+kubectl port-forward -n monitoring svc/prometheus-server 9090:80
+```
+
+**Solutions:**
+
+- Verify RBAC permissions
+- Check network policies
+- Validate service annotations
+
+#### **Storage Issues**
+
+```bash
+# Check PVC status
+kubectl get pvc -n monitoring
+
+# Check storage class
+kubectl get storageclass synology-holocron-fast
+
+# Check disk usage in pod
+kubectl exec -n monitoring deployment/prometheus-server -- df -h /prometheus
+```
+
+### Useful Commands
+
+```bash
+# Port forward to access Prometheus UI
+kubectl port-forward -n monitoring svc/prometheus-server 9090:80
+# Then visit: http://localhost:9090
+
+# Check configuration
+kubectl exec -n monitoring deployment/prometheus-server -- cat /etc/config/prometheus.yml
+
+# Reload configuration (if web.enable-lifecycle is enabled)
+curl -X POST http://localhost:9090/-/reload
+
+# Check health
+curl http://localhost:9090/-/healthy
+
+# Query metrics via API
+curl -G 'http://localhost:9090/api/v1/query' --data-urlencode 'query=up'
+```
+
+## Monitoring Prometheus Itself
+
+Key metrics to monitor Prometheus health:
+
+```promql
+# Prometheus up
+up{job="prometheus"}
+
+# Time series ingested per second
+rate(prometheus_tsdb_symbol_table_size_bytes[5m])
+
+# Query duration
+histogram_quantile(0.99, rate(prometheus_engine_query_duration_seconds_bucket[5m]))
+
+# Storage usage
+prometheus_tsdb_size_bytes
+
+# Rule evaluation duration
+rate(prometheus_rule_evaluation_duration_seconds_sum[5m])
+```
+
+## Performance Tuning
+
+### Memory Optimization
+
+```yaml
+# Adjust retention for memory usage
+server:
+  retention: "7d" # Reduce retention time
+  retentionSize: "20GB" # Reduce retention size
+```
+
+### Query Performance
+
+- Use recording rules for expensive queries
+- Optimize PromQL queries with proper selectors
+- Consider federation for large deployments
+
+### Storage Optimization
+
+- Use fast storage for better performance
+- Monitor disk I/O and adjust retention
+- Consider external storage for long-term retention
+
+## Integration Examples
+
+### Custom Service Discovery
+
+Add annotation to services for automatic discovery:
 
 ```yaml
 apiVersion: v1
@@ -112,391 +331,26 @@ spec:
   # ... service configuration
 ```
 
-## Key Metrics
+### Custom Pod Discovery
 
-### Infrastructure Metrics
-
-#### Cluster Health
-
-```promql
-# Node availability
-up{job="kubernetes-nodes"}
-
-# Cluster capacity
-cluster:capacity_cpu_cores:sum
-cluster:capacity_memory_bytes:sum
-```
-
-#### Storage Metrics
-
-```promql
-# Storage usage
-kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes
-
-# Persistent volume availability
-kube_persistentvolume_status_phase
-```
-
-### Application Metrics
-
-#### Pod Health
-
-```promql
-# Pod restart rate
-rate(kube_pod_container_status_restarts_total[5m])
-
-# Pod resource usage
-rate(container_cpu_usage_seconds_total[5m])
-container_memory_working_set_bytes
-```
-
-#### Network Metrics
-
-```promql
-# Network traffic
-rate(container_network_receive_bytes_total[5m])
-rate(container_network_transmit_bytes_total[5m])
-```
-
-### FluxCD Metrics
-
-```promql
-# Reconciliation status
-gotk_reconcile_condition{type="Ready"}
-
-# Reconciliation duration
-histogram_quantile(0.95, gotk_reconcile_duration_seconds_bucket)
-```
-
-## Querying with PromQL
-
-### Basic Queries
-
-```promql
-# Current CPU usage by pod
-rate(container_cpu_usage_seconds_total[5m])
-
-# Memory usage by namespace
-sum(container_memory_working_set_bytes) by (namespace)
-
-# Disk usage percentage
-(1 - (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes)) * 100
-```
-
-### Advanced Queries
-
-```promql
-# Top 10 pods by CPU usage
-topk(10, rate(container_cpu_usage_seconds_total[5m]))
-
-# Pods with high memory usage (>80%)
-(container_memory_working_set_bytes / container_spec_memory_limit_bytes) > 0.8
-
-# Failed pods in last hour
-increase(kube_pod_container_status_restarts_total[1h]) > 0
-```
-
-### Alert Queries
-
-```promql
-# High memory usage alert
-(container_memory_working_set_bytes / container_spec_memory_limit_bytes) > 0.9
-
-# Disk space low
-(kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.85
-
-# FluxCD reconciliation failures
-increase(gotk_reconcile_condition{type="Ready",status="False"}[5m]) > 0
-```
-
-## Troubleshooting
-
-### Prometheus Health Checks
-
-```bash
-# Check Prometheus pod status
-kubectl get pods -n monitoring
-
-# Check Prometheus logs
-kubectl logs -n monitoring -l app.kubernetes.io/name=prometheus
-
-# Check persistent volume
-kubectl get pvc -n monitoring
-```
-
-### Common Issues and Solutions
-
-#### High Memory Usage
-
-**Symptoms**: Prometheus pod OOMKilled or high memory usage
-
-**Diagnosis**:
-
-```bash
-# Check memory usage
-kubectl top pod -n monitoring
-
-# Review retention settings
-kubectl logs -n monitoring prometheus-0 | grep retention
-```
-
-**Solutions**:
-
-- Reduce retention time
-- Increase memory limits
-- Optimize query patterns
-- Reduce scrape frequency
-
-#### Storage Full
-
-**Symptoms**: "no space left on device" errors
-
-**Diagnosis**:
-
-```bash
-# Check disk usage
-kubectl exec -n monitoring prometheus-0 -- df -h /prometheus
-
-# Check retention size
-kubectl logs -n monitoring prometheus-0 | grep "retention size"
-```
-
-**Solutions**:
-
-- Increase volume size
-- Reduce retention time
-- Clean up old data manually
-
-#### Target Discovery Issues
-
-**Symptoms**: Missing metrics from expected targets
-
-**Diagnosis**:
-
-```bash
-# Check target discovery in Prometheus UI
-# Go to Status > Targets
-
-# Check service annotations
-kubectl get svc -A -o yaml | grep prometheus.io
-```
-
-**Solutions**:
-
-- Verify service annotations
-- Check network policies
-- Verify RBAC permissions
-
-### Debugging Queries
-
-```promql
-# Check scrape success rate
-rate(prometheus_target_scrapes_total[5m])
-
-# Identify failed targets
-up == 0
-
-# Query performance
-prometheus_rule_evaluation_duration_seconds
-```
-
-## Maintenance
-
-### Backup and Recovery
-
-```bash
-# Backup Prometheus configuration
-kubectl get prometheus -A -o yaml > backup/prometheus-config-$(date +%Y%m%d).yaml
-
-# Backup persistent volume (if needed)
-kubectl exec -n monitoring prometheus-0 -- tar czf /tmp/prometheus-data.tar.gz /prometheus
-kubectl cp monitoring/prometheus-0:/tmp/prometheus-data.tar.gz ./prometheus-backup-$(date +%Y%m%d).tar.gz
-```
-
-### Volume Expansion
-
-```bash
-# Expand Prometheus storage
-kubectl patch pvc prometheus-storage -n monitoring -p '{"spec":{"resources":{"requests":{"storage":"80Gi"}}}}'
-
-# Monitor expansion
-kubectl get pvc prometheus-storage -n monitoring -w
-```
-
-### Performance Optimization
-
-```bash
-# Check query performance
-kubectl exec -n monitoring prometheus-0 -- promtool query instant 'prometheus_engine_query_duration_seconds{quantile="0.9"}'
-
-# Analyze memory usage
-kubectl exec -n monitoring prometheus-0 -- promtool tsdb analyze /prometheus
-```
-
-## Security
-
-### Network Policies
-
-Prometheus is protected by network policies:
+Add annotation to pods for automatic discovery:
 
 ```yaml
-networkPolicy:
-  enabled: true
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: traefik-system
-      ports:
-        - protocol: TCP
-          port: 9090
-```
-
-### Authentication
-
-Access is protected by basic authentication:
-
-```yaml
-sealedSecrets:
-  enabled: true
-  secrets:
-    prometheus-basic-auth:
-      auth: "<encrypted-htpasswd>"
-```
-
-### RBAC
-
-Prometheus runs with minimal required permissions:
-
-```bash
-# Check Prometheus service account permissions
-kubectl auth can-i list nodes --as=system:serviceaccount:monitoring:prometheus
-
-# Review cluster role
-kubectl describe clusterrole prometheus
-```
-
-## Integration
-
-### Traefik Integration
-
-Metrics from Traefik are automatically collected:
-
-```yaml
-# Traefik metrics configuration
-metrics:
-  prometheus:
-    addEntryPointsLabels: true
-    addServicesLabels: true
-    addRoutersLabels: true
-```
-
-### FluxCD Integration
-
-FluxCD controllers expose metrics on port 8080:
-
-```promql
-# FluxCD reconciliation metrics
-gotk_reconcile_duration_seconds
-gotk_reconcile_condition
-controller_runtime_reconcile_total
-```
-
-### Storage Integration
-
-Monitor storage metrics from CSI drivers:
-
-```promql
-# Volume usage across storage classes
-kubelet_volume_stats_used_bytes{storage_class="synology-holocron-fast"}
-```
-
-## Alerting Rules
-
-### Infrastructure Alerts
-
-```yaml
-groups:
-  - name: infrastructure
-    rules:
-      - alert: HighMemoryUsage
-        expr: (container_memory_working_set_bytes / container_spec_memory_limit_bytes) > 0.9
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High memory usage detected"
-
-      - alert: DiskSpaceLow
-        expr: (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.85
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Disk space low on volume {{ $labels.persistentvolumeclaim }}"
-```
-
-### Application Alerts
-
-```yaml
-- name: applications
-  rules:
-    - alert: PodCrashLooping
-      expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 0
-      for: 0m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Pod {{ $labels.pod }} is crash looping"
-
-    - alert: FluxReconciliationFailure
-      expr: gotk_reconcile_condition{type="Ready",status="False"} == 1
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        summary: "FluxCD reconciliation failed for {{ $labels.kind }}/{{ $labels.name }}"
-```
-
-## Best Practices
-
-1. **Resource Planning**: Size Prometheus appropriately for your metrics volume
-2. **Retention Strategy**: Balance storage costs with data requirements
-3. **Query Optimization**: Use efficient PromQL queries
-4. **Regular Backups**: Backup configuration and critical historical data
-5. **Monitor the Monitor**: Alert on Prometheus health itself
-6. **Security**: Protect access with authentication and network policies
-7. **Documentation**: Document custom metrics and alert thresholds
-
-## Performance Tuning
-
-### Scrape Configuration
-
-```yaml
-# Optimize scrape intervals
-global:
-  scrape_interval: 30s
-  evaluation_interval: 30s
-
-# Reduce high-frequency scrapes
-scrape_configs:
-  - job_name: "expensive-metrics"
-    scrape_interval: 60s
-```
-
-### Memory Optimization
-
-```yaml
-# Tune memory usage
-extraArgs:
-  - --storage.tsdb.min-block-duration=2h
-  - --storage.tsdb.max-block-duration=2h
-  - --web.enable-lifecycle
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  # ... pod configuration
 ```
 
 ## Resources
 
 - **Prometheus Documentation**: https://prometheus.io/docs/
 - **PromQL Guide**: https://prometheus.io/docs/prometheus/latest/querying/
+- **Chart Documentation**: https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus
 - **Best Practices**: https://prometheus.io/docs/practices/
 - **Kubernetes Monitoring**: https://prometheus.io/docs/guides/kubernetes/
