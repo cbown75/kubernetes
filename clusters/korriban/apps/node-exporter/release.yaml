@@ -117,28 +117,7 @@ spec:
 
     # Node exporter arguments
     extraArgs:
-      - --path.procfs=/host/proc
-      - --path.sysfs=/host/sys
-      - --path.rootfs=/host/root
       - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
       - --collector.netclass.ignored-devices=^(veth.*)$
       - --no-collector.wifi
       - --no-collector.hwmon
-
-    # Volume mounts for host metrics
-    extraHostVolumeMounts:
-      - name: proc
-        hostPath: /proc
-        mountPath: /host/proc
-        readOnly: true
-        mountPropagation: HostToContainer
-      - name: sys
-        hostPath: /sys
-        mountPath: /host/sys
-        readOnly: true
-        mountPropagation: HostToContainer
-      - name: root
-        hostPath: /
-        mountPath: /host/root
-        readOnly: true
-        mountPropagation: HostToContainer
