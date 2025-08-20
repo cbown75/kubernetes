@@ -27,13 +27,13 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`traefik2.home.cwbtech.net`)
+    - match: Host(`traefik2.home.cwbtech.net`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
       kind: Rule
       services:
         - name: api@internal
           kind: TraefikService
       middlewares:
-        - name: traefik-dashboard-auth@kubernetescrd
+        - name: traefik-dashboard-auth
   tls:
     secretName: traefik-dashboard-tls
 ---
