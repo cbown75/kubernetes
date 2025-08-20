@@ -8,4 +8,3 @@ resources:
   - cert-manager
   - metallb
   - traefik
-  - prometheus
