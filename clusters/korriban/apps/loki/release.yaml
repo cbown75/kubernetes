@@ -47,6 +47,14 @@ spec:
       auth_enabled: false
       limits_config:
         retention_period: 168h
+      config: "auth_enabled: {{ .Values.loki.auth_enabled }}\nserver:\n  http_listen_port:\
+        \ 3100\n\ncommon:\n  path_prefix: /var/loki\n  storage:\n    filesystem:\n\
+        \      chunks_directory: /var/loki/chunks\n      rules_directory: /var/loki/rules\n\
+        \  ring:\n    kvstore:\n      store: memberlist\n\nschema_config:\n  configs:\n\
+        \    - from: 2020-10-24\n      store: tsdb\n      object_store: filesystem\n\
+        \      schema: v13\n      index:\n        prefix: index_\n        period:\
+        \ 24h\n\nruler:\n  storage:\n    type: local\n    local:\n      directory:\
+        \ /var/loki/rules\n"
     serviceMonitor:
       enabled: true
       labels:
@@ -68,4 +76,6 @@ spec:
         traefik.ingress.kubernetes.io/router.entrypoints: websecure
         traefik.ingress.kubernetes.io/router.tls: 'true'
     test:
+      enabled: false
+    enterprise:
       enabled: false
