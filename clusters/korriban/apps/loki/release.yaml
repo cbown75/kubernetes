@@ -9,7 +9,7 @@ spec:
     - name: traefik
       namespace: flux-system
   interval: 10m
-  timeout: 15m
+  timeout: 30m
   chart:
     spec:
       chart: loki
@@ -80,7 +80,6 @@ spec:
       # Limits configuration
       limits_config:
         retention_period: 168h
-        enforce_metric_name: false
         reject_old_samples: true
         reject_old_samples_max_age: 168h
         max_entries_limit_per_query: 5000
