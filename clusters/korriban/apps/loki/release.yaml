@@ -9,11 +9,11 @@ spec:
     - name: traefik
       namespace: flux-system
   interval: 10m
-  timeout: 10m
+  timeout: 15m # Extended timeout for initial deployment
   chart:
     spec:
       chart: loki
-      version: "6.x"
+      version: "6.30.x" # Avoid 6.35+ due to S3 breaking changes
       sourceRef:
         kind: HelmRepository
         name: grafana
@@ -50,13 +50,13 @@ spec:
       storage:
         type: filesystem
 
-      # Schema configuration for Loki 3.x
+      # Schema configuration - quoted dates prevent parsing issues
       schemaConfig:
         configs:
-          - from: "2024-04-01"
-            store: tsdb # Required for Loki 3.x
+          - from: "2024-04-01" # Quoted to prevent Flux date conversion
+            store: tsdb
             object_store: filesystem
-            schema: v13 # Required for latest features
+            schema: v13
             index:
               prefix: loki_index_
               period: 24h
@@ -64,33 +64,26 @@ spec:
       # Limits configuration
       limits_config:
         retention_period: 168h # 7 days
-        max_entries_limit_per_query: 5000
-        max_streams_per_user: 10000
-        max_global_streams_per_user: 10000
         enforce_metric_name: false
         reject_old_samples: true
         reject_old_samples_max_age: 168h
+        # Prevent excessive memory usage
+        max_entries_limit_per_query: 5000
+        max_streams_per_user: 10000
+        max_global_streams_per_user: 10000
 
-      # Ingester configuration
-      ingester:
-        chunk_encoding: snappy
-        chunk_target_size: 1536000 # ~1.5MB
-        max_chunk_age: 2h
-        chunk_idle_period: 30m
-
-      # Compactor configuration
+      # Compactor configuration for retention
       compactor:
         working_directory: /var/loki/compactor
         compaction_interval: 10m
         retention_enabled: true
         retention_delete_delay: 1h
-        retention_delete_worker_count: 100
 
     # SingleBinary specific configuration
     singleBinary:
       replicas: 1
 
-      # Resources
+      # Reasonable resource limits (avoid chart defaults)
       resources:
         limits:
           cpu: 500m
@@ -108,14 +101,12 @@ spec:
           - ReadWriteOnce
         enableStatefulSetAutoDeletePVC: false
 
-      # Environment variables for memory management
+      # Memory management
       extraEnv:
         - name: GOMEMLIMIT
           value: 900MiB
-        - name: GOGC
-          value: "80"
 
-    # Disable other deployment modes (required for SingleBinary)
+    # Explicitly disable other deployment modes to prevent validation errors
     backend:
       replicas: 0
     read:
@@ -123,42 +114,58 @@ spec:
     write:
       replicas: 0
 
-    # Gateway (always enabled in v3.x)
+    # Gateway configuration - avoid common issues
     gateway:
       enabled: true
+      # Reduced resources (chart defaults are excessive)
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
 
-    # Disable MinIO for filesystem storage
+    # Disable MinIO completely for filesystem storage
     minio:
       enabled: false
 
-    # Service configuration
-    service:
-      type: ClusterIP
-      port: 3100
-
-    # ServiceMonitor for Prometheus
-    serviceMonitor:
+    # Fix memcached excessive memory requests
+    chunksCache:
       enabled: true
-      labels:
-        app.kubernetes.io/part-of: monitoring-stack
+      allocatedMemory: 1024 # 1GB instead of 9.8GB default
 
-    # Ingress configuration
+    resultsCache:
+      enabled: true
+      allocatedMemory: 512 # 512MB instead of excessive default
+
+    # ServiceMonitor - disable problematic self-monitoring
+    monitoring:
+      selfMonitoring:
+        enabled: false # Avoids Grafana Agent Operator dependency
+      serviceMonitor:
+        enabled: true
+        labels:
+          app.kubernetes.io/part-of: monitoring-stack
+
+    # Simplified ingress (avoid complex host/path structures)
     ingress:
       enabled: true
       ingressClassName: traefik
-      hosts:
-        - host: loki.home.cwbtech.net
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
-        - secretName: loki-tls
-          hosts:
-            - loki.home.cwbtech.net
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-cloudflare
         traefik.ingress.kubernetes.io/router.entrypoints: websecure
         traefik.ingress.kubernetes.io/router.tls: "true"
+      hosts:
+        - loki.home.cwbtech.net
+      tls:
+        - secretName: loki-tls
+          hosts:
+            - loki.home.cwbtech.net
+
+    # Disable problematic RBAC features
+    rbac:
+      pspEnabled: false # Avoid deprecated PodSecurityPolicy
 
     # Disable test pods
     test:
