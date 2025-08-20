@@ -79,6 +79,18 @@ spec:
         retention_enabled: true
         retention_delete_delay: 1h
 
+    # Sidecar containers security context
+    sidecar:
+      rules:
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+
     # SingleBinary specific configuration
     singleBinary:
       replicas: 1
@@ -91,6 +103,25 @@ spec:
         requests:
           cpu: 250m
           memory: 512Mi
+
+      # Pod security context - required for restricted pod security
+      podSecurityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Container security contexts
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+        seccompProfile:
+          type: RuntimeDefault
 
       # Persistence using NFS
       persistence:
@@ -125,6 +156,22 @@ spec:
         requests:
           cpu: 50m
           memory: 64Mi
+      # Security context for restricted pod security
+      podSecurityContext:
+        runAsUser: 101
+        runAsGroup: 101
+        runAsNonRoot: true
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+        seccompProfile:
+          type: RuntimeDefault
 
     # Disable MinIO completely for filesystem storage
     minio:
