@@ -33,7 +33,7 @@ spec:
     force: true
 
   values:
-    # Deployment mode - using simple scalable for better resource usage
+    # Use simple SingleBinary mode
     deploymentMode: SingleBinary
 
     # Single binary configuration
@@ -47,75 +47,29 @@ spec:
           cpu: 250m
           memory: 512Mi
 
-      # Security context for NFS compatibility
-      securityContext:
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
-        runAsNonRoot: true
-
-      # Persistence using your NFS storage (same as Grafana)
+      # Persistence using NFS
       persistence:
         enabled: true
-        storageClass: nfs-holocron-general # Consistent with your Grafana setup
+        storageClass: nfs-holocron-general
         accessModes:
           - ReadWriteOnce
         size: 10Gi
 
-    # Loki configuration
+    # Minimal Loki config - let chart handle defaults
     loki:
       auth_enabled: false
 
-      server:
-        http_listen_port: 3100
-        grpc_listen_port: 9095
-
-      common:
-        compactor_address: loki-loki
-        path_prefix: /var/loki
-        storage:
-          filesystem:
-            chunks_directory: /var/loki/chunks
-            rules_directory: /var/loki/rules
-        replication_factor: 1
-
-      schema_config:
-        configs:
-          - from: 2020-10-24
-            store: tsdb
-            object_store: filesystem
-            schema: v13
-            index:
-              prefix: index_
-              period: 24h
-
-      storage_config:
-        tsdb_shipper:
-          active_index_directory: /var/loki/tsdb-index
-          cache_location: /var/loki/tsdb-cache
-
+      # Basic limits
       limits_config:
-        retention_period: 168h # 7 days retention
-        enforce_metric_name: false
-        reject_old_samples: true
-        reject_old_samples_max_age: 168h
-
-      table_manager:
-        retention_deletes_enabled: true
         retention_period: 168h
 
-    # Service configuration
-    service:
-      type: ClusterIP
-      port: 3100
-
-    # Service monitor for Prometheus scraping
+    # ServiceMonitor for Prometheus
     serviceMonitor:
       enabled: true
       labels:
         app.kubernetes.io/part-of: monitoring-stack
 
-    # Ingress configuration - NO BASIC AUTH (handled by internal access only)
+    # Ingress
     ingress:
       enabled: true
       ingressClassName: traefik
@@ -132,8 +86,7 @@ spec:
         cert-manager.io/cluster-issuer: letsencrypt-cloudflare
         traefik.ingress.kubernetes.io/router.entrypoints: websecure
         traefik.ingress.kubernetes.io/router.tls: "true"
-        # No basic auth middleware - Loki accessed primarily via Grafana
 
-    # Test configuration
+    # Disable test pods
     test:
       enabled: false
