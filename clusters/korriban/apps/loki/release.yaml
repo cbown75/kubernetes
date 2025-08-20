@@ -4,6 +4,9 @@ kind: HelmRelease
 metadata:
   name: loki
   namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/part-of: monitoring-stack
 spec:
   dependsOn:
     - name: traefik
