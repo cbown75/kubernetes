@@ -93,8 +93,10 @@ spec:
         clustering:
           enabled: true
 
-        # FIXED: Removed duplicate extraPorts configuration
-        # The default port 12345 is already exposed, no need to add it again
+        # FIXED: Don't add extraPorts for port 12345 - it's already exposed by default
+        # The chart automatically exposes:
+        # - 12345/TCP: Alloy UI and metrics endpoint
+        # - 9999/TCP: Clustering communication
 
         resources:
           requests:
@@ -104,25 +106,26 @@ spec:
             cpu: 1000m
             memory: 2Gi
 
-    # Logs collector (DaemonSet) - FIXED: Use hostPath instead of volumeClaimTemplates
+    # Logs collector (DaemonSet) - FIXED: Use proper hostPath volumes
     alloy-logs:
       enabled: true
       controller:
         type: daemonset
 
-        # FIXED: Remove volumeClaimTemplates (not supported for DaemonSets)
-        # Use hostPath for log position storage instead
-        volumes:
-          extra:
-            - name: alloy-log-positions
-              hostPath:
-                path: /var/lib/alloy-positions
-                type: DirectoryOrCreate
+        # FIXED: Remove volumeClaimTemplates entirely - not supported for DaemonSets
 
         # Tolerations to run on all nodes (like your Promtail)
         tolerations:
           - operator: Exists
             effect: NoSchedule
+
+      # FIXED: Use volumes instead of volumeClaimTemplates
+      volumes:
+        extra:
+          - name: alloy-log-positions
+            hostPath:
+              path: /var/lib/alloy-positions
+              type: DirectoryOrCreate
 
       alloy:
         # Storage path for log positions
