@@ -1,51 +1,4 @@
 ---
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: alloy-positions-pv
-  labels:
-    app.kubernetes.io/name: alloy-positions
-    app.kubernetes.io/part-of: monitoring-stack
-spec:
-  capacity:
-    storage: 5Gi
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: alloy-positions
-  mountOptions:
-    - hard
-    - nfsvers=4.1
-    - timeo=600
-    - retrans=3
-  nfs:
-    server: holocron.home.cwbtech.net
-    path: /volume1/kubernetes/alloy-positions
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: alloy-positions
-provisioner: kubernetes.io/no-provisioner
-volumeBindingMode: WaitForFirstConsumer
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: alloy-positions-pvc
-  namespace: monitoring
-  labels:
-    app.kubernetes.io/name: alloy-positions
-    app.kubernetes.io/part-of: monitoring-stack
-spec:
-  storageClassName: alloy-positions
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 5Gi
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -155,18 +108,22 @@ spec:
             cpu: 1000m
             memory: 2Gi
 
-    # Logs collector (DaemonSet) - Custom configuration for your Promtail equivalent
+    # Logs collector (DaemonSet) - Use existing NFS CSI
     alloy-logs:
       enabled: true
       controller:
         type: daemonset
 
-        # NFS volume for positions storage
-        volumes:
-          extra:
-            - name: alloy-log-positions
-              persistentVolumeClaim:
-                claimName: alloy-positions-pvc
+        # Use existing NFS CSI storage class instead of manual PV
+        volumeClaimTemplates:
+          - metadata:
+              name: alloy-log-positions
+            spec:
+              accessModes: ["ReadWriteMany"]
+              storageClassName: "nfs-holocron-general" # Use your existing NFS CSI
+              resources:
+                requests:
+                  storage: 5Gi
 
         # Tolerations to run on all nodes (like your Promtail)
         tolerations:
@@ -320,18 +277,6 @@ spec:
             cpu: 200m
             memory: 512Mi
 
-    # Service configuration for MetalLB LoadBalancer
-    service:
-      enabled: true
-      type: LoadBalancer
-      annotations:
-        metallb.universe.tf/loadBalancerIPs: "10.10.7.201"
-      ports:
-        - name: alloy-ui
-          port: 80
-          targetPort: 12345
-          protocol: TCP
-
     # Node Exporter customization (via subchart override)
     prometheus-node-exporter:
       extraArgs:
@@ -375,7 +320,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: k8s-monitoring-alloy-metrics
+                name: monitoring-k8s-monitoring-alloy-metrics # Correct service name
                 port:
                   number: 12345
   tls:
