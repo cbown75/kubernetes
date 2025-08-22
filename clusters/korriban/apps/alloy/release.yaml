@@ -1,11 +1,58 @@
 ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: alloy-positions-pv
+  labels:
+    app.kubernetes.io/name: alloy-positions
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: alloy-positions
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+    - timeo=600
+    - retrans=3
+  nfs:
+    server: holocron.home.cwbtech.net
+    path: /volume1/kubernetes/alloy-positions
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: alloy-positions
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alloy-positions-pvc
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy-positions
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  storageClassName: alloy-positions
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: alloy
+  name: k8s-monitoring
   namespace: monitoring
   labels:
-    app.kubernetes.io/name: alloy
+    app.kubernetes.io/name: k8s-monitoring
     app.kubernetes.io/part-of: monitoring-stack
 spec:
   targetNamespace: monitoring
@@ -15,135 +62,347 @@ spec:
     - name: prometheus
       namespace: monitoring
   interval: 10m
-  timeout: 10m
+  timeout: 15m
   chart:
     spec:
-      chart: alloy
-      version: "0.12.x"
+      chart: k8s-monitoring
+      version: "3.3.1"
       sourceRef:
         kind: HelmRepository
         name: grafana
         namespace: flux-system
-      interval: 5m
+      interval: 12h
 
   install:
     createNamespace: false
     remediation:
       retries: 3
+    replace: true
   upgrade:
     remediation:
       retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
   rollback:
-    recreate: true
-    force: true
+    timeout: 10m
+    cleanupOnFail: true
 
   values:
-    controller:
-      type: "daemonset"
+    # Cluster configuration
+    cluster:
+      name: korriban
+      platform: ""
 
-    alloy:
-      configMap:
-        name: alloy-config
+    # External destinations (your existing Prometheus/Loki)
+    destinations:
+      - name: prometheus-external
+        type: prometheus
+        url: "http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
 
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 200m
-        memory: 256Mi
+      - name: loki-external
+        type: loki
+        url: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
 
-    securityContext:
-      runAsUser: 65534
-      runAsGroup: 65534
-      runAsNonRoot: true
-      capabilities:
-        add:
-          - DAC_READ_SEARCH
-        drop:
-          - ALL
-      readOnlyRootFilesystem: true
-      allowPrivilegeEscalation: false
-
-    podSecurityContext:
-      fsGroup: 65534
-      seccompProfile:
-        type: RuntimeDefault
-
-    hostNetwork: true
-    hostPID: true
-
-    mounts:
-      varlog: true
-      dockercontainers: false
-
-    extraVolumes:
-      - name: proc
-        hostPath:
-          path: /proc
-      - name: sys
-        hostPath:
-          path: /sys
-      - name: root
-        hostPath:
-          path: /
-      - name: positions
-        nfs:
-          server: holocron.home.cwbtech.net
-          path: /volume1/kubernetes/alloy-positions
-
-    extraVolumeMounts:
-      - name: proc
-        mountPath: /host/proc
-        readOnly: true
-      - name: sys
-        mountPath: /host/sys
-        readOnly: true
-      - name: root
-        mountPath: /host/root
-        readOnly: true
-        mountPropagation: HostToContainer
-      - name: positions
-        mountPath: /var/lib/alloy
-
-    extraArgs:
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --storage.path=/var/lib/alloy
-
-    extraEnv:
-      - name: HOSTNAME
-        valueFrom:
-          fieldRef:
-            fieldPath: spec.nodeName
-
-    serviceMonitor:
+    # Features to enable
+    clusterMetrics:
       enabled: true
-      additionalLabels:
-        app.kubernetes.io/part-of: monitoring-stack
-        release: prometheus
+      destinations: ["prometheus-external"]
+      cost:
+        enabled: false
 
-    tolerations:
-      - operator: Exists
-        effect: NoSchedule
+    clusterEvents:
+      enabled: true
+      destinations: ["loki-external"]
 
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-            - matchExpressions:
-                - key: kubernetes.io/os
-                  operator: In
-                  values:
-                    - linux
+    podLogs:
+      enabled: true
+      destinations: ["loki-external"]
 
-    updateStrategy:
-      type: RollingUpdate
-      rollingUpdate:
-        maxUnavailable: 1
+    nodeLogs:
+      enabled: true
+      destinations: ["loki-external"]
 
+    # Disable components you don't need
+    alloy-receiver:
+      enabled: false
+
+    alloy-profiles:
+      enabled: false
+
+    # Metrics collector (StatefulSet for HA)
+    alloy-metrics:
+      enabled: true
+      controller:
+        type: statefulset
+        replicas: 2
+
+      alloy:
+        clustering:
+          enabled: true
+
+        # Expose UI for debugging
+        extraPorts:
+          - name: http-metrics
+            port: 12345
+            targetPort: 12345
+            protocol: TCP
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+
+    # Logs collector (DaemonSet) - Custom configuration for your Promtail equivalent
+    alloy-logs:
+      enabled: true
+      controller:
+        type: daemonset
+
+        # NFS volume for positions storage
+        volumes:
+          extra:
+            - name: alloy-log-positions
+              persistentVolumeClaim:
+                claimName: alloy-positions-pvc
+
+        # Tolerations to run on all nodes (like your Promtail)
+        tolerations:
+          - operator: Exists
+            effect: NoSchedule
+
+      alloy:
+        # Storage path for log positions
+        storagePath: /var/lib/alloy
+
+        # Mount paths for logs and positions
+        mounts:
+          varlog: true
+          dockercontainers: true
+          extra:
+            - name: alloy-log-positions
+              mountPath: /var/lib/alloy
+
+        # Custom log collection configuration (replaces your Promtail config)
+        extraConfig: |
+          // Custom pod discovery with filtering (matches your Promtail relabel_configs)
+          discovery.relabel "pod_logs_custom" {
+            targets = discovery.kubernetes.pods.targets
+            
+            // Only collect logs from pods that have containers
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_id"]
+              regex         = ".+"
+              action        = "keep"
+            }
+            
+            // Extract controller name for app labeling (matches your Promtail)
+            rule {
+              source_labels = ["__meta_kubernetes_pod_controller_name"]
+              regex         = "([0-9a-z-.]+?)(-[0-9a-f]{8,10})?"
+              target_label  = "__tmp_controller_name"
+              action        = "replace"
+            }
+            
+            // Set app label from various sources (matches your Promtail)
+            rule {
+              source_labels = [
+                "__meta_kubernetes_pod_label_app_kubernetes_io_name",
+                "__meta_kubernetes_pod_label_app", 
+                "__tmp_controller_name",
+                "__meta_kubernetes_pod_name"
+              ]
+              regex         = "(^[0-9a-z-.]+|;[0-9a-z-.]+|;[0-9a-z-.]+|;[0-9a-z-.]+).*"
+              target_label  = "app"
+              action        = "replace"
+            }
+            
+            // Set version label
+            rule {
+              source_labels = [
+                "__meta_kubernetes_pod_label_app_kubernetes_io_version",
+                "__meta_kubernetes_pod_label_version"
+              ]
+              regex         = "(^[0-9a-z-.]+|;[0-9a-z-.]+).*"
+              target_label  = "version"
+              action        = "replace"
+            }
+            
+            // Set namespace
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+              action        = "replace"
+            }
+            
+            // Set pod name
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+              action        = "replace"
+            }
+            
+            // Set container name
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+              action        = "replace"
+            }
+            
+            // Construct log path for containerd/Talos (matches your setup)
+            rule {
+              source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+              target_label  = "__path__"
+              separator     = "/"
+              replacement   = "/var/log/pods/*${1}/*.log"
+              action        = "replace"
+            }
+            
+            // Drop system namespaces to reduce noise (matches your Promtail)
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              regex         = "kube-system|flux-system|metallb-system"
+              action        = "drop"
+            }
+          }
+
+          // Log processing with CRI format parsing (matches your Promtail CRI stage)
+          loki.process "pod_logs_process" {
+            // Parse CRI format logs (containerd/Talos)
+            stage.cri {}
+            
+            forward_to = [loki.write.loki_external.receiver]
+          }
+
+          // Kubernetes log source using custom discovery
+          loki.source.kubernetes "pod_logs" {
+            targets    = discovery.relabel.pod_logs_custom.output
+            forward_to = [loki.process.pod_logs_process.receiver]
+          }
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+
+        extraEnv:
+          - name: HOSTNAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+
+        # Security context (required for reading container logs)
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+          capabilities:
+            add:
+              - DAC_READ_SEARCH
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+
+    # Singleton collector for cluster-wide tasks
+    alloy-singleton:
+      enabled: true
+      alloy:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 512Mi
+
+    # Service configuration for MetalLB LoadBalancer
+    service:
+      enabled: true
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/loadBalancerIPs: "10.10.7.201"
+      ports:
+        - name: alloy-ui
+          port: 80
+          targetPort: 12345
+          protocol: TCP
+
+    # Node Exporter customization (via subchart override)
+    prometheus-node-exporter:
+      extraArgs:
+        - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+        - --collector.netclass.ignored-devices=^(veth.*)$
+        - --no-collector.wifi
+        - --no-collector.hwmon
+
+    # RBAC configuration
     rbac:
       create: true
 
+    # ServiceAccount configuration
     serviceAccount:
       create: true
-      name: alloy
+      name: k8s-monitoring
+
+    # Prometheus Operator integration
+    prometheusOperatorObjects:
+      enabled: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alloy-ui
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy-ui
+    app.kubernetes.io/part-of: monitoring-stack
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: alloy.home.cwbtech.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: k8s-monitoring-alloy-metrics
+                port:
+                  number: 12345
+  tls:
+    - hosts:
+        - alloy.home.cwbtech.net
+      secretName: alloy-tls
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: traefik
+  namespace: monitoring
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/part-of: monitoring-stack
+    prometheus.io/scrape: "true"
+spec:
+  jobLabel: traefik
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  namespaceSelector:
+    matchNames:
+      - traefik-system
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
