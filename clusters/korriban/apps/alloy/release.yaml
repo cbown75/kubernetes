@@ -93,12 +93,8 @@ spec:
         clustering:
           enabled: true
 
-        # Expose UI for debugging
-        extraPorts:
-          - name: http-metrics
-            port: 12345
-            targetPort: 12345
-            protocol: TCP
+        # FIXED: Removed duplicate extraPorts configuration
+        # The default port 12345 is already exposed, no need to add it again
 
         resources:
           requests:
@@ -108,22 +104,20 @@ spec:
             cpu: 1000m
             memory: 2Gi
 
-    # Logs collector (DaemonSet) - Use existing NFS CSI
+    # Logs collector (DaemonSet) - FIXED: Use hostPath instead of volumeClaimTemplates
     alloy-logs:
       enabled: true
       controller:
         type: daemonset
 
-        # Use existing NFS CSI storage class instead of manual PV
-        volumeClaimTemplates:
-          - metadata:
-              name: alloy-log-positions
-            spec:
-              accessModes: ["ReadWriteMany"]
-              storageClassName: "nfs-holocron-general" # Use your existing NFS CSI
-              resources:
-                requests:
-                  storage: 5Gi
+        # FIXED: Remove volumeClaimTemplates (not supported for DaemonSets)
+        # Use hostPath for log position storage instead
+        volumes:
+          extra:
+            - name: alloy-log-positions
+              hostPath:
+                path: /var/lib/alloy-positions
+                type: DirectoryOrCreate
 
         # Tolerations to run on all nodes (like your Promtail)
         tolerations:
@@ -239,14 +233,6 @@ spec:
             forward_to = [loki.process.pod_logs_process.receiver]
           }
 
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 500m
-            memory: 1Gi
-
         extraEnv:
           - name: HOSTNAME
             valueFrom:
@@ -264,6 +250,14 @@ spec:
               - ALL
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
 
     # Singleton collector for cluster-wide tasks
     alloy-singleton:
