@@ -1,0 +1,167 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  targetNamespace: monitoring
+  dependsOn:
+    - name: loki
+      namespace: monitoring
+    - name: prometheus
+      namespace: monitoring
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: alloy
+      version: "0.12.x"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+      interval: 5m
+
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
+
+  values:
+    # Deploy as DaemonSet for log collection from all nodes
+    controller:
+      type: "daemonset"
+
+    # Reference external ConfigMap for configuration
+    alloy:
+      configMap:
+        name: alloy-config
+
+    # Resources - replaces both Promtail (100m/64Mi * 6) + node-exporter (102m/180Mi * 6)
+    # Total current: 1212m CPU, 1464Mi memory across 12 pods
+    # New total: 1200m CPU, 1536Mi memory across 6 pods (more efficient!)
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m # Replaces 100m (promtail) + 102m (node-exporter) = 202m per node
+        memory: 256Mi # Replaces 64Mi (promtail) + 180Mi (node-exporter) = 244Mi per node
+
+    # Security context for Talos nodes - matches node-exporter requirements
+    securityContext:
+      runAsUser: 65534 # nobody user for Talos
+      runAsGroup: 65534
+      fsGroup: 65534
+      runAsNonRoot: true # Changed to true for better security
+      capabilities:
+        add:
+          - DAC_READ_SEARCH # For log file access
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+
+    # Pod security context - matches node-exporter
+    podSecurityContext:
+      fsGroup: 65534
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Host access required for node metrics (like node-exporter)
+    hostNetwork: true
+    hostPID: true
+
+    # Volume mounts for log collection and node metrics
+    mounts:
+      varlog: true # Enable /var/log mount for container logs
+      dockercontainers: false # Disable Docker containers mount (using containerd)
+
+    # Custom volumes for Talos/containerd and node metrics
+    extraVolumes:
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: root
+        hostPath:
+          path: /
+      - name: positions
+        nfs:
+          server: holocron.home.cwbtech.net
+          path: /volume1/kubernetes/alloy-positions
+
+    extraVolumeMounts:
+      - name: proc
+        mountPath: /host/proc
+        readOnly: true
+      - name: sys
+        mountPath: /host/sys
+        readOnly: true
+      - name: root
+        mountPath: /host/root
+        readOnly: true
+        mountPropagation: HostToContainer
+      - name: positions
+        mountPath: /var/lib/alloy
+
+    # Additional container arguments
+    extraArgs:
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy
+
+    # Environment variables for node metrics
+    extraEnv:
+      - name: HOSTNAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
+
+    # ServiceMonitor for Prometheus to scrape Alloy metrics
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        app.kubernetes.io/part-of: monitoring-stack
+        release: prometheus # Match your Prometheus operator label selector
+
+    # Tolerations to run on all nodes including control plane (matches node-exporter)
+    tolerations:
+      - operator: Exists
+        effect: NoSchedule
+
+    # Node affinity to ensure one pod per node
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: In
+                  values:
+                    - linux
+
+    # Update strategy for DaemonSet
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+
+    # RBAC - comprehensive permissions for discovery and log collection
+    rbac:
+      create: true
+
+    serviceAccount:
+      create: true
+      name: alloy
