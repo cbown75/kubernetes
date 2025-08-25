@@ -14,9 +14,9 @@ spec:
             prefix: /
       route:
         - destination:
-          host: prometheus-server.monitoring.svc.cluster.local
-          port:
-            number: 9090
+            host: prometheus-server.monitoring.svc.cluster.local
+            port:
+              number: 9090
       timeout: 30s
       retries:
         attempts: 3
