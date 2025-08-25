@@ -115,3 +115,18 @@ spec:
       annotations:
         metallb.universe.tf/address-pool: default
       externalTrafficPolicy: Local
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: istio-gw-wildcard-home-cwbtech
+  namespace: istio-system
+spec:
+  secretName: istio-gw-tls
+  dnsNames:
+    - "*.home.cwbtech.net"
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-cloudflare
+  privateKey:
+    rotationPolicy: Always
