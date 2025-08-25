@@ -4,3 +4,4 @@ resources:
   - release.yaml
   - sealed-secret.yaml
   - prometheus-rules.yaml
+  - istio-routing.yaml
