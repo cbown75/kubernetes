@@ -14,7 +14,7 @@ spec:
             prefix: /
       route:
         - destination:
-            host: grafana.monitoring.svc.cluster.local
+            host: monitoring-grafana.monitoring.svc.cluster.local
             port:
               number: 3000
       timeout: 5s
