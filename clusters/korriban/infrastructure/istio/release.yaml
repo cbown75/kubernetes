@@ -1,4 +1,3 @@
----
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -7,7 +6,6 @@ metadata:
 spec:
   interval: 1h
   url: https://istio-release.storage.googleapis.com/charts
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -25,7 +23,6 @@ spec:
         namespace: flux-system
   install:
     createNamespace: true
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -53,7 +50,6 @@ spec:
       - cert-manager
       - metallb-system
       - traefik-system
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -74,7 +70,6 @@ spec:
       autoscaleEnabled: true
     meshConfig:
       accessLogFile: /dev/stdout
-
 ---
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
@@ -84,7 +79,6 @@ metadata:
 spec:
   mtls:
     mode: PERMISSIVE
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -105,5 +99,5 @@ spec:
       type: LoadBalancer
       loadBalancerIP: 10.10.7.210
       annotations:
-      metallb.universe.tf/address-pool: external
+        metallb.universe.tf/address-pool: external
       externalTrafficPolicy: Local
