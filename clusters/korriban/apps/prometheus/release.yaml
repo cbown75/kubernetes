@@ -9,7 +9,6 @@ metadata:
     pod-security.kubernetes.io/audit: privileged
     pod-security.kubernetes.io/warn: privileged
     network-policy/monitoring: "true"
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -31,29 +30,20 @@ spec:
         name: prometheus-community
         namespace: flux-system
       interval: 5m
-
   install:
     createNamespace: false
     remediation:
       retries: 3
-
   upgrade:
     cleanupOnFail: true
     remediation:
       retries: 3
       remediateLastFailure: true
-
   rollback:
     cleanupOnFail: true
     force: true
     recreate: true
-
-  dependsOn:
-    - name: traefik
-      namespace: traefik-system
-
   values:
-    # Disable other components (deployed separately)
     alertmanager:
       enabled: false
     kube-state-metrics:
@@ -62,16 +52,11 @@ spec:
       enabled: false
     prometheus-pushgateway:
       enabled: false
-
-    # Prometheus server configuration
     server:
-      # Image configuration
       image:
         repository: prom/prometheus
         tag: "v2.51.2"
         pullPolicy: IfNotPresent
-
-      # Resource limits
       resources:
         limits:
           cpu: 2000m
@@ -79,20 +64,14 @@ spec:
         requests:
           cpu: 500m
           memory: 2Gi
-
-      # Persistence configuration
       persistentVolume:
         enabled: true
         storageClass: "synology-holocron-fast"
         accessModes:
           - ReadWriteOnce
         size: 50Gi
-
-      # Retention settings
       retention: "15d"
       retentionSize: "45GB"
-
-      # Global configuration
       global:
         scrape_interval: 30s
         scrape_timeout: 10s
@@ -100,15 +79,11 @@ spec:
         external_labels:
           cluster: "korriban"
           environment: "production"
-
-      # Security context
       securityContext:
         runAsUser: 65534
         runAsNonRoot: true
         runAsGroup: 65534
         fsGroup: 65534
-
-      # Pod security context
       podSecurityContext:
         runAsUser: 65534
         runAsNonRoot: true
@@ -116,8 +91,6 @@ spec:
         fsGroup: 65534
         seccompProfile:
           type: RuntimeDefault
-
-      # Container security context
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -126,8 +99,6 @@ spec:
         readOnlyRootFilesystem: true
         runAsNonRoot: true
         runAsUser: 65534
-
-      # Service configuration
       service:
         type: ClusterIP
         servicePort: 9090
@@ -135,55 +106,28 @@ spec:
           prometheus.io/scrape: "true"
           prometheus.io/port: "9090"
           prometheus.io/path: "/metrics"
-
-      # Ingress configuration
-      ingress:
-        enabled: true
-        ingressClassName: traefik
-        annotations:
-          cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-          traefik.ingress.kubernetes.io/router.entrypoints: websecure
-          traefik.ingress.kubernetes.io/router.tls: "true"
-        hosts:
-          - prometheus.home.cwbtech.net
-        tls:
-          - secretName: prometheus-tls
-            hosts:
-              - prometheus.home.cwbtech.net
-
-      # Pod annotations
       podAnnotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
-
-    # ServiceAccount configuration
     serviceAccounts:
       server:
         create: true
         name: prometheus
         annotations: {}
-
-    # RBAC configuration
     rbac:
       create: true
-
-    # Network policy
     networkPolicy:
       enabled: true
-
-    # Prometheus configuration file
     serverFiles:
       prometheus.yml:
         rule_files:
           - "/etc/prometheus/rules/*.yml"
-
         scrape_configs:
           - job_name: prometheus
             static_configs:
               - targets:
                   - localhost:9090
-
           - job_name: "kubernetes-apiservers"
             kubernetes_sd_configs:
               - role: endpoints
@@ -192,15 +136,9 @@ spec:
               ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
             bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
             relabel_configs:
-              - source_labels:
-                  [
-                    __meta_kubernetes_namespace,
-                    __meta_kubernetes_service_name,
-                    __meta_kubernetes_endpoint_port_name,
-                  ]
+              - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
                 action: keep
                 regex: default;kubernetes;https
-
           - job_name: node-exporter
             kubernetes_sd_configs:
               - role: node
@@ -212,25 +150,18 @@ spec:
                 target_label: instance
               - action: labelmap
                 regex: __meta_kubernetes_node_label_(.+)
-
           - job_name: "kubernetes-services"
             kubernetes_sd_configs:
               - role: service
             relabel_configs:
-              - source_labels:
-                  [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
                 action: keep
                 regex: true
-              - source_labels:
-                  [__meta_kubernetes_service_annotation_prometheus_io_path]
+              - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
                 action: replace
                 target_label: __metrics_path__
                 regex: (.+)
-              - source_labels:
-                  [
-                    __address__,
-                    __meta_kubernetes_service_annotation_prometheus_io_port,
-                  ]
+              - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
                 action: replace
                 regex: ([^:]+)(?::\d+)?;(\d+)
                 replacement: ${1}:${2}
@@ -243,7 +174,6 @@ spec:
               - source_labels: [__meta_kubernetes_service_name]
                 action: replace
                 target_label: kubernetes_service_name
-
           - job_name: "kubernetes-cadvisor"
             kubernetes_sd_configs:
               - role: node
@@ -261,7 +191,6 @@ spec:
                 regex: (.+)
                 target_label: __metrics_path__
                 replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
-
           - job_name: "kubernetes-nodes"
             kubernetes_sd_configs:
               - role: node
@@ -279,25 +208,18 @@ spec:
                 regex: (.+)
                 target_label: __metrics_path__
                 replacement: /api/v1/nodes/${1}/proxy/metrics
-
           - job_name: "kubernetes-pods"
             kubernetes_sd_configs:
               - role: pod
             relabel_configs:
-              - source_labels:
-                  [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
                 action: keep
                 regex: true
-              - source_labels:
-                  [__meta_kubernetes_pod_annotation_prometheus_io_path]
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
                 action: replace
                 target_label: __metrics_path__
                 regex: (.+)
-              - source_labels:
-                  [
-                    __address__,
-                    __meta_kubernetes_pod_annotation_prometheus_io_port,
-                  ]
+              - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
                 action: replace
                 regex: ([^:]+)(?:\d+)?;(\d+)
                 replacement: ${1}:${2}

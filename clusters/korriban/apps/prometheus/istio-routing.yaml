@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  hosts:
+    - "prometheus.home.cwbtech.net"
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+          host: prometheus-server.monitoring.svc.cluster.local
+            port:
+              number: 9090
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
