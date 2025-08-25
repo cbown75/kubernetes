@@ -30,6 +30,9 @@ metadata:
   name: istio-cni
   namespace: istio-system
 spec:
+  dependsOn:
+    - name: istio-base
+      namespace: istio-system
   interval: 30m
   chart:
     spec:
@@ -57,6 +60,11 @@ metadata:
   name: istiod
   namespace: istio-system
 spec:
+  dependsOn:
+    - name: istio-base
+      namespace: istio-system
+    - name: istio-cni
+      namespace: istio-system
   interval: 30m
   chart:
     spec:
