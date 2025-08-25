@@ -16,7 +16,7 @@ spec:
         - destination:
             host: monitoring-grafana.monitoring.svc.cluster.local
             port:
-              number: 3000
+              number: 80
       timeout: 5s
       retries:
         attempts: 2
