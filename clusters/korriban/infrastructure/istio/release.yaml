@@ -88,15 +88,6 @@ spec:
     meshConfig:
       accessLogFile: /dev/stdout
 ---
-apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
-metadata:
-  name: default
-  namespace: istio-system
-spec:
-  mtls:
-    mode: PERMISSIVE
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
