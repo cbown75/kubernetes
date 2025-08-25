@@ -5,14 +5,14 @@ metadata:
   namespace: istio-system
 spec:
   selector:
-    istio: ingressgateway
+    istio: ingress
   servers:
     - port:
         number: 80
         name: http
         protocol: HTTP
       hosts:
-        - "grafana.home.cwbtech.net"
+        - "*.home.cwbtech.net"
       tls:
         httpsRedirect: true
     - port:
@@ -20,7 +20,7 @@ spec:
         name: https
         protocol: HTTPS
       hosts:
-        - "grafana.home.cwbtech.net"
+        - "*.home.cwbtech.net"
       tls:
         mode: SIMPLE
         credentialName: istio-gw-tls
