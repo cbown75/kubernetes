@@ -94,6 +94,9 @@ metadata:
   name: istio-ingress
   namespace: istio-system
 spec:
+  dependsOn:
+    - name: istiod
+      namespace: istio-system
   interval: 30m
   chart:
     spec:
