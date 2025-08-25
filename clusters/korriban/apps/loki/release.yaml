@@ -1,12 +1,3 @@
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: HelmRepository
-metadata:
-  name: grafana
-  namespace: flux-system
-spec:
-  interval: 24h
-  url: https://grafana.github.io/helm-charts
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -16,9 +7,11 @@ metadata:
     app.kubernetes.io/name: loki
     app.kubernetes.io/part-of: monitoring-stack
 spec:
-  targetNamespace: monitoring
+  dependsOn:
+    - name: traefik
+      namespace: traefik-system
   interval: 10m
-  timeout: 10m
+  timeout: 30m
   chart:
     spec:
       chart: loki
@@ -39,65 +32,103 @@ spec:
     recreate: true
     force: true
   values:
-    # Loki configuration
+    deploymentMode: SingleBinary
     loki:
       auth_enabled: false
+      podSecurityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
       commonConfig:
         replication_factor: 1
-        path_prefix: /var/loki
-        compactor_address: 'loki'
-      # NFS storage configuration
+        ring:
+          kvstore:
+            store: inmemory
       storage:
-        type: 'filesystem'
-        filesystem:
-          chunks_directory: '/var/loki/chunks'
-          rules_directory: '/var/loki/rules'
-          admin_api_directory: '/var/loki/admin'
+        type: filesystem
       schemaConfig:
         configs:
-          - from: 2024-04-01
+          - from: "2024-04-01"
             store: tsdb
             object_store: filesystem
             schema: v13
             index:
               prefix: loki_index_
               period: 24h
-      # Ingester configuration
-      ingester:
-        chunk_idle_period: 1m
-        max_chunk_age: 1h
-        chunk_target_size: 1048576
-        chunk_retain_period: 30s
-        max_transfer_retries: 0
-        wal:
-          dir: /var/loki/wal
-      # Compactor configuration
+      limits_config:
+        retention_period: 168h
+        reject_old_samples: true
+        reject_old_samples_max_age: 168h
+        max_entries_limit_per_query: 5000
+        max_streams_per_user: 10000
+        max_global_streams_per_user: 10000
       compactor:
-        working_directory: /var/loki
-        compactor_ring:
-          kvstore:
-            store: inmemory
-      # Analytics & telemetry
-      analytics:
-        reporting_enabled: false
-    # Single binary deployment mode
-    deploymentMode: SingleBinary
+        working_directory: /var/loki/compactor
+        compaction_interval: 10m
+        retention_enabled: true
+        retention_delete_delay: 1h
+        delete_request_store: filesystem
     singleBinary:
       replicas: 1
-      # Resources
       resources:
         limits:
-          cpu: 1
-          memory: 2Gi
-        requests:
           cpu: 500m
           memory: 1Gi
-      # Persistence configuration
+        requests:
+          cpu: 250m
+          memory: 512Mi
       persistence:
         enabled: true
-        storageClass: "nfs-holocron-general"
-        size: 50Gi
-      # Security contexts
+        size: 10Gi
+        storageClass: nfs-holocron-general
+        accessModes:
+          - ReadWriteOnce
+        enableStatefulSetAutoDeletePVC: false
+      extraEnv:
+        - name: GOMEMLIMIT
+          value: 900MiB
+    backend:
+      replicas: 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+    ingester:
+      replicas: 0
+    querier:
+      replicas: 0
+    queryFrontend:
+      replicas: 0
+    queryScheduler:
+      replicas: 0
+    distributor:
+      replicas: 0
+    compactor:
+      replicas: 0
+    indexGateway:
+      replicas: 0
+    bloomCompactor:
+      replicas: 0
+    bloomGateway:
+      replicas: 0
+    gateway:
+      enabled: true
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
       podSecurityContext:
         fsGroup: 101
         runAsGroup: 101
@@ -111,7 +142,6 @@ spec:
           drop:
             - ALL
         readOnlyRootFilesystem: true
-    # Memcached configuration
     memcached:
       podSecurityContext:
         fsGroup: 11211
@@ -126,17 +156,14 @@ spec:
           drop:
             - ALL
         readOnlyRootFilesystem: true
-    # Disable MinIO
     minio:
       enabled: false
-    # Cache configuration
     chunksCache:
       enabled: true
       allocatedMemory: 1024
     resultsCache:
       enabled: true
       allocatedMemory: 512
-    # Monitoring configuration
     monitoring:
       selfMonitoring:
         enabled: false
@@ -144,12 +171,20 @@ spec:
         enabled: true
         labels:
           app.kubernetes.io/part-of: monitoring-stack
-    # Disable Traefik ingress - we're using Istio
     ingress:
-      enabled: false
-    # RBAC configuration
+      enabled: true
+      ingressClassName: traefik
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+      hosts:
+        - loki.home.cwbtech.net
+      tls:
+        - secretName: loki-tls
+          hosts:
+            - loki.home.cwbtech.net
     rbac:
       pspEnabled: false
-    # Disable test pods
     test:
       enabled: false
