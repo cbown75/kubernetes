@@ -1,0 +1,34 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  hosts:
+    - "grafana.home.cwbtech.net"
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: grafana.monitoring.svc.cluster.local
+            port:
+              number: 3000
+      timeout: 5s
+      retries:
+        attempts: 2
+        perTryTimeout: 2s
+# ---
+# apiVersion: networking.istio.io/v1beta1
+# kind: DestinationRule
+# metadata:
+#   name: grafana
+#   namespace: monitoring
+# spec:
+#   host: grafana.monitoring.svc.cluster.local
+#   trafficPolicy:
+#     tls:
+#       mode: ISTIO_MUTUAL
