@@ -113,5 +113,5 @@ spec:
       type: LoadBalancer
       loadBalancerIP: 10.10.7.210
       annotations:
-        metallb.universe.tf/address-pool: external
+        metallb.universe.tf/address-pool: default
       externalTrafficPolicy: Local
