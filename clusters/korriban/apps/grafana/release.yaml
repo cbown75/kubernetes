@@ -1,4 +1,3 @@
----
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
@@ -7,7 +6,6 @@ metadata:
 spec:
   interval: 24h
   url: https://grafana.github.io/helm-charts
-
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -19,9 +17,6 @@ metadata:
     app.kubernetes.io/part-of: monitoring-stack
 spec:
   targetNamespace: monitoring
-  dependsOn:
-    - name: traefik
-      namespace: traefik-system
   interval: 10m
   timeout: 10m
   chart:
@@ -33,7 +28,6 @@ spec:
         name: grafana
         namespace: flux-system
       interval: 5m
-
   install:
     createNamespace: false
     remediation:
@@ -44,27 +38,19 @@ spec:
   rollback:
     recreate: true
     force: true
-
   values:
-    # Admin user - credentials come from sealed secret
     admin:
       existingSecret: grafana-admin-secret
       userKey: admin-user
       passwordKey: admin-password
-
-    # NFS Storage - Simple and straightforward
     persistence:
       enabled: true
       storageClassName: nfs-holocron-general # Your NFS storage class
       accessModes:
         - ReadWriteOnce
       size: 10Gi
-
-    # Disable init container that violates pod security policy
     initChownData:
       enabled: false
-
-    # Resources
     resources:
       limits:
         cpu: 500m
@@ -72,31 +58,11 @@ spec:
       requests:
         cpu: 250m
         memory: 256Mi
-
-    # Security context - Required for NFS
     securityContext:
       runAsUser: 472
       runAsGroup: 472
       fsGroup: 472
       runAsNonRoot: true
-
-    # Traefik Ingress with Basic Auth middleware
-    ingress:
-      enabled: true
-      ingressClassName: traefik
-      hosts:
-        - grafana.home.cwbtech.net
-      tls:
-        - secretName: grafana-tls
-          hosts:
-            - grafana.home.cwbtech.net
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: "true"
-        # traefik.ingress.kubernetes.io/router.middlewares: monitoring-grafana-auth@kubernetescrd
-
-    # Default Prometheus datasource
     datasources:
       datasources.yaml:
         apiVersion: 1
@@ -106,14 +72,10 @@ spec:
             url: http://prometheus.monitoring.svc.cluster.local:9090
             access: proxy
             isDefault: true
-
-    # Service monitor for Prometheus to scrape Grafana
     serviceMonitor:
       enabled: true
       labels:
         app.kubernetes.io/part-of: monitoring-stack
-
-    # Dashboard auto-discovery
     sidecar:
       dashboards:
         enabled: true
@@ -123,8 +85,6 @@ spec:
         enabled: true
         label: grafana_datasource
         searchNamespace: ALL
-
-    # Basic Grafana configuration
     grafana.ini:
       analytics:
         check_for_updates: false
