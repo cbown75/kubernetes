@@ -7,9 +7,6 @@ metadata:
     app.kubernetes.io/name: loki
     app.kubernetes.io/part-of: monitoring-stack
 spec:
-  dependsOn:
-    - name: traefik
-      namespace: traefik-system
   interval: 10m
   timeout: 30m
   chart:
@@ -171,19 +168,6 @@ spec:
         enabled: true
         labels:
           app.kubernetes.io/part-of: monitoring-stack
-    ingress:
-      enabled: true
-      ingressClassName: traefik
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: "true"
-      hosts:
-        - loki.home.cwbtech.net
-      tls:
-        - secretName: loki-tls
-          hosts:
-            - loki.home.cwbtech.net
     rbac:
       pspEnabled: false
     test:
