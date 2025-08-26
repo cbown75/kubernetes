@@ -21,8 +21,6 @@ spec:
   dependsOn:
     - name: prometheus
       namespace: monitoring
-    - name: traefik
-      namespace: traefik-system
   install:
     createNamespace: false
     remediation:
@@ -34,30 +32,22 @@ spec:
     force: true
     recreate: true
   values:
-    # High availability configuration
     replicaCount: 3
-
-    # Storage configuration
     persistence:
       enabled: true
       storageClass: "nfs-holocron-general"
       accessMode: ReadWriteOnce
       size: 5Gi
-
-    # Security context
     podSecurityContext:
       runAsUser: 65534
       runAsGroup: 65534
       runAsNonRoot: true
       fsGroup: 65534
-
     securityContext:
       runAsUser: 65534
       runAsGroup: 65534
       runAsNonRoot: true
       fsGroup: 65534
-
-    # Resource requests and limits
     resources:
       requests:
         cpu: 100m
@@ -65,45 +55,19 @@ spec:
       limits:
         cpu: 300m
         memory: 256Mi
-
-    # Ingress configuration
-    ingress:
-      enabled: true
-      className: traefik
-      annotations:
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: "true"
-        cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-      hosts:
-        - host: alertmanager.home.cwbtech.net
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
-        - secretName: alertmanager-tls
-          hosts:
-            - alertmanager.home.cwbtech.net
-
-    # ServiceMonitor for Prometheus integration
     serviceMonitor:
       enabled: true
       additionalLabels:
         app.kubernetes.io/part-of: monitoring-stack
-
-    # Mount secrets for Slack webhook and webhook password
     extraSecretMounts:
       - name: alertmanager-secrets
         secretName: alertmanager-secrets
         mountPath: /etc/alertmanager/secrets
         readOnly: true
-
-    # AlertManager configuration
     config:
       global:
         resolve_timeout: 5m
-        # Slack webhook URL from sealed secret
         slack_api_url_file: "/etc/alertmanager/secrets/slack-webhook-url"
-
       route:
         receiver: "default"
         group_by: ["alertname", "cluster", "service"]
@@ -118,32 +82,27 @@ spec:
             group_wait: 10s
             repeat_interval: 1h
             continue: true
-
           # Warning alerts - grouped notifications
           - matchers:
               - severity="warning"
             receiver: "warning"
             group_wait: 2m
             repeat_interval: 12h
-
           # Infrastructure alerts
           - matchers:
               - alertname=~"Node.*|Disk.*|Memory.*|CPU.*"
             receiver: "infrastructure"
             group_by: ["alertname", "instance"]
-
           # Application alerts
           - matchers:
               - alertname=~"Pod.*|Container.*|Service.*"
             receiver: "application"
             group_by: ["alertname", "namespace", "pod"]
-
       receivers:
         - name: "default"
           webhook_configs:
             - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/alerts"
               send_resolved: true
-
         - name: "critical"
           webhook_configs:
             - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/critical"
@@ -152,22 +111,18 @@ spec:
                 basic_auth:
                   username: "alertmanager"
                   password_file: "/etc/alertmanager/secrets/webhook-password"
-
         - name: "warning"
           webhook_configs:
             - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/warning"
               send_resolved: true
-
         - name: "infrastructure"
           webhook_configs:
             - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/infrastructure"
               send_resolved: true
-
         - name: "application"
           webhook_configs:
             - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/application"
               send_resolved: true
-
       inhibit_rules:
         # Inhibit warning alerts when critical alerts are firing
         - source_matchers:
@@ -175,7 +130,6 @@ spec:
           target_matchers:
             - severity="warning"
           equal: ["alertname", "cluster", "service"]
-
     # Pod anti-affinity for HA
     affinity:
       podAntiAffinity:
