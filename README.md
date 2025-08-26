@@ -9,34 +9,60 @@ This repository contains the complete Kubernetes infrastructure configuration fo
 ## Repository Structure
 
 ```
-├── clusters/your-cluster/          # Cluster-specific configurations
-│   ├── flux-system/               # Core FluxCD system files
-│   ├── apps/                      # Application deployments
-│   └── infrastructure/            # Infrastructure components
-│       ├── storage/               # Storage CSI drivers
-│       ├── sealed-secrets/        # Secret encryption
-│       ├── cert-manager/          # TLS certificate management
-│       ├── traefik/              # Ingress controller
-│       └── prometheus/           # Monitoring stack
-├── infrastructure/                # Shared infrastructure components
-│   └── storage/                  # Storage Helm charts
-├── charts/                       # Custom Helm charts
-└── README.md                     # This file
+├── clusters/korriban/                 # Cluster-specific configurations
+│   ├── flux-system/                  # Core FluxCD system files
+│   ├── apps/                         # Application deployments
+│   │   ├── prometheus/               # Prometheus monitoring
+│   │   ├── grafana/                  # Grafana dashboards
+│   │   ├── loki/                     # Log aggregation
+│   │   ├── alertmanager/             # Alert management
+│   │   └── alloy/                    # Telemetry collection
+│   └── infrastructure/               # Infrastructure components
+│       ├── storage/                  # Storage CSI drivers
+│       ├── sealed-secrets/           # Secret encryption
+│       ├── cert-manager/             # TLS certificate management
+│       ├── metallb/                  # Load balancer
+│       └── istio/                    # Service mesh & ingress
+├── infrastructure/                   # Shared infrastructure components
+│   └── storage/                      # Storage Helm charts
+├── charts/                          # Custom Helm charts
+└── scripts/                         # Helper scripts for sealed secrets
 ```
 
 ## 📚 Component Documentation
 
 Each major system has detailed documentation:
 
-- **[FluxCD](clusters/your-cluster/flux-system/README.md)** - GitOps controller with debugging commands
-- **[Infrastructure Overview](clusters/your-cluster/infrastructure/README.md)** - All infrastructure components
+- **[FluxCD](clusters/korriban/flux-system/README.md)** - GitOps controller with debugging commands
+- **[Infrastructure Overview](clusters/korriban/infrastructure/README.md)** - All infrastructure components
 - **[Storage Systems](infrastructure/storage/README.md)** - NFS & Synology CSI drivers
-- **[Sealed Secrets](clusters/your-cluster/infrastructure/sealed-secrets/README.md)** - Secret encryption management
-- **[Cert Manager](clusters/your-cluster/infrastructure/cert-manager/README.md)** - TLS certificate automation
-- **[Traefik](clusters/your-cluster/infrastructure/traefik/README.md)** - Ingress controller
-- **[Prometheus](clusters/your-cluster/infrastructure/prometheus/README.md)** - Monitoring stack
+- **[Sealed Secrets](clusters/korriban/infrastructure/sealed-secrets/README.md)** - Secret encryption management
+- **[Cert Manager](clusters/korriban/infrastructure/cert-manager/README.md)** - TLS certificate automation
+- **[MetalLB](clusters/korriban/infrastructure/metallb/README.md)** - Load balancer for bare metal
+- **[Istio](clusters/korriban/infrastructure/istio/README.md)** - Service mesh and ingress controller
+- **[Prometheus Stack](clusters/korriban/apps/prometheus/README.md)** - Monitoring and alerting
 
-## Quick Reference
+## 🏗️ Infrastructure Architecture
+
+```
+Internet
+    │
+    ▼
+Router (10.10.7.1)
+    │
+    └── MetalLB Pool: 10.10.7.200-250
+        │
+        ├── 10.10.7.210: Istio Ingress (Main Entry Point)
+        │   │
+        │   ├── grafana.home.cwbtech.net
+        │   ├── prometheus.home.cwbtech.net
+        │   ├── alertmanager.home.cwbtech.net
+        │   └── loki.home.cwbtech.net
+        │
+        └── Available: 10.10.7.200-209, 211-250
+```
+
+## 🚀 Quick Reference
 
 ### 🔍 Cluster Status Check
 
@@ -51,8 +77,17 @@ kubectl get kustomizations -A
 kubectl get kustomizations -A -w
 
 # Check all pods across infrastructure
-kubectl get pods -A | grep -E "(flux-system|cert-manager|traefik-system|monitoring|nfs-csi-driver)"
+kubectl get pods -A | grep -E "(flux-system|cert-manager|istio-system|monitoring|metallb-system)"
 ```
+
+### 🌐 Service Access
+
+All services are accessible via **Istio ingress** at `https://*.home.cwbtech.net`:
+
+- **Grafana**: https://grafana.home.cwbtech.net
+- **Prometheus**: https://prometheus.home.cwbtech.net
+- **AlertManager**: https://alertmanager.home.cwbtech.net
+- **Loki**: https://loki.home.cwbtech.net
 
 ### 🚀 Common FluxCD Debug Commands
 
@@ -75,77 +110,70 @@ flux resume kustomization flux-system
 - **🔐 Sealed Secrets**: Secure secret management with encrypted secrets in git
 - **💾 Multi-Tier Storage**: NFS CSI driver and Synology CSI for different storage needs
 - **🏗️ Infrastructure as Code**: Everything defined in version-controlled manifests
-- **📊 Monitoring**: Prometheus stack for metrics and alerting
+- **📊 Complete Observability**: Prometheus, Grafana, Loki, and AlertManager stack
+- **🌐 Service Mesh**: Istio for advanced traffic management, security, and observability
 - **🌐 TLS Automation**: Automatic certificate management with Let's Encrypt
 
 ## Infrastructure Components
 
 ### Core Systems
 
-| Component          | Namespace        | Purpose              | Status Check                                                        |
-| ------------------ | ---------------- | -------------------- | ------------------------------------------------------------------- |
-| **FluxCD**         | `flux-system`    | GitOps controller    | `flux get all`                                                      |
-| **Sealed Secrets** | `kube-system`    | Secret encryption    | `kubectl get pods -n kube-system -l name=sealed-secrets-controller` |
-| **Cert Manager**   | `cert-manager`   | TLS certificates     | `kubectl get pods -n cert-manager`                                  |
-| **Traefik**        | `traefik-system` | Ingress/LoadBalancer | `kubectl get pods -n traefik-system`                                |
-| **Prometheus**     | `monitoring`     | Metrics/Monitoring   | `kubectl get pods -n monitoring`                                    |
+| Component          | Namespace        | Purpose           | Status Check                                                        |
+| ------------------ | ---------------- | ----------------- | ------------------------------------------------------------------- | --------- |
+| **FluxCD**         | `flux-system`    | GitOps Controller | `flux get all`                                                      |
+| **Sealed Secrets** | `kube-system`    | Secret Encryption | `kubectl get pods -n kube-system -l name=sealed-secrets-controller` |
+| **Cert Manager**   | `cert-manager`   | TLS Automation    | `kubectl get pods -n cert-manager`                                  |
+| **MetalLB**        | `metallb-system` | Load Balancer     | `kubectl get pods -n metallb-system`                                |
+| **Istio**          | `istio-system`   | Service Mesh      | `kubectl get pods -n istio-system`                                  |
+| **Storage**        | `kube-system`    | CSI Drivers       | `kubectl get pods -n kube-system                                    | grep csi` |
 
-### Storage Tiers
+### Monitoring Stack
 
-| Storage Class                   | Type      | Access Mode | Use Case                |
-| ------------------------------- | --------- | ----------- | ----------------------- |
-| `synology-holocron-fast`        | iSCSI SSD | RWO         | High-performance apps   |
-| `synology-iscsi-storage-delete` | iSCSI     | RWO         | Standard block storage  |
-| `nfs-storage`                   | NFS       | RWX         | Shared file storage     |
-| `nfs-fast`                      | NFS       | RWX         | High-performance shared |
+| Component        | Namespace    | Purpose            | Access URL                            |
+| ---------------- | ------------ | ------------------ | ------------------------------------- |
+| **Prometheus**   | `monitoring` | Metrics Collection | https://prometheus.home.cwbtech.net   |
+| **Grafana**      | `monitoring` | Visualization      | https://grafana.home.cwbtech.net      |
+| **AlertManager** | `monitoring` | Alert Management   | https://alertmanager.home.cwbtech.net |
+| **Loki**         | `monitoring` | Log Aggregation    | https://loki.home.cwbtech.net         |
 
-## FluxCD Configuration
+## Network Configuration
 
-The cluster is configured with aggressive drift detection:
+### Required DNS Records
 
-- **⏱️ Reconciliation Interval**: 1 minute (fast drift detection)
-- **💪 Force Mode**: Enabled to recreate drifted resources
-- **🏥 Health Checks**: Waits for resources to be ready before completing
-- **🗑️ Garbage Collection**: Automatically removes deleted resources
+Point these domains to **10.10.7.210** (Istio LoadBalancer IP):
 
-### Drift Detection Behavior
-
-FluxCD will automatically:
-
-1. Detect manual changes to cluster resources every minute
-2. Force recreation of any modified resources to match git state
-3. Remove resources that were deleted from git
-4. Ensure all resources are healthy before marking reconciliation complete
-
-## Quick Start
-
-### Prerequisites
-
-- Kubernetes cluster v1.20+
-- kubectl configured for cluster access
-- FluxCD CLI (optional but recommended)
-
-### Monitoring FluxCD
-
-```bash
-# Check FluxCD system status
-kubectl get kustomizations -A
-
-# Monitor reconciliation in real-time
-kubectl get kustomizations -A -w
-
-# Check specific kustomization details
-kubectl describe kustomization flux-system -n flux-system
-
-# View FluxCD logs
-kubectl logs -n flux-system -l app=kustomize-controller
+```
+*.home.cwbtech.net → 10.10.7.210
 ```
 
-## Making Changes
+Or individual entries:
 
-⚠️ **Important**: Do NOT make manual changes to the cluster. All changes must be made through Git.
+```
+grafana.home.cwbtech.net → 10.10.7.210
+prometheus.home.cwbtech.net → 10.10.7.210
+alertmanager.home.cwbtech.net → 10.10.7.210
+loki.home.cwbtech.net → 10.10.7.210
+```
 
-### Standard Workflow
+### Router Configuration
+
+Required DHCP exclusions to prevent IP conflicts:
+
+- `10.10.7.2-8`: Node IPs (static)
+- `10.10.7.200-250`: MetalLB service pool
+
+### Firewall Rules (Optional)
+
+For external access from the internet:
+
+- Port 80 → 10.10.7.210:80 (HTTP)
+- Port 443 → 10.10.7.210:443 (HTTPS)
+
+## GitOps Workflow
+
+### Standard Operations
+
+All changes must be made through Git:
 
 1. **Make changes** in git (edit YAML files)
 2. **Commit and push** to the main branch
@@ -171,57 +199,6 @@ If you need to make emergency changes:
    kubectl scale deployment -n flux-system kustomize-controller --replicas=1
    ```
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Kustomization stuck in "Ready: False"**
-
-   ```bash
-   kubectl describe kustomization <name> -n flux-system
-   ```
-
-2. **Resources being constantly recreated**
-   - Check if you have competing controllers modifying the same resources
-   - Review resource definitions for conflicts with autoscalers
-
-3. **Storage issues**
-
-   ```bash
-   kubectl get pvc -A
-   kubectl logs -n kube-system -l app=synology-csi-controller
-   ```
-
-4. **Certificate issues**
-   ```bash
-   kubectl get certificates -A
-   kubectl describe clusterissuer letsencrypt-cloudflare
-   ```
-
-## Monitoring and Observability
-
-### Prometheus Dashboard
-
-```bash
-kubectl port-forward -n monitoring svc/prometheus 9090:9090
-# Open http://localhost:9090
-```
-
-### Traefik Dashboard
-
-```bash
-kubectl port-forward -n traefik-system svc/traefik 9000:9000
-# Open http://localhost:9000/dashboard/
-```
-
-### Key Metrics to Monitor
-
-- **FluxCD reconciliation** status and duration
-- **Storage usage** and performance
-- **Certificate expiration** dates
-- **Ingress traffic** patterns
-- **Pod resource usage** across infrastructure
-
 ## Security Features
 
 - **🔐 Encrypted Secrets**: All secrets encrypted with Sealed Secrets
@@ -229,6 +206,7 @@ kubectl port-forward -n traefik-system svc/traefik 9000:9000
 - **🔒 RBAC**: Least-privilege access controls
 - **🌐 TLS Everywhere**: Automatic HTTPS with Let's Encrypt
 - **👮 Pod Security Standards**: Restricted security contexts
+- **🔐 Service Mesh Security**: mTLS and security policies with Istio
 
 ## Backup and Recovery
 
@@ -253,13 +231,39 @@ kubectl get volumesnapshots -A
 3. **Verify component deployment** order
 4. **Check all dependencies** are satisfied
 
+## Troubleshooting
+
+### Common Issues
+
+1. **Kustomization stuck in "Ready: False"**
+
+   ```bash
+   kubectl describe kustomization <name> -n flux-system
+   ```
+
+2. **Service not accessible**
+
+   ```bash
+   # Check Istio ingress
+   kubectl get virtualservice -A
+   kubectl get gateway -A
+   kubectl get svc -n istio-system
+   ```
+
+3. **Certificate issues**
+   ```bash
+   kubectl get certificates -A
+   kubectl describe clusterissuer letsencrypt-cloudflare
+   ```
+
 ## Support and Resources
 
 - **FluxCD Documentation**: https://fluxcd.io/docs/
 - **Kubernetes Documentation**: https://kubernetes.io/docs/
-- **Synology CSI**: https://github.com/SynologyOpenSource/synology-csi
+- **Istio Documentation**: https://istio.io/latest/docs/
 - **Cert Manager**: https://cert-manager.io/docs/
-- **Traefik**: https://doc.traefik.io/traefik/
+- **MetalLB**: https://metallb.universe.tf/
+- **Grafana**: https://grafana.com/docs/
 
 ## Contributing
 
@@ -272,4 +276,3 @@ kubectl get volumesnapshots -A
 ---
 
 **⚠️ Remember**: This is a GitOps-managed cluster. All changes must go through Git!
-

@@ -1,309 +1,564 @@
-# AlertManager for Korriban Cluster
+# AlertManager
 
 ## Overview
 
-AlertManager deployment using the official `prometheus-community/alertmanager` Helm chart. This provides a production-ready alerting solution integrated with the existing monitoring stack.
+AlertManager handles alerts sent by client applications such as Prometheus. It takes care of deduplicating, grouping, and routing alerts to the correct receiver integrations such as email, PagerDuty, Slack, or webhooks. It also handles silencing and inhibition of alerts.
 
 ## Features
 
-- **High Availability**: 3 replicas with clustering
-- **NFS Storage**: 5Gi storage using `nfs-holocron-general`
-- **Traefik Integration**: HTTPS access without basic auth
-- **Slack Integration**: Primary notification channel with rich formatting
-- **Prometheus Integration**: ServiceMonitor for metrics collection
-- **Smart Routing**: Alert routing based on severity and type
-
-## Slack Integration
-
-AlertManager is configured to send notifications to different Slack channels based on alert type:
-
-### **Channels:**
-
-- `#home-critical` - Critical alerts with @channel notifications
-- `#home-alerts` - General alerts and warnings
-- `#home-infrastructure` - Node, disk, memory alerts
-- `#home-applications` - Pod, container, service alerts
-
-### **Message Format:**
-
-- **Rich formatting** with emojis and structured text
-- **Alert details** including severity, instance, summary
-- **Resolved notifications** when alerts clear
-- **@channel tags** for critical alerts
+- **Alert Routing**: Route alerts to different receivers based on labels
+- **Grouping**: Group related alerts to reduce notification spam
+- **Silencing**: Temporarily suppress alerts during maintenance
+- **Inhibition**: Suppress alerts when other related alerts are firing
+- **High Availability**: Multi-replica deployment with clustering
+- **Web UI**: Manage alerts, silences, and configuration via web interface
 
 ## Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Prometheus    │────│   AlertManager   │────│   Webhooks      │
-│   (alerts)      │    │   3 replicas     │    │   (receivers)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ Prometheus  │───▶│AlertManager │───▶│   Slack     │
+│  (Alerts)   │    │ (Routing)   │    │ (Notifications)│
+└─────────────┘    └─────────────┘    └─────────────┘
+                           │
+                           ▼
+                   ┌─────────────┐
+                   │  Silences   │
+                   │ (Temporary) │
+                   └─────────────┘
 ```
-
-## Access
-
-- **URL**: https://alertmanager.home.cwbtech.net
-- **No Authentication**: Direct access via Traefik
-- **TLS**: Automatic Let's Encrypt certificate
 
 ## Configuration
 
-### Storage
+### Deployment Details
 
-- **Storage Class**: `nfs-holocron-general`
-- **Size**: 5Gi per replica
-- **Access Mode**: ReadWriteOnce
+- **Namespace**: `monitoring`
+- **Access URL**: https://alertmanager.home.cwbtech.net
+- **Replicas**: 3 (High Availability)
+- **Storage**: NFS persistent volume (5GB per replica)
+- **Clustering**: Enabled for HA
 
-### Clustering
+### High Availability Setup
 
-- **Replicas**: 3 for high availability
-- **Communication**: Port 9094 (gossip protocol)
-- **Anti-affinity**: Spread across different nodes
-
-### Alert Routing
-
-#### Routes
-
-1. **Critical Alerts**: 10s wait, 1h repeat
-2. **Warning Alerts**: 2m wait, 12h repeat
-3. **Infrastructure**: Node/disk/memory alerts
-4. **Application**: Pod/container/service alerts
-
-#### Receivers
-
-- `default`: Basic webhook receiver
-- `critical`: High priority alerts
-- `warning`: Standard warnings
-- `infrastructure`: System-level alerts
-- `application`: Application-level alerts
-
-## Prometheus Rules
-
-The deployment includes comprehensive alerting rules:
-
-### AlertManager Health
-
-- AlertManager down
-- Configuration reload failures
-- Notification failures
-- Cluster health
-
-### Infrastructure Monitoring
-
-- Node down
-- High CPU/memory usage
-- Disk space warnings/critical
-
-### Kubernetes Monitoring
-
-- Pod crash looping
-- Pod not ready
-- Deployment/StatefulSet replica mismatches
-
-### Storage Monitoring
-
-- PVC usage high/critical
-
-### FluxCD Monitoring
-
-- Reconciliation failures
-- Suspended resources
-
-## Secret Management
-
-### Required Sealed Secrets
-
-Before deploying, you need to create the Slack webhook URL secret (required):
-
-```bash
-# Get your Slack webhook URL from:
-# 1. Go to https://api.slack.com/apps
-# 2. Create new app or select existing app
-# 3. Go to "Incoming Webhooks"
-# 4. Create webhook for your workspace
-# 5. Copy the webhook URL (https://hooks.slack.com/services/...)
-
-# Run the script to create sealed secrets
-./scripts/create-alertmanager-secrets.sh
+```yaml
+replicaCount: 3
+clustering:
+  enabled: true
+  # Automatic peer discovery within cluster
 ```
 
-### Slack Channels Setup
+### Storage Configuration
 
-Create these channels in your Slack workspace:
-
-- `#home-critical` - For critical alerts (will receive @channel notifications)
-- `#home-alerts` - For general alerts and warnings
-- `#home-infrastructure` - For infrastructure-related alerts
-- `#home-applications` - For application/pod alerts
-
-**Note:** The AlertManager bot should be invited to all these channels.
-
-## Deployment
-
-The AlertManager is deployed via FluxCD HelmRelease:
-
-```bash
-# Check deployment status
-kubectl get helmrelease -n monitoring alertmanager
-
-# Check pods
-kubectl get pods -n monitoring -l app.kubernetes.io/name=alertmanager
-
-# Check cluster status
-kubectl port-forward -n monitoring svc/alertmanager 9093:9093
-curl -s http://localhost:9093/api/v2/status | jq '.cluster'
+```yaml
+persistence:
+  enabled: true
+  storageClass: "nfs-holocron-general"
+  accessMode: ReadWriteOnce
+  size: 5Gi
 ```
 
-## Configuration Updates
+### Resource Allocation
 
-To update AlertManager configuration:
+```yaml
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+```
 
-1. Edit the `config` section in `release.yaml`
-2. Commit to git
-3. FluxCD will automatically apply changes
+## Alert Routing
 
-Example - adding email notifications:
+### Routing Tree
+
+AlertManager uses a tree-based routing configuration:
+
+```yaml
+route:
+  receiver: "default"
+  group_by: ["alertname", "cluster", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Critical alerts - immediate notification
+    - matchers:
+        - severity="critical"
+      receiver: "critical"
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # Warning alerts - grouped notifications
+    - matchers:
+        - severity="warning"
+      receiver: "warning"
+      group_wait: 2m
+      repeat_interval: 12h
+
+    # Infrastructure alerts
+    - matchers:
+        - alertname=~"Node.*|Disk.*|Memory.*|CPU.*"
+      receiver: "infrastructure"
+      group_by: ["alertname", "instance"]
+
+    # Application alerts
+    - matchers:
+        - alertname=~"Pod.*|Container.*|Service.*"
+      receiver: "application"
+      group_by: ["alertname", "namespace"]
+```
+
+### Notification Channels
+
+#### Slack Integration
+
+Pre-configured Slack channels for different alert types:
+
+- **#home-critical**: Critical infrastructure alerts
+- **#home-alerts**: General alerts and warnings
+- **#home-infrastructure**: Infrastructure-specific alerts
+- **#home-applications**: Application and service alerts
+
+#### Channel Configuration
 
 ```yaml
 receivers:
   - name: "critical"
-    email_configs:
-      - to: "admin@cwbtech.net"
-        subject: "[CRITICAL] {{ .GroupLabels.alertname }}"
-        body: |
-          {{ range .Alerts.Firing }}
-          Alert: {{ .Labels.alertname }}
-          Instance: {{ .Labels.instance }}
-          Summary: {{ .Annotations.summary }}
-          {{ end }}
-    webhook_configs:
-      - url: "http://webhook-receiver.monitoring.svc.cluster.local:8080/critical"
+    slack_configs:
+      - api_url_file: "/etc/alertmanager/secrets/slack-webhook-url"
+        channel: "#home-critical"
+        title: "🚨 CRITICAL Alert"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+        color: "danger"
+        send_resolved: true
+
+  - name: "warning"
+    slack_configs:
+      - api_url_file: "/etc/alertmanager/secrets/slack-webhook-url"
+        channel: "#home-alerts"
+        title: "⚠️ Warning Alert"
+        color: "warning"
+        send_resolved: true
 ```
 
-## Monitoring AlertManager
+## Alert Types
 
-### Key Metrics
+### Infrastructure Alerts
 
-- `alertmanager_notifications_total`: Total notifications sent
-- `alertmanager_notifications_failed_total`: Failed notifications
-- `alertmanager_cluster_members`: Cluster member count
-- `alertmanager_config_last_reload_successful`: Config status
+#### Node-Level Alerts
 
-### Health Checks
+- **NodeDown**: Node becomes unavailable
+- **NodeHighCPU**: CPU usage > 80% for 10 minutes
+- **NodeHighMemory**: Memory usage > 85% for 10 minutes
+- **NodeDiskSpaceLow**: Disk usage > 85%
+- **NodeDiskSpaceCritical**: Disk usage > 95%
+
+#### Cluster-Level Alerts
+
+- **KubernetesAPIDown**: Kubernetes API server unavailable
+- **TooManyPods**: Pod count approaching node limits
+- **PersistentVolumeUsageHigh**: PVC usage > 85%
+
+### Application Alerts
+
+#### Pod-Level Alerts
+
+- **PodCrashLooping**: Pod restart count increasing rapidly
+- **PodNotReady**: Pod not ready for > 15 minutes
+- **ContainerRestarting**: Container restart rate high
+
+#### Service-Level Alerts
+
+- **ServiceDown**: Service endpoints unavailable
+- **HighErrorRate**: HTTP 5xx error rate > 5%
+- **HighLatency**: 95th percentile response time > 2 seconds
+
+### FluxCD Alerts
+
+#### GitOps Health
+
+- **FluxReconciliationFailure**: Kustomization or HelmRelease failing
+- **FluxSuspendedResources**: Resources suspended for > 30 minutes
+- **FluxGitRepositoryFailure**: Git repository sync failures
+
+### Istio Alerts
+
+#### Service Mesh Health
+
+- **IstioHighErrorRate**: Service mesh 5xx rate > 5%
+- **IstioGatewayDown**: Ingress gateway unavailable
+- **IstioCertificateExpiring**: Gateway certificates expiring < 7 days
+
+## Usage
+
+### Accessing AlertManager
+
+Navigate to https://alertmanager.home.cwbtech.net to access the web interface.
+
+**Main Features:**
+
+- **Alerts**: View active, pending, and resolved alerts
+- **Silences**: Create and manage alert silences
+- **Status**: Check configuration and cluster status
+- **Config**: View current routing configuration
+
+### Managing Silences
+
+#### Creating Silences
+
+1. **Via Web UI**:
+
+   - Navigate to "Silences" tab
+   - Click "New Silence"
+   - Define matchers and duration
+   - Add comment explaining reason
+
+2. **Via API**:
+   ```bash
+   curl -X POST https://alertmanager.home.cwbtech.net/api/v1/silences \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "matchers": [
+         {"name": "alertname", "value": "NodeDown"},
+         {"name": "instance", "value": "node1"}
+       ],
+       "startsAt": "2024-01-01T00:00:00Z",
+       "endsAt": "2024-01-01T02:00:00Z",
+       "comment": "Planned maintenance"
+     }'
+   ```
+
+#### Common Silence Patterns
+
+```yaml
+# Silence all alerts from a specific node
+matchers:
+  - name: "instance"
+    value: "node1"
+
+# Silence specific alert type
+matchers:
+  - name: "alertname"
+    value: "NodeHighCPU"
+
+# Silence by severity level
+matchers:
+  - name: "severity"
+    value: "warning"
+
+# Silence namespace alerts
+matchers:
+  - name: "namespace"
+    value: "development"
+```
+
+### Alert States
+
+- **Inactive**: Alert condition is false
+- **Pending**: Alert condition is true but within `for` duration
+- **Firing**: Alert condition has been true longer than `for` duration
+- **Resolved**: Alert condition returned to false
+
+## Integration
+
+### Prometheus Integration
+
+AlertManager automatically receives alerts from Prometheus:
+
+```yaml
+# Prometheus configuration
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager.monitoring.svc.cluster.local:9093
+```
+
+### Grafana Integration
+
+View AlertManager status in Grafana dashboards:
+
+- **Alert Overview**: Active alerts by severity
+- **Notification Status**: Success/failure rates
+- **Silence Management**: Active silences
+- **Alert History**: Firing and resolution trends
+
+## Management
+
+### Status Checks
 
 ```bash
-# Check AlertManager health
+# Check AlertManager pods
 kubectl get pods -n monitoring -l app.kubernetes.io/name=alertmanager
 
-# View alerts
-kubectl port-forward -n monitoring svc/alertmanager 9093:9093
-curl -s http://localhost:9093/api/v2/alerts
+# Check service and ingress
+kubectl get svc -n monitoring alertmanager
+kubectl get virtualservice -n monitoring alertmanager
+
+# Verify clustering
+kubectl logs -n monitoring -l app.kubernetes.io/name=alertmanager | grep cluster
+```
+
+### Configuration Management
+
+```bash
+# Check configuration
+curl -k https://alertmanager.home.cwbtech.net/api/v1/status
+
+# Reload configuration
+curl -X POST https://alertmanager.home.cwbtech.net/-/reload
+
+# Validate configuration
+kubectl exec -n monitoring alertmanager-0 -- amtool config show
+```
+
+### Health Monitoring
+
+```bash
+# Health check
+curl -k https://alertmanager.home.cwbtech.net/-/healthy
+
+# Ready check
+curl -k https://alertmanager.home.cwbtech.net/-/ready
 
 # Check cluster status
-curl -s http://localhost:9093/api/v2/status | jq '.cluster'
+curl -k https://alertmanager.home.cwbtech.net/api/v1/status | jq '.data.cluster'
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### Pods Not Starting
+#### Alerts Not Being Sent
 
 ```bash
-# Check pod status
-kubectl describe pod -n monitoring -l app.kubernetes.io/name=alertmanager
-
-# Check logs
+# Check AlertManager logs
 kubectl logs -n monitoring -l app.kubernetes.io/name=alertmanager
+
+# Verify Slack webhook
+kubectl get secret -n monitoring alertmanager-secrets -o yaml
+
+# Test notification manually
+curl -X POST https://alertmanager.home.cwbtech.net/api/v1/alerts \
+  -H 'Content-Type: application/json' \
+  -d '[{
+    "labels": {
+      "alertname": "TestAlert",
+      "severity": "warning"
+    },
+    "annotations": {
+      "summary": "Test alert"
+    }
+  }]'
 ```
 
-#### Storage Issues
+#### High Memory Usage
 
 ```bash
-# Check PVC status
-kubectl get pvc -n monitoring
+# Check memory consumption
+kubectl top pod -n monitoring -l app.kubernetes.io/name=alertmanager
 
-# Check storage class
-kubectl get sc nfs-holocron-general
-
-# Check NFS connectivity
-kubectl exec -n monitoring alertmanager-0 -- df -h /alertmanager
+# Review alert retention settings
+kubectl exec -n monitoring alertmanager-0 -- amtool config show | grep retention
 ```
 
 #### Clustering Issues
 
 ```bash
-# Check if all instances see each other
-kubectl port-forward -n monitoring alertmanager-0 9093:9093
-curl -s http://localhost:9093/api/v2/status | jq '.cluster.peers'
+# Check cluster member status
+kubectl exec -n monitoring alertmanager-0 -- amtool cluster show
 
-# Should show 3 members total
+# Verify peer discovery
+kubectl logs -n monitoring alertmanager-0 | grep "cluster.*peer"
 ```
 
-#### Configuration Issues
+#### Silence Not Working
 
 ```bash
-# Validate configuration
-kubectl logs -n monitoring -l app.kubernetes.io/name=alertmanager | grep -i error
+# List active silences
+curl -k https://alertmanager.home.cwbtech.net/api/v1/silences
 
-# Check configuration reload
-kubectl logs -n monitoring -l app.kubernetes.io/name=alertmanager | grep -i reload
+# Check silence matching
+kubectl exec -n monitoring alertmanager-0 -- amtool silence query
 ```
 
-### Testing Alerts
-
-Create a test alert to verify the pipeline:
+### Configuration Validation
 
 ```bash
-# Create test PrometheusRule
-kubectl apply -f - <<EOF
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: test-alert
-  namespace: monitoring
-spec:
-  groups:
-  - name: test
-    rules:
-    - alert: TestAlert
-      expr: vector(1)
-      labels:
-        severity: warning
-      annotations:
-        summary: "Test alert"
-        description: "This is a test alert"
-EOF
+# Validate configuration syntax
+kubectl exec -n monitoring alertmanager-0 -- amtool config check /etc/alertmanager/alertmanager.yml
 
-# Check alert in Prometheus
-# Visit: https://prometheus.home.cwbtech.net/alerts
-
-# Check alert in AlertManager
-# Visit: https://alertmanager.home.cwbtech.net/#/alerts
-
-# Clean up
-kubectl delete prometheusrule test-alert -n monitoring
+# Test routing rules
+kubectl exec -n monitoring alertmanager-0 -- amtool config routes test \
+  --config.file=/etc/alertmanager/alertmanager.yml \
+  severity=critical alertname=NodeDown
 ```
 
-## Integration with Prometheus
+## API Usage
 
-Ensure Prometheus is configured to send alerts to AlertManager:
+### Alert Management API
+
+```bash
+# Get active alerts
+curl -k https://alertmanager.home.cwbtech.net/api/v1/alerts
+
+# Post new alert
+curl -X POST https://alertmanager.home.cwbtech.net/api/v1/alerts \
+  -H 'Content-Type: application/json' \
+  -d '[{
+    "labels": {
+      "alertname": "MyAlert",
+      "severity": "warning",
+      "instance": "localhost"
+    },
+    "annotations": {
+      "summary": "Something went wrong"
+    },
+    "startsAt": "2024-01-01T00:00:00Z"
+  }]'
+```
+
+### Silence Management API
+
+```bash
+# List silences
+curl -k https://alertmanager.home.cwbtech.net/api/v1/silences
+
+# Create silence
+curl -X POST https://alertmanager.home.cwbtech.net/api/v1/silences \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "matchers": [
+      {"name": "alertname", "value": "NodeDown"}
+    ],
+    "startsAt": "2024-01-01T00:00:00Z",
+    "endsAt": "2024-01-01T02:00:00Z",
+    "comment": "Maintenance window"
+  }'
+
+# Delete silence
+curl -X DELETE https://alertmanager.home.cwbtech.net/api/v1/silence/$SILENCE_ID
+```
+
+## Security
+
+### Access Control
+
+- **Istio VirtualService**: Controls external access with TLS
+- **Network Policies**: Restricts internal communication
+- **Service Account**: Limited RBAC permissions
+
+### Data Protection
+
+- **HTTPS Only**: All external access via TLS
+- **Secret Management**: Webhook URLs stored as sealed secrets
+- **Audit Logging**: Track alert and silence activities
+
+## Customization
+
+### Custom Notification Channels
+
+#### Email Notifications
 
 ```yaml
-# Already configured in your Prometheus setup
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-            - alertmanager:9093
+receivers:
+  - name: "email-ops"
+    email_configs:
+      - to: "ops@company.com"
+        from: "alerts@company.com"
+        smarthost: "smtp.company.com:587"
+        subject: "Alert: {{ .GroupLabels.alertname }}"
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
 ```
 
-The ServiceMonitor automatically configures Prometheus to scrape AlertManager metrics.
+#### Webhook Integration
 
-## Next Steps
+```yaml
+receivers:
+  - name: "webhook"
+    webhook_configs:
+      - url: "https://hooks.company.com/alerts"
+        http_config:
+          basic_auth:
+            username: "alertmanager"
+            password: "secret"
+```
 
-1. **Configure Email/Slack**: Add real notification channels
-2. **Tune Alert Rules**: Adjust thresholds based on your environment
-3. **Add Custom Receivers**: Create application-specific notification channels
-4. **Set up Webhooks**: Integrate with external systems (PagerDuty, etc.)
-5. **Create Dashboards**: Build Grafana dashboards for AlertManager metrics
+### Custom Templates
+
+```yaml
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+receivers:
+  - name: "custom-slack"
+    slack_configs:
+      - api_url_file: "/etc/alertmanager/secrets/slack-webhook-url"
+        channel: "#alerts"
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+```
+
+## Best Practices
+
+### Alert Design
+
+1. **Alert on Symptoms**: Alert on user-visible problems, not causes
+2. **Actionable Alerts**: Each alert should have clear remediation steps
+3. **Appropriate Severity**: Use severity levels consistently
+4. **Avoid Alert Fatigue**: Don't over-alert on minor issues
+
+### Routing Strategy
+
+1. **Escalation Paths**: Route critical alerts to immediate channels
+2. **Time-based Routing**: Different handling for business hours vs. off-hours
+3. **Team-based Routing**: Route alerts to responsible teams
+4. **Context Preservation**: Include relevant labels and annotations
+
+### Maintenance Practices
+
+1. **Regular Review**: Periodically review and tune alert rules
+2. **Silence Management**: Use silences for planned maintenance
+3. **Template Updates**: Keep notification templates current
+4. **Performance Monitoring**: Monitor AlertManager performance
+
+## Backup and Recovery
+
+### Configuration Backup
+
+All configuration is managed via GitOps and stored in git.
+
+### Data Backup
+
+```bash
+# Backup AlertManager data
+kubectl exec -n monitoring alertmanager-0 -- tar czf /tmp/alertmanager-$(date +%Y%m%d).tar.gz /alertmanager
+
+# Copy backup
+kubectl cp monitoring/alertmanager-0:/tmp/alertmanager-$(date +%Y%m%d).tar.gz ./alertmanager-backup.tar.gz
+```
+
+### Disaster Recovery
+
+In case of complete failure:
+
+1. **Redeploy via GitOps**: FluxCD will recreate all resources
+2. **Restore Silences**: Silences will need to be recreated manually
+3. **Verify Integration**: Test notification channels after recovery
+
+## Resources
+
+- **AlertManager Documentation**: https://prometheus.io/docs/alerting/latest/alertmanager/
+- **Configuration Reference**: https://prometheus.io/docs/alerting/latest/configuration/
+- **API Documentation**: https://github.com/prometheus/alertmanager/blob/main/api/v2/openapi.yaml
+- **Best Practices**: https://prometheus.io/docs/practices/alerting/

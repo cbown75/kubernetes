@@ -1,64 +1,38 @@
 # Infrastructure Components
 
+This directory contains all the core infrastructure components for the Kubernetes cluster, deployed and managed via FluxCD GitOps.
+
 ## Overview
 
-This directory contains the core infrastructure components for the `korriban` cluster, deployed and managed through FluxCD. All components are designed to work together to provide a complete Kubernetes platform.
+The infrastructure is organized in dependency order, with each component building upon the previous ones. All components are deployed automatically by FluxCD when changes are committed to this repository.
 
 ## Component Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   FluxCD        │    │  Sealed Secrets  │    │  Cert Manager   │
-│   (GitOps)      │────│  (Secret Mgmt)   │────│  (TLS Certs)    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-          │                        │                        │
-          ▼                        ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MetalLB       │    │     Traefik      │    │    Storage      │
-│   (Load LB)     │────│    (Ingress)     │────│  (CSI Drivers)  │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-          │                        │                        │
-          ▼                        ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Prometheus    │    │     Grafana      │    │   Applications  │
-│   (Monitoring)  │────│  (Visualization) │────│   (Workloads)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│    Storage      │    │ Sealed Secrets  │    │  Cert Manager   │
+│   (NFS/CSI)     │    │  (Encryption)   │    │ (TLS Certs)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                        │                        │
+         └────────────────────────┼────────────────────────┘
+                                  │
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│     MetalLB     │    │      Istio      │    │      Apps       │
+│ (LoadBalancer)  │◄───┤ (Service Mesh)  │◄───┤  (Monitoring)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## Deployment Order
+## Infrastructure Components
 
-The infrastructure components are deployed in dependency order:
+### 1. Storage
 
-1. **Storage** - NFS & Synology CSI drivers
-2. **Sealed Secrets** - Secret encryption and management
-3. **Cert Manager** - TLS certificate automation
-4. **MetalLB** - Load balancer for bare metal
-5. **Traefik** - Ingress controller and routing
-6. **Prometheus** - Monitoring and metrics collection
-7. **Grafana** - Metrics visualization
-
-## Components
-
-### 1. Storage Systems
-
-#### NFS CSI Driver
-
-- **Purpose**: Network File System storage for shared volumes
-- **Namespace**: `nfs-csi-driver`
-- **Features**:
-  - ReadWriteMany volumes
-  - Dynamic provisioning
-  - Multiple access modes
-
-#### Synology CSI Driver
-
-- **Purpose**: Synology NAS integration for high-performance storage
+- **Purpose**: Persistent storage for applications
 - **Namespace**: `kube-system`
 - **Features**:
-  - iSCSI block storage
-  - Volume expansion
-  - Snapshots support
-  - High performance SSDs
+  - NFS CSI driver for shared storage
+  - Synology CSI driver for block storage
+  - Multiple storage classes (fast, general, backup)
+- **Status**: `kubectl get pods -n kube-system | grep csi`
 
 ### 2. Sealed Secrets
 
@@ -69,6 +43,7 @@ The infrastructure components are deployed in dependency order:
   - Namespace-scoped or cluster-wide secrets
   - Automatic decryption in cluster
   - Git-safe secret storage
+- **Status**: `kubectl get pods -n kube-system -l name=sealed-secrets-controller`
 
 ### 3. Cert Manager
 
@@ -79,8 +54,9 @@ The infrastructure components are deployed in dependency order:
   - Cloudflare DNS challenges
   - Automatic certificate renewal
   - Multiple issuers (staging/production)
+- **Status**: `kubectl get pods -n cert-manager`
 
-### 4. MetalLB (NEW)
+### 4. MetalLB
 
 - **Purpose**: Load balancer implementation for bare metal clusters
 - **Namespace**: `metallb-system`
@@ -92,39 +68,18 @@ The infrastructure components are deployed in dependency order:
 - **IP Ranges**:
   - Default pool: `10.10.7.200-250` (Public services)
   - Internal pool: `10.10.7.100-150` (Internal services)
+- **Status**: `kubectl get pods -n metallb-system`
 
-### 5. Traefik Ingress Controller
+### 5. Istio Service Mesh
 
-- **Purpose**: HTTP/HTTPS ingress and load balancing
-- **Namespace**: `traefik-system`
+- **Purpose**: Service mesh with ingress capabilities
+- **Namespace**: `istio-system`
 - **Features**:
-  - Automatic service discovery
-  - TLS termination
-  - Dashboard and API
-  - Metrics export
-  - **LoadBalancer IP**: `10.10.7.200` (via MetalLB)
-
-### 6. Prometheus Monitoring
-
-- **Purpose**: Metrics collection and monitoring
-- **Namespace**: `monitoring`
-- **Features**:
-  - Metrics scraping
-  - Time-series database
-  - Web UI with queries
-  - Persistent storage
-  - **Access**: https://prometheus.home.cwbtech.net
-
-### 7. Grafana Visualization
-
-- **Purpose**: Metrics visualization and dashboards
-- **Namespace**: `monitoring`
-- **Features**:
-  - Custom dashboards
-  - Prometheus integration
-  - Alert management
-  - User authentication
-  - **Access**: https://grafana.home.cwbtech.net
+  - Advanced traffic management
+  - Security policies and mTLS
+  - Observability and telemetry
+  - **Ingress LoadBalancer IP**: `10.10.7.210` (via MetalLB)
+- **Status**: `kubectl get pods -n istio-system`
 
 ## Network Architecture
 
@@ -140,8 +95,8 @@ Router (10.10.7.1)
     └── Internal Services: 10.10.7.100-150 (Optional internal pool)
 
 Current Assignments:
-- 10.10.7.200: Traefik (Main Ingress)
-- 10.10.7.201-250: Available for future services
+- 10.10.7.210: Istio Ingress (Main Entry Point)
+- 10.10.7.200-209, 211-250: Available for future services
 ```
 
 ## Quick Status Checks
@@ -153,10 +108,10 @@ Current Assignments:
 kubectl get kustomizations -n flux-system
 
 # Check all namespaces
-kubectl get namespaces | grep -E "(flux-system|cert-manager|traefik-system|monitoring|metallb-system|nfs-csi-driver)"
+kubectl get namespaces | grep -E "(flux-system|cert-manager|istio-system|monitoring|metallb-system|kube-system)"
 
 # Check all pods across infrastructure namespaces
-kubectl get pods -A | grep -E "(flux-system|cert-manager|traefik-system|monitoring|metallb-system|nfs-csi-driver)"
+kubectl get pods -A | grep -E "(flux-system|cert-manager|istio-system|metallb-system|sealed-secrets|csi)"
 ```
 
 ### Per-Component Health Checks
@@ -195,32 +150,32 @@ kubectl get ipaddresspool -n metallb-system
 kubectl get svc -A | grep LoadBalancer
 ```
 
-#### Traefik
+#### Istio
 
 ```bash
-# Traefik status
-kubectl get pods -n traefik-system
-kubectl get svc -n traefik-system
-kubectl get ingressroutes -A
-# Should show EXTERNAL-IP from MetalLB (10.10.7.200)
+# Istio status
+kubectl get pods -n istio-system
+kubectl get svc -n istio-system
+kubectl get virtualservice -A
+kubectl get gateway -A
+# Should show EXTERNAL-IP as 10.10.7.210
 ```
 
 #### Storage
 
 ```bash
 # Storage drivers
-kubectl get pods -n nfs-csi-driver
-kubectl get pods -n kube-system | grep synology
+kubectl get pods -n kube-system | grep csi
 kubectl get storageclasses
 ```
 
-#### Prometheus & Grafana
+### Monitoring Stack
 
 ```bash
 # Monitoring stack
 kubectl get pods -n monitoring
 kubectl get pvc -n monitoring
-kubectl get ingress -n monitoring
+kubectl get virtualservice -n monitoring
 ```
 
 ## Common Troubleshooting
@@ -234,14 +189,14 @@ If components fail to start, check dependency order:
 kubectl get kustomizations -n flux-system -o custom-columns=NAME:.metadata.name,READY:.status.conditions[0].status,MESSAGE:.status.conditions[0].message
 
 # Force reconciliation in dependency order
-flux reconcile kustomization infrastructure --with-source
+flux reconcile kustomization flux-system --with-source
 ```
 
 ### LoadBalancer IP Issues
 
 ```bash
 # Check if service has external IP
-kubectl get svc -n traefik-system traefik-system-traefik
+kubectl get svc -n istio-system istio-ingress
 
 # If stuck in Pending, check MetalLB
 kubectl logs -n metallb-system deployment/metallb-controller
@@ -276,16 +231,17 @@ kubectl describe clusterissuer letsencrypt-cloudflare
 ### Ingress Issues
 
 ```bash
-# Check Traefik ingress
-kubectl get ingressroutes -A
-kubectl describe ingressroute <route-name> -n <namespace>
+# Check Istio ingress
+kubectl get virtualservice -A
+kubectl describe virtualservice <route-name> -n <namespace>
 
 # Test connectivity to LoadBalancer IP
-curl -v http://10.10.7.200
-curl -v https://10.10.7.200
+curl -v http://10.10.7.210
+curl -v https://10.10.7.210
 
-# Check Traefik logs
-kubectl logs -n traefik-system -l app.kubernetes.io/name=traefik
+# Check Istio ingress logs
+kubectl logs -n istio-system -l app=istio-proxy
+kubectl logs -n istio-system -l app=istiod
 ```
 
 ## Configuration Management
@@ -320,20 +276,21 @@ Required DHCP exclusions to prevent IP conflicts:
 
 ### DNS Configuration
 
-Point these domains to `10.10.7.200` (Traefik LoadBalancer IP):
+Point these domains to `10.10.7.210` (Istio LoadBalancer IP):
 
 - `*.home.cwbtech.net` (wildcard)
 - Or individual entries:
   - `prometheus.home.cwbtech.net`
   - `grafana.home.cwbtech.net`
-  - `traefik.home.cwbtech.net`
+  - `alertmanager.home.cwbtech.net`
+  - `loki.home.cwbtech.net`
 
 ### Firewall Rules
 
-For external access, forward ports to `10.10.7.200`:
+For external access, forward ports to `10.10.7.210`:
 
-- Port 80 → 10.10.7.200:80 (HTTP)
-- Port 443 → 10.10.7.200:443 (HTTPS)
+- Port 80 → 10.10.7.210:80 (HTTP)
+- Port 443 → 10.10.7.210:443 (HTTPS)
 
 ## Monitoring and Maintenance
 
@@ -342,7 +299,7 @@ For external access, forward ports to `10.10.7.200`:
 ```bash
 # Check resource consumption
 kubectl top nodes
-kubectl top pods -A | grep -E "(metallb|traefik|prometheus|grafana)"
+kubectl top pods -A | grep -E "(metallb|istio|prometheus|grafana)"
 ```
 
 ### Update Management
@@ -374,11 +331,12 @@ Critical components to backup:
 4. **RBAC**: Proper role-based access control
 5. **Resource Limits**: All components have defined resource limits
 6. **Security Contexts**: Non-root users, read-only filesystems where possible
+7. **Service Mesh Security**: mTLS and security policies with Istio
 
 ## Performance Tuning
 
 - **MetalLB**: Minimal overhead, scales with number of services
-- **Traefik**: 2 replicas for HA, anti-affinity rules
+- **Istio**: Optimized for high throughput and low latency
 - **Prometheus**: 15-day retention, 50GB storage
 - **Grafana**: Configured for efficient query caching
 
@@ -386,7 +344,7 @@ Critical components to backup:
 
 - [FluxCD Documentation](https://fluxcd.io/docs/)
 - [MetalLB Documentation](https://metallb.universe.tf/)
-- [Traefik Documentation](https://doc.traefik.io/traefik/)
+- [Istio Documentation](https://istio.io/latest/docs/)
 - [Prometheus Documentation](https://prometheus.io/docs/)
 - [Grafana Documentation](https://grafana.com/docs/)
 - [Cert Manager Documentation](https://cert-manager.io/docs/)
