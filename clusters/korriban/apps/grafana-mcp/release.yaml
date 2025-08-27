@@ -16,7 +16,7 @@ spec:
       version: "0.x"
       sourceRef:
         kind: HelmRepository
-        name: grafana-official
+        name: grafana
         namespace: flux-system
       interval: 5m
   install:
