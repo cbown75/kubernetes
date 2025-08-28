@@ -44,20 +44,21 @@ spec:
       repository: cloudflare/cloudflared
       tag: "2024.8.3"
       pullPolicy: IfNotPresent
-    # Simple tunnel configuration - root level fields
-    tunnel: "498c5bc5-3084-4539-9905-31b586deafba"
-    tunnelSecret: cloudflare-tunnel-cloudflared
-    # Ingress rules at root level
-    ingress:
-      - hostname: grafana.home.cwbtech.net
-        service: http://grafana.monitoring.svc.cluster.local:3000
-      - hostname: prometheus.home.cwbtech.net
-        service: http://prometheus-server.monitoring.svc.cluster.local:9090
-      - hostname: alertmanager.home.cwbtech.net
-        service: http://alertmanager.monitoring.svc.cluster.local:9093
-      - hostname: loki.home.cwbtech.net
-        service: http://loki.monitoring.svc.cluster.local:3100
-      - service: http_status:404
+    # Correct values structure for official Cloudflare chart
+    cloudflare:
+      tunnelId: "498c5bc5-3084-4539-9905-31b586deafba"
+      tunnelName: "your-tunnel-name" # REPLACE WITH YOUR ACTUAL TUNNEL NAME
+      secretName: "cloudflare-tunnel-cloudflared"
+      ingress:
+        - hostname: grafana.home.cwbtech.net
+          service: http://grafana.monitoring.svc.cluster.local:3000
+        - hostname: prometheus.home.cwbtech.net
+          service: http://prometheus-server.monitoring.svc.cluster.local:9090
+        - hostname: alertmanager.home.cwbtech.net
+          service: http://alertmanager.monitoring.svc.cluster.local:9093
+        - hostname: loki.home.cwbtech.net
+          service: http://loki.monitoring.svc.cluster.local:3100
+        - service: http_status:404
     resources:
       limits:
         cpu: 200m
