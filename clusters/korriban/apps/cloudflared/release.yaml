@@ -58,7 +58,6 @@ spec:
           service: http://alertmanager.monitoring.svc.cluster.local:9093
         - hostname: loki.home.cwbtech.net
           service: http://loki.monitoring.svc.cluster.local:3100
-        - service: http_status:404
     resources:
       limits:
         cpu: 200m
