@@ -47,8 +47,8 @@ spec:
     cloudflared:
       # Use your tunnel UUID (update this with the output from the script)
       tunnel: "498c5bc5-3084-4539-9905-31b586deafba"
-      # Reference the new credentials secret
-      tunnelSecret: cloudflare-tunnel-credentials
+      # Reference your existing secret (now with credentials.json)
+      tunnelSecret: cloudflare-tunnel-cloudflared
       # Define ingress rules in git - fully version controlled!
       ingress:
         # Your monitoring services
