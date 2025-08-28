@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
 set -e
 
@@ -10,81 +10,70 @@ NC='\033[0m'
 
 NAMESPACE="cloudflare-tunnel"
 SECRET_NAME="cloudflare-tunnel-cloudflared"
-OUTPUT_FILE="clusters/korriban/apps/cloudflared/sealed-secret.yaml"
-SEALED_SECRETS_CONTROLLER_NAMESPACE="kube-system"
-SEALED_SECRETS_CONTROLLER_NAME="sealed-secrets"
+OUTPUT_FILE="clusters/korriban/apps/cloudflared/sealed-secret.yaml" # SAME FILE
 
-echo -e "${BLUE}=== Cloudflared Tunnel Sealed Secrets Creator ===${NC}"
-echo -e "${YELLOW}This script will create sealed secrets for Cloudflared tunnel${NC}"
+echo -e "${BLUE}=== Update Existing Sealed Secret for GitOps ===${NC}"
+echo -e "${YELLOW}This will REPLACE your existing sealed-secret.yaml with credentials.json format${NC}"
 echo ""
 
-echo -e "${BLUE}Checking prerequisites...${NC}"
+echo -e "${BLUE}You'll need to provide your tunnel credentials manually.${NC}"
 
-if [ ! -f "clusters/korriban/apps/cloudflared/release.yaml" ]; then
-  echo -e "${RED}Error: Please run this script from the repository root${NC}"
-  echo -e "${RED}Expected to find: clusters/korriban/apps/cloudflared/release.yaml${NC}"
-  exit 1
-fi
-
-if ! command -v kubectl &>/dev/null; then
-  echo -e "${RED}Error: kubectl is not installed or not in PATH${NC}"
-  exit 1
-fi
-
-if ! command -v kubeseal &>/dev/null; then
-  echo -e "${RED}Error: kubeseal is not installed or not in PATH${NC}"
-  echo -e "${YELLOW}Install with: brew install kubeseal (macOS) or download from https://github.com/bitnami-labs/sealed-secrets/releases${NC}"
-  exit 1
-fi
-
-if ! kubectl cluster-info &>/dev/null; then
-  echo -e "${RED}Error: Cannot connect to Kubernetes cluster${NC}"
-  echo -e "${YELLOW}Make sure your kubeconfig is set up correctly${NC}"
-  exit 1
-fi
-
-if ! kubectl get pods -n "$SEALED_SECRETS_CONTROLLER_NAMESPACE" -l "app.kubernetes.io/name=$SEALED_SECRETS_CONTROLLER_NAME" | grep -q Running; then
-  echo -e "${RED}Error: Sealed Secrets controller is not running${NC}"
-  echo -e "${YELLOW}Please ensure sealed-secrets is deployed first${NC}"
-  exit 1
-fi
-
-echo -e "${GREEN}✅ All prerequisites met${NC}"
+echo -e "${BLUE}Now we need the tunnel credentials. Run these commands:${NC}"
+echo -e "${YELLOW}1. cloudflared tunnel list${NC}"
+echo -e "${YELLOW}2. cat ~/.cloudflared/<tunnel-id>.json${NC}"
+echo ""
+echo -e "${BLUE}Or check your Cloudflare dashboard for tunnel details.${NC}"
 echo ""
 
-echo -e "${YELLOW}📝 Enter your Cloudflare tunnel token:${NC}"
-echo -e "${BLUE}(Get this from Cloudflare Zero Trust Dashboard → Networks → Tunnels)${NC}"
-read -s TUNNEL_TOKEN
+echo -e "${YELLOW}Enter your Cloudflare Account ID:${NC}"
+read -r ACCOUNT_ID
 
-if [ -z "$TUNNEL_TOKEN" ]; then
-  echo -e "${RED}❌ Tunnel token cannot be empty${NC}"
-  exit 1
-fi
+echo -e "${YELLOW}Enter your Tunnel ID (UUID format):${NC}"
+read -r TUNNEL_ID
 
-echo -e "${GREEN}✅ Creating sealed secret...${NC}"
+echo -e "${YELLOW}Enter your Tunnel Name:${NC}"
+read -r TUNNEL_NAME
 
+echo -e "${YELLOW}Enter your Tunnel Secret (from credentials file or dashboard):${NC}"
+read -s TUNNEL_SECRET
+echo ""
+
+# Create credentials.json
+CREDENTIALS_JSON=$(
+  cat <<EOF
+{
+  "AccountTag": "$ACCOUNT_ID",
+  "TunnelID": "$TUNNEL_ID", 
+  "TunnelName": "$TUNNEL_NAME",
+  "TunnelSecret": "$TUNNEL_SECRET"
+}
+EOF
+)
+
+echo -e "${GREEN}Updating existing sealed secret file...${NC}"
+
+# REPLACE the existing sealed-secret.yaml file
 kubectl create secret generic "$SECRET_NAME" \
-  --from-literal=tunnelToken="$TUNNEL_TOKEN" \
+  --from-literal=credentials.json="$CREDENTIALS_JSON" \
   --namespace="$NAMESPACE" \
   --dry-run=client -o yaml |
   kubeseal -o yaml \
-    --controller-name="$SEALED_SECRETS_CONTROLLER_NAME" \
-    --controller-namespace="$SEALED_SECRETS_CONTROLLER_NAMESPACE" >"$OUTPUT_FILE"
+    --controller-name="sealed-secrets" \
+    --controller-namespace="kube-system" >"$OUTPUT_FILE"
 
 if [ $? -eq 0 ]; then
-  echo -e "${GREEN}🎉 Success! Sealed secret created at: ${OUTPUT_FILE}${NC}"
+  echo -e "${GREEN}🎉 Success! Updated ${OUTPUT_FILE}${NC}"
+  echo ""
+  echo -e "${YELLOW}📋 Tunnel Information for release.yaml:${NC}"
+  echo "   Tunnel UUID: $TUNNEL_ID"
   echo ""
   echo -e "${YELLOW}📋 Next steps:${NC}"
-  echo "   1. Review the file: $OUTPUT_FILE"
-  echo "   2. Update tunnel ID in clusters/korriban/apps/cloudflared/release.yaml"
-  echo "   3. Add 'cloudflared' to clusters/korriban/apps/kustomization.yaml"
-  echo "   4. Commit and push:"
-  echo "      git add clusters/korriban/apps/cloudflared/"
-  echo "      git commit -m \"Add cloudflared tunnel deployment\""
-  echo "      git push"
+  echo "   1. Update tunnel UUID in release.yaml: $TUNNEL_ID"
+  echo "   2. Update release.yaml to use cloudflare-tunnel chart"
+  echo "   3. Commit and push"
   echo ""
-  echo -e "${BLUE}ℹ️  Remember to configure your tunnel routes in Cloudflare Dashboard${NC}"
+  echo -e "${BLUE}ℹ️  Your existing file has been replaced with GitOps format${NC}"
 else
-  echo -e "${RED}❌ Failed to create sealed secret${NC}"
+  echo -e "${RED}❌ Failed to update sealed secret${NC}"
   exit 1
 fi
