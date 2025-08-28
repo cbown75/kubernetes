@@ -49,14 +49,8 @@ spec:
       tunnelName: "korriban-k8s"
       secretName: "cloudflare-tunnel-cloudflared"
       ingress:
-        - hostname: grafana.home.cwbtech.net
-          service: http://grafana.monitoring.svc.cluster.local:3000
-        - hostname: prometheus.home.cwbtech.net
-          service: http://prometheus-server.monitoring.svc.cluster.local:9090
-        - hostname: alertmanager.home.cwbtech.net
-          service: http://alertmanager.monitoring.svc.cluster.local:9093
-        - hostname: loki.home.cwbtech.net
-          service: http://loki.monitoring.svc.cluster.local:3100
+        - hostname: grafana-mcp.home.cwbtech.net
+          service: http://monitoring-grafana-mcp-server.monitoring.svc.cluster.local:8000
     resources:
       limits:
         cpu: 200m
