@@ -44,35 +44,20 @@ spec:
       repository: cloudflare/cloudflared
       tag: "2024.8.3"
       pullPolicy: IfNotPresent
-    cloudflared:
-      # Use your tunnel UUID (update this with the output from the script)
-      tunnel: "498c5bc5-3084-4539-9905-31b586deafba"
-      # Reference your existing secret (now with credentials.json)
-      tunnelSecret: cloudflare-tunnel-cloudflared
-      # Define ingress rules in git - fully version controlled!
-      ingress:
-        # Your monitoring services
-        - hostname: grafana.home.cwbtech.net
-          service: http://grafana.monitoring.svc.cluster.local:3000
-        - hostname: prometheus.home.cwbtech.net
-          service: http://prometheus-server.monitoring.svc.cluster.local:9090
-        - hostname: alertmanager.home.cwbtech.net
-          service: http://alertmanager.monitoring.svc.cluster.local:9093
-        - hostname: loki.home.cwbtech.net
-          service: http://loki.monitoring.svc.cluster.local:3100
-        # Add more services as needed
-        # - hostname: app.home.cwbtech.net
-        #   service: http://my-app.default.svc.cluster.local:8080
-
-        # Catch-all rule (required as last entry)
-        - service: http_status:404
-      # Command arguments for credentials-based authentication
-      arguments:
-        - tunnel
-        - --config
-        - /etc/cloudflared/config/config.yaml
-        - run
-        - "$(TUNNEL_ID)" # This gets populated by the chart
+    # Simple tunnel configuration - root level fields
+    tunnel: "498c5bc5-3084-4539-9905-31b586deafba"
+    tunnelSecret: cloudflare-tunnel-cloudflared
+    # Ingress rules at root level
+    ingress:
+      - hostname: grafana.home.cwbtech.net
+        service: http://grafana.monitoring.svc.cluster.local:3000
+      - hostname: prometheus.home.cwbtech.net
+        service: http://prometheus-server.monitoring.svc.cluster.local:9090
+      - hostname: alertmanager.home.cwbtech.net
+        service: http://alertmanager.monitoring.svc.cluster.local:9093
+      - hostname: loki.home.cwbtech.net
+        service: http://loki.monitoring.svc.cluster.local:3100
+      - service: http_status:404
     resources:
       limits:
         cpu: 200m
@@ -80,11 +65,3 @@ spec:
       requests:
         cpu: 50m
         memory: 128Mi
-    # Security context
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 65534
-      allowPrivilegeEscalation: false
-      capabilities:
-        drop:
-          - ALL
