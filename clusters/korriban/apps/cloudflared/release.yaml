@@ -21,7 +21,7 @@ spec:
   timeout: 10m
   chart:
     spec:
-      chart: cloudflared
+      chart: cloudflare-tunnel
       version: "0.3.x"
       sourceRef:
         kind: HelmRepository
