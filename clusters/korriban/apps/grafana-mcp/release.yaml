@@ -12,7 +12,7 @@ spec:
   timeout: 10m
   chart:
     spec:
-      chart: grafana-mcp # FIXED: Was "mcp-grafana"
+      chart: grafana-mcp
       version: "0.1.x"
       sourceRef:
         kind: HelmRepository
@@ -30,23 +30,19 @@ spec:
     recreate: true
     force: true
   values:
-    # Image configuration
     image:
-      repository: docker.io/mcp/grafana
+      repository: mcp/grafana
       tag: "latest"
       pullPolicy: IfNotPresent
-    # Grafana connection - CORRECTED VALUES STRUCTURE
     grafana:
       url: "http://monitoring-grafana.monitoring.svc.cluster.local:3000"
-      apiKey: "" # Leave empty when using secret
+      apiKey: ""
       apiKeySecret:
         name: "grafana-mcp-api-key"
         key: "api-key"
-    # Service configuration
     service:
       type: ClusterIP
       port: 8000
-    # Resources
     resources:
       limits:
         cpu: 200m
@@ -54,7 +50,6 @@ spec:
       requests:
         cpu: 100m
         memory: 128Mi
-    # Security
     securityContext:
       runAsNonRoot: true
       runAsUser: 65534
