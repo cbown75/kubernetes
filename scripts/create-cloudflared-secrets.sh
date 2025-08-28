@@ -9,7 +9,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 NAMESPACE="cloudflare-tunnel"
-SECRET_NAME="cloudflared-tunnel-token"
+SECRET_NAME="cloudflare-tunnel-cloudflared"
 OUTPUT_FILE="clusters/korriban/apps/cloudflared/sealed-secret.yaml"
 SEALED_SECRETS_CONTROLLER_NAMESPACE="kube-system"
 SEALED_SECRETS_CONTROLLER_NAME="sealed-secrets"
@@ -64,7 +64,7 @@ fi
 echo -e "${GREEN}✅ Creating sealed secret...${NC}"
 
 kubectl create secret generic "$SECRET_NAME" \
-  --from-literal=token="$TUNNEL_TOKEN" \
+  --from-literal=tunnelToken="$TUNNEL_TOKEN" \
   --namespace="$NAMESPACE" \
   --dry-run=client -o yaml |
   kubeseal -o yaml \
