@@ -21,8 +21,8 @@ spec:
   timeout: 10m
   chart:
     spec:
-      chart: cloudflare-tunnel
-      version: "0.3.x"
+      chart: cloudflare-tunnel-remote
+      version: "0.1.x"
       sourceRef:
         kind: HelmRepository
         name: cloudflare
@@ -42,14 +42,20 @@ spec:
     replicaCount: 2
     image:
       repository: cloudflare/cloudflared
-      tag: "2024.8.3"
+      tag: "latest"
       pullPolicy: IfNotPresent
     cloudflare:
-      tunnel_id: "498c5bc5-3084-4539-9905-31b586deafba"
+      secretName: "cloudflare-tunnel-cloudflared"
+      secretKey: "tunnelToken"
     resources:
       limits:
         cpu: 200m
         memory: 256Mi
       requests:
         cpu: 50m
-        memory: 64Mi
+        memory: 128Mi
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 65532
+      runAsGroup: 65532
+      fsGroup: 65532
