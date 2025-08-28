@@ -105,7 +105,7 @@ spec:
         timeoutSeconds: 3
         failureThreshold: 3
     config:
-      tunnel: "your-tunnel-id"
+      tunnel: "498c5bc5-3084-4539-9905-31b586deafba"
       credentials-file: /etc/cloudflared/creds/token
       ingress:
         - hostname: grafana.cwbtech.net
