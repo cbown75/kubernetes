@@ -30,14 +30,24 @@ spec:
     recreate: true
     force: true
   values:
+    # Image configuration
+    image:
+      repository: docker.io/mcp/grafana
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    # Grafana connection - FIXED FORMAT
     grafana:
       url: "http://monitoring-grafana.monitoring.svc.cluster.local:3000"
-      apiKeySecret:
-        name: "grafana-mcp-api-key"
-        key: "api-key"
+      apiKey:
+        valueFrom:
+          secretKeyRef:
+            name: "grafana-mcp-api-key"
+            key: "api-key"
+    # Service configuration
     service:
       type: ClusterIP
       port: 8000
+    # Resources
     resources:
       limits:
         cpu: 200m
@@ -45,7 +55,11 @@ spec:
       requests:
         cpu: 100m
         memory: 128Mi
+    # Security
     securityContext:
       runAsNonRoot: true
       runAsUser: 65534
       runAsGroup: 65534
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
