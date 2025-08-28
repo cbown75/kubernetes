@@ -17,7 +17,7 @@ spec:
             prefix: /
       route:
         - destination:
-            host: grafana-mcp-server.monitoring.svc.cluster.local
+            host: monitoring-grafana-mcp-server.monitoring.svc.cluster.local
             port:
               number: 8000
       timeout: 30s
