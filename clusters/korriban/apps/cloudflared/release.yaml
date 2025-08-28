@@ -45,9 +45,9 @@ spec:
       tag: "2024.8.3"
       pullPolicy: IfNotPresent
     cloudflare:
-      tunnel_token:
-        secretName: "cloudflare-tunnel-cloudflared"
-        secretKey: "token"
+      tunnelId: "498c5bc5-3084-4539-9905-31b586deafba"
+      tunnelName: "korriban-k8s"
+      secretName: "cloudflare-tunnel-cloudflared"
       ingress:
         - hostname: grafana.home.cwbtech.net
           service: http://grafana.monitoring.svc.cluster.local:3000
