@@ -1,0 +1,127 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: cloudflare
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: https://cloudflare.github.io/helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cloudflared
+  namespace: cloudflare-tunnel
+  labels:
+    app.kubernetes.io/name: cloudflared
+    app.kubernetes.io/part-of: cloudflare-tunnel
+spec:
+  targetNamespace: cloudflare-tunnel
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: cloudflared
+      version: "0.3.x"
+      sourceRef:
+        kind: HelmRepository
+        name: cloudflare
+        namespace: flux-system
+      interval: 5m
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  rollback:
+    recreate: true
+    force: true
+  values:
+    cloudflared:
+      tunnel_token:
+        existingSecret: cloudflared-tunnel-token
+        key: token
+    image:
+      repository: cloudflare/cloudflared
+      tag: "2024.8.3"
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    replicaCount: 2
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65532
+      runAsGroup: 65532
+      fsGroup: 65532
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - cloudflared
+              topologyKey: kubernetes.io/hostname
+    tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: PreferNoSchedule
+        operator: Exists
+    metrics:
+      enabled: true
+      port: 2000
+      serviceMonitor:
+        enabled: true
+        labels:
+          app.kubernetes.io/part-of: cloudflare-tunnel
+    probes:
+      liveness:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readiness:
+        enabled: true
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3
+    config:
+      tunnel: "your-tunnel-id"
+      credentials-file: /etc/cloudflared/creds/token
+      ingress:
+        - hostname: grafana.cwbtech.net
+          service: http://monitoring-grafana.monitoring.svc.cluster.local:80
+          originRequest:
+            httpHostHeader: grafana.home.cwbtech.net
+        - hostname: prometheus.cwbtech.net
+          service: http://prometheus-server.monitoring.svc.cluster.local:9090
+          originRequest:
+            httpHostHeader: prometheus.home.cwbtech.net
+        - hostname: loki.cwbtech.net
+          service: http://loki.monitoring.svc.cluster.local:3100
+          originRequest:
+            httpHostHeader: loki.home.cwbtech.net
+        - service: http_status:404
+      no-autoupdate: true
+      retries: 5
+      grace-period: 30s
+      loglevel: info
