@@ -45,9 +45,6 @@ spec:
       tag: "2024.8.3"
       pullPolicy: IfNotPresent
     cloudflare:
-      tunnelId: "498c5bc5-3084-4539-9905-31b586deafba"
-      tunnelName: "korriban-k8s"
-      secretName: "cloudflare-tunnel-cloudflared"
       tunnel_token:
         secretName: "cloudflare-tunnel-cloudflared"
         secretKey: "token"
