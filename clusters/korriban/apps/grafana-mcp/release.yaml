@@ -12,8 +12,8 @@ spec:
   timeout: 10m
   chart:
     spec:
-      chart: grafana-mcp
-      version: "0.x"
+      chart: mcp-grafana
+      version: "0.1.x"
       sourceRef:
         kind: HelmRepository
         name: grafana
@@ -26,14 +26,15 @@ spec:
   upgrade:
     remediation:
       retries: 3
+  rollback:
+    recreate: true
+    force: true
   values:
     grafana:
       url: "http://monitoring-grafana.monitoring.svc.cluster.local:3000"
-      apiKey:
-        valueFrom:
-          secretKeyRef:
-            name: grafana-mcp-api-key
-            key: api-key
+      apiKeySecret:
+        name: "grafana-mcp-api-key"
+        key: "api-key"
     service:
       type: ClusterIP
       port: 8000
@@ -48,6 +49,3 @@ spec:
       runAsNonRoot: true
       runAsUser: 65534
       runAsGroup: 65534
-      allowPrivilegeEscalation: false
-      capabilities:
-        drop: ["ALL"]
