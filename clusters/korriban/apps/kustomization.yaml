@@ -6,5 +6,4 @@ resources:
   - loki
   - alertmanager
   - alloy
-  - grafana-mcp
   - cloudflared
