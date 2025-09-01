@@ -91,7 +91,7 @@ spec:
         reporting_enabled: false
       server:
         domain: grafana.home.cwbtech.net
-        root_url: https://grafana.home.cwbtech.net
+        root_url: https://grafana.home.cwbtech.net/
         serve_from_sub_path: false
       security:
         disable_gravatar: true
