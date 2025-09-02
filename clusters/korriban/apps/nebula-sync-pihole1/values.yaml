@@ -1,0 +1,241 @@
+# -- Global settings
+global:
+  # -- Global image registry to use
+  imageRegistry: ""
+# -- Image settings
+image:
+  # -- Image registry
+  registry: ghcr.io
+  # -- Image repository
+  repository: lovelaze/nebula-sync
+  # -- Image tag (defaults to chart appVersion)
+  tag: ""
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+# -- Image pull secrets
+imagePullSecrets: []
+# -- String to partially override nebula-sync-pihole1.fullname template (will maintain the release name)
+nameOverride: ""
+# -- String to fully override nebula-sync-pihole1.fullname template
+fullnameOverride: ""
+# -- Nebula Sync application configuration
+nebulaSync:
+  # -- Primary PiHole configuration
+  primary:
+    # -- Primary PiHole URL (without password)
+    url: "http://pihole1.home.cwbtech.net"
+    # -- Primary PiHole password secret name
+    passwordSecretName: "nebula-sync-pihole1-secrets"
+    # -- Primary PiHole password secret key
+    passwordSecretKey: "primary-password"
+  # -- Replica PiHole configurations
+  replicas:
+    # -- List of replica PiHole URLs (without passwords)
+    urls:
+      - "http://pihole2.home.cwbtech.net"
+      - "http://pihole7.home.cwbtech.net"
+      - "http://pihole8.home.cwbtech.net"
+    # -- Replica passwords secret name
+    passwordSecretName: "nebula-sync-pihole1-secrets"
+    # -- Secret keys for replica passwords (must match number of URLs)
+    passwordSecretKeys:
+      - "replica-password-1"
+      - "replica-password-2"
+      - "replica-password-3"
+  # -- Sync configuration
+  config:
+    # -- Enable full synchronization
+    fullSync: false
+    # -- Cron schedule for sync (*/5 * * * * means every 5 minutes)
+    cron: "*/5 * * * *"
+    # -- Timezone for cron jobs
+    timezone: "America/Phoenix"
+  # -- DNS configuration sync settings
+  dns:
+    enabled: true
+  # -- DHCP configuration sync settings  
+  dhcp:
+    enabled: true
+  # -- NTP configuration sync settings
+  ntp:
+    enabled: true
+  # -- Resolver configuration sync settings
+  resolver:
+    enabled: true
+  # -- Database configuration sync settings
+  database:
+    enabled: true
+  # -- Miscellaneous configuration sync settings
+  misc:
+    enabled: false
+  # -- Debug configuration sync settings
+  debug:
+    enabled: false
+  # -- Gravity sync settings
+  gravity:
+    # -- Sync DHCP leases
+    dhcpLeases: true
+    # -- Sync groups
+    group: true
+    # -- Sync ad lists
+    adList: true
+    # -- Sync ad lists by group
+    adListByGroup: true
+    # -- Sync domain lists
+    domainList: true
+    # -- Sync domain lists by group
+    domainListByGroup: true
+    # -- Sync clients
+    client: true
+    # -- Sync clients by group
+    clientByGroup: true
+# -- Service account settings
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+# -- Pod annotations
+podAnnotations: {}
+# -- Pod labels
+podLabels: {}
+# -- Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault
+# -- Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+# -- Service configuration (disabled - not needed for background sync job)
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 8080
+  # -- Target port on the container
+  targetPort: http
+  # -- Annotations for the service
+  annotations: {}
+  # -- Disable service creation (not needed for cron job)
+  enabled: false
+# -- Resource limits and requests
+resources:
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+# -- Liveness probe configuration (disabled for cron job)
+livenessProbe:
+  enabled: false
+# -- Readiness probe configuration (disabled for cron job)  
+readinessProbe:
+  enabled: false
+# -- Startup probe configuration (disabled for cron job)
+startupProbe:
+  enabled: false
+# -- Autoscaling configuration
+autoscaling:
+  # -- Enable horizontal pod autoscaler
+  enabled: false
+  # -- Minimum number of replicas
+  minReplicas: 1
+  # -- Maximum number of replicas
+  maxReplicas: 3
+  # -- Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 80
+  # -- Target memory utilization percentage
+  # targetMemoryUtilizationPercentage: 80
+# -- Additional volumes
+volumes:
+  # -- Temporary directory volume
+  - name: tmp
+    emptyDir: {}
+# -- Additional volume mounts
+volumeMounts:
+  # -- Temporary directory mount
+  - name: tmp
+    mountPath: /tmp
+# -- Node selector for pod assignment
+nodeSelector: {}
+# -- Tolerations for pod assignment
+tolerations: []
+# -- Affinity for pod assignment
+affinity: {}
+# -- Pod disruption budget
+podDisruptionBudget:
+  # -- Enable pod disruption budget
+  enabled: false
+  # -- Minimum available pods (can be number or percentage)
+  minAvailable: 1
+  # -- Maximum unavailable pods (can be number or percentage)
+  # maxUnavailable: 1
+# -- Network policy configuration
+networkPolicy:
+  # -- Enable network policy
+  enabled: true
+  # -- Egress rules
+  egress:
+    # -- Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # -- Allow HTTP/HTTPS to PiHole instances
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+# Sealed secrets configuration
+sealedSecrets:
+  # -- Enable sealed secrets creation
+  enabled: true
+  # -- Sealed secret data (populate with encrypted values)
+  secrets:
+    nebula-sync-pihole1-secrets:
+      primary-password: "AgAvX0u3gF0IvtiuyMFDOVp7r2akpgBTwcBd4Qox8Esj3R45UKr3no+FZRoshMV9cfsvVJ/pqasR6GEGLRzyvGAP0Wqm1JVeBOnz8SGl45TPw2rMn+NkTZI91QK1I0GDoP09gTM9JPt/ysiR/AY4i3L4s8pjah6mGocImXELOcVczvDLc5eC8bYnWkkOlrOR9m7l5WS9N9Ph1cvVihcM870Dfr5saC4MrD7i4xML8h4hl3N4/pZl87szCIXQuuvMixez9GH9YpCIOvG3ZVrGePxcYj9pQKqwGDaBtfqNyJBhqTRj+ycCurOWfeKnRxjJ6BY487zEtltnoV9LAe5xmItzMIA1qP+m2yM0X6oD73VXwxpT6x/1KeVJ3V0SHi4CCM0gPnho9ckJfYuJ/aR9guQArMagq3zNPbAZ3+/2T1NEAQO4uxEqiJFRo36U8W5KPXuBWjxgNLm1epn6gp7mw1bX0ci+0xvdZwtBUXu1/crrA+sEWwItFtVoZVLj2UjC9TPlce8mvqSvlqIncQsr4B5rD/eiNqT2XPrgGcRIHIczB8aDIfo7Tg1Is/exGcgucR25Zx04iv+avWY1f/QX960XQovkoN28M2T7zoHSIjHmkAgNFsmxTpRJWldP0wBWiX6ifozoIfMwaWYr/0EQ9pMHC6GlsLQxGHbcHzDa6E2DbxFH0EBQBd5XOdW8vtX6UfouJDDyeZj3Y1hV"
+      replica-password-1: "AgAvX0u3gF0IvtiuyMFDOVp7r2akpgBTwcBd4Qox8Esj3R45UKr3no+FZRoshMV9cfsvVJ/pqasR6GEGLRzyvGAP0Wqm1JVeBOnz8SGl45TPw2rMn+NkTZI91QK1I0GDoP09gTM9JPt/ysiR/AY4i3L4s8pjah6mGocImXELOcVczvDLc5eC8bYnWkkOlrOR9m7l5WS9N9Ph1cvVihcM870Dfr5saC4MrD7i4xML8h4hl3N4/pZl87szCIXQuuvMixez9GH9YpCIOvG3ZVrGePxcYj9pQKqwGDaBtfqNyJBhqTRj+ycCurOWfeKnRxjJ6BY487zEtltnoV9LAe5xmItzMIA1qP+m2yM0X6oD73VXwxpT6x/1KeVJ3V0SHi4CCM0gPnho9ckJfYuJ/aR9guQArMagq3zNPbAZ3+/2T1NEAQO4uxEqiJFRo36U8W5KPXuBWjxgNLm1epn6gp7mw1bX0ci+0xvdZwtBUXu1/crrA+sEWwItFtVoZVLj2UjC9TPlce8mvqSvlqIncQsr4B5rD/eiNqT2XPrgGcRIHIczB8aDIfo7Tg1Is/exGcgucR25Zx04iv+avWY1f/QX960XQovkoN28M2T7zoHSIjHmkAgNFsmxTpRJWldP0wBWiX6ifozoIfMwaWYr/0EQ9pMHC6GlsLQxGHbcHzDa6E2DbxFH0EBQBd5XOdW8vtX6UfouJDDyeZj3Y1hV"
+      replica-password-2: "AgAvX0u3gF0IvtiuyMFDOVp7r2akpgBTwcBd4Qox8Esj3R45UKr3no+FZRoshMV9cfsvVJ/pqasR6GEGLRzyvGAP0Wqm1JVeBOnz8SGl45TPw2rMn+NkTZI91QK1I0GDoP09gTM9JPt/ysiR/AY4i3L4s8pjah6mGocImXELOcVczvDLc5eC8bYnWkkOlrOR9m7l5WS9N9Ph1cvVihcM870Dfr5saC4MrD7i4xML8h4hl3N4/pZl87szCIXQuuvMixez9GH9YpCIOvG3ZVrGePxcYj9pQKqwGDaBtfqNyJBhqTRj+ycCurOWfeKnRxjJ6BY487zEtltnoV9LAe5xmItzMIA1qP+m2yM0X6oD73VXwxpT6x/1KeVJ3V0SHi4CCM0gPnho9ckJfYuJ/aR9guQArMagq3zNPbAZ3+/2T1NEAQO4uxEqiJFRo36U8W5KPXuBWjxgNLm1epn6gp7mw1bX0ci+0xvdZwtBUXu1/crrA+sEWwItFtVoZVLj2UjC9TPlce8mvqSvlqIncQsr4B5rD/eiNqT2XPrgGcRIHIczB8aDIfo7Tg1Is/exGcgucR25Zx04iv+avWY1f/QX960XQovkoN28M2T7zoHSIjHmkAgNFsmxTpRJWldP0wBWiX6ifozoIfMwaWYr/0EQ9pMHC6GlsLQxGHbcHzDa6E2DbxFH0EBQBd5XOdW8vtX6UfouJDDyeZj3Y1hV"
+      replica-password-3: "AgAvX0u3gF0IvtiuyMFDOVp7r2akpgBTwcBd4Qox8Esj3R45UKr3no+FZRoshMV9cfsvVJ/pqasR6GEGLRzyvGAP0Wqm1JVeBOnz8SGl45TPw2rMn+NkTZI91QK1I0GDoP09gTM9JPt/ysiR/AY4i3L4s8pjah6mGocImXELOcVczvDLc5eC8bYnWkkOlrOR9m7l5WS9N9Ph1cvVihcM870Dfr5saC4MrD7i4xML8h4hl3N4/pZl87szCIXQuuvMixez9GH9YpCIOvG3ZVrGePxcYj9pQKqwGDaBtfqNyJBhqTRj+ycCurOWfeKnRxjJ6BY487zEtltnoV9LAe5xmItzMIA1qP+m2yM0X6oD73VXwxpT6x/1KeVJ3V0SHi4CCM0gPnho9ckJfYuJ/aR9guQArMagq3zNPbAZ3+/2T1NEAQO4uxEqiJFRo36U8W5KPXuBWjxgNLm1epn6gp7mw1bX0ci+0xvdZwtBUXu1/crrA+sEWwItFtVoZVLj2UjC9TPlce8mvqSvlqIncQsr4B5rD/eiNqT2XPrgGcRIHIczB8aDIfo7Tg1Is/exGcgucR25Zx04iv+avWY1f/QX960XQovkoN28M2T7zoHSIjHmkAgNFsmxTpRJWldP0wBWiX6ifozoIfMwaWYr/0EQ9pMHC6GlsLQxGHbcHzDa6E2DbxFH0EBQBd5XOdW8vtX6UfouJDDyeZj3Y1hV"
+# -- Monitoring and observability
+monitoring:
+  # -- Enable ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: false
+    # -- ServiceMonitor namespace (defaults to chart namespace)
+    namespace: ""
+    # -- Scrape interval
+    interval: "30s"
+    # -- Scrape timeout
+    scrapeTimeout: "10s"
+    # -- Additional labels for ServiceMonitor
+    labels: {}
+    # -- Additional annotations for ServiceMonitor
+    annotations: {}
+# -- Pod labels for monitoring
+podMonitoringLabels:
+  app.kubernetes.io/component: pihole-sync
+  app.kubernetes.io/part-of: network-infrastructure
+# -- Number of replicas (usually 1 for this type of application)
+replicaCount: 1
+# -- Deployment strategy
+strategy:
+  type: Recreate
