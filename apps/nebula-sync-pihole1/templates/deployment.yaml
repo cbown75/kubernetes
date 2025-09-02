@@ -6,9 +6,12 @@ metadata:
   labels:
     {{- include "nebula-sync-pihole1.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   strategy:
-    {{- toYaml .Values.strategy | nindent 4 }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   selector:
     matchLabels:
       {{- include "nebula-sync-pihole1.selectorLabels" . | nindent 6 }}
@@ -25,9 +28,6 @@ spec:
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- with .Values.podMonitoringLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -42,10 +42,6 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: 8080
-              protocol: TCP
           env:
             # Primary PiHole configuration with password injection
             - name: PRIMARY_PASSWORD
@@ -60,6 +56,7 @@ spec:
                   key: primary-url
             - name: PRIMARY
               value: "$(PRIMARY_URL)|$(PRIMARY_PASSWORD)"
+            
             # Replica passwords
             {{- range $index, $key := .Values.nebulaSync.replicas.passwordSecretKeys }}
             - name: REPLICA_PASSWORD_{{ $index }}
@@ -68,6 +65,7 @@ spec:
                   name: {{ $.Values.nebulaSync.replicas.passwordSecretName }}
                   key: {{ $key }}
             {{- end }}
+            
             # Replica URLs
             {{- range $index, $url := .Values.nebulaSync.replicas.urls }}
             - name: REPLICA_URL_{{ $index }}
@@ -76,13 +74,16 @@ spec:
                   name: {{ include "nebula-sync-pihole1.fullname" . }}-config
                   key: replica-url-{{ $index }}
             {{- end }}
-            # Construct REPLICAS environment variable
+            
+            # Construct REPLICAS environment variable (FIXED SYNTAX)
             - name: REPLICAS
-              value: {{- $replicas := list }}
-              {{- range $index, $url := .Values.nebulaSync.replicas.urls }}
-                {{- $replicas = append $replicas (printf "$(REPLICA_URL_%d)|$(REPLICA_PASSWORD_%d)" $index $index) }}
-              {{- end }}
-              {{- join "," $replicas | quote }}
+              value: >-
+                {{- $replicas := list -}}
+                {{- range $index, $url := .Values.nebulaSync.replicas.urls -}}
+                  {{- $replicas = append $replicas (printf "$(REPLICA_URL_%d)|$(REPLICA_PASSWORD_%d)" $index $index) -}}
+                {{- end -}}
+                {{- join "," $replicas }}
+            
             # Sync configuration
             - name: FULL_SYNC
               value: {{ .Values.nebulaSync.config.fullSync | quote }}
@@ -90,6 +91,7 @@ spec:
               value: {{ .Values.nebulaSync.config.cron | quote }}
             - name: TZ
               value: {{ .Values.nebulaSync.config.timezone | quote }}
+            
             # Configuration sync settings
             - name: SYNC_CONFIG_DNS
               value: {{ .Values.nebulaSync.dns.enabled | quote }}
@@ -105,14 +107,15 @@ spec:
               value: {{ .Values.nebulaSync.misc.enabled | quote }}
             - name: SYNC_CONFIG_DEBUG
               value: {{ .Values.nebulaSync.debug.enabled | quote }}
+            
             # Gravity sync settings
             - name: SYNC_GRAVITY_DHCP_LEASES
               value: {{ .Values.nebulaSync.gravity.dhcpLeases | quote }}
             - name: SYNC_GRAVITY_GROUP
               value: {{ .Values.nebulaSync.gravity.group | quote }}
-            - name: SYNC_GRAVITY_AD_LIST
+            - name: SYNC_GRAVITY_ADLIST
               value: {{ .Values.nebulaSync.gravity.adList | quote }}
-            - name: SYNC_GRAVITY_AD_LIST_BY_GROUP
+            - name: SYNC_GRAVITY_ADLIST_BY_GROUP
               value: {{ .Values.nebulaSync.gravity.adListByGroup | quote }}
             - name: SYNC_GRAVITY_DOMAIN_LIST
               value: {{ .Values.nebulaSync.gravity.domainList | quote }}
@@ -122,32 +125,30 @@ spec:
               value: {{ .Values.nebulaSync.gravity.client | quote }}
             - name: SYNC_GRAVITY_CLIENT_BY_GROUP
               value: {{ .Values.nebulaSync.gravity.clientByGroup | quote }}
-          {{- if .Values.livenessProbe.enabled }}
-          livenessProbe:
-            {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- if .Values.readinessProbe.enabled }}
-          readinessProbe:
-            {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
-          {{- end }}
-          {{- if .Values.startupProbe.enabled }}
-          startupProbe:
-            {{- omit .Values.startupProbe "enabled" | toYaml | nindent 12 }}
-          {{- end }}
+          
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          
+          {{- with .Values.volumeMounts }}
           volumeMounts:
-            {{- toYaml .Values.volumeMounts | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      
+      {{- with .Values.volumes }}
       volumes:
-        {{- toYaml .Values.volumes | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
