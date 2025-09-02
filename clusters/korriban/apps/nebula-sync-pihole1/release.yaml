@@ -1,4 +1,3 @@
----
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -26,7 +25,7 @@ spec:
   releaseName: nebula-sync-pihole1
   targetNamespace: pihole
   install:
-    createNamespace: false  # Namespace created above
+    createNamespace: false # Namespace created above
     remediation:
       retries: 3
   upgrade:
@@ -55,13 +54,11 @@ spec:
           - "replica-password-3"
       config:
         fullSync: false
-        cron: "*/5 * * * *"  # Every 5 minutes
+        cron: "*/5 * * * *" # Every 5 minutes
         timezone: "America/Phoenix"
-    
     # Disable unnecessary components
     service:
-      enabled: false  # No ingress traffic needed
-    
+      enabled: false # No ingress traffic needed
     # Security hardening
     podSecurityContext:
       runAsNonRoot: true
@@ -70,14 +67,12 @@ spec:
       fsGroup: 65534
       seccompProfile:
         type: RuntimeDefault
-    
     securityContext:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
       capabilities:
         drop:
-        - ALL
-    
+          - ALL
     # Resource limits
     resources:
       limits:
@@ -86,7 +81,6 @@ spec:
       requests:
         memory: "128Mi"
         cpu: "100m"
-    
     # Network policy for security
     networkPolicy:
       enabled: true
@@ -103,95 +97,7 @@ spec:
           ports:
             - protocol: TCP
               port: 80
-    
-    # Sealed secrets - IMPORTANT: You must populate these with encrypted values
-    sealedSecrets:
-      enabled: true
-      secrets:
-        nebula-sync-pihole1-secrets:
-          # REPLACE THESE WITH ACTUAL ENCRYPTED VALUES:
-          # Generate with: echo -n "Husk3r?!94" | kubeseal --raw --name nebula-sync-pihole1-secrets --namespace pihole
-          primary-password: ""     # <-- PUT ENCRYPTED VALUE HERE
-          replica-password-1: ""   # <-- PUT ENCRYPTED VALUE HERE
-          replica-password-2: ""   # <-- PUT ENCRYPTED VALUE HERE
-          replica-password-3: ""   # <-- PUT ENCRYPTED VALUE HERE
   # Dependencies
   dependsOn:
     - name: sealed-secrets
-      namespace: kube-systemnebulaSync:
-      primary:
-        url: "http://pihole1.home.cwbtech.net"
-        passwordSecretName: "nebula-sync-pihole1-secrets"
-        passwordSecretKey: "primary-password"
-      replicas:
-        urls:
-          - "http://pihole2.home.cwbtech.net"
-          - "http://pihole7.home.cwbtech.net"
-          - "http://pihole8.home.cwbtech.net"
-        passwordSecretName: "nebula-sync-pihole1-secrets"
-        passwordSecretKeys:
-          - "replica-password-1"
-          - "replica-password-2"
-          - "replica-password-3"
-      config:
-        fullSync: false
-        cron: "05 * * * *"  # Every hour at 5 minutes past
-        timezone: "America/Phoenix"
-    
-    # Disable unnecessary components
-    service:
-      enabled: false  # No ingress traffic needed
-    
-    # Security hardening
-    podSecurityContext:
-      runAsNonRoot: true
-      runAsUser: 65534
-      runAsGroup: 65534
-      fsGroup: 65534
-      seccompProfile:
-        type: RuntimeDefault
-    
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop:
-        - ALL
-    
-    # Resource limits
-    resources:
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-    
-    # Network policy for security
-    networkPolicy:
-      enabled: true
-      egress:
-        # Allow DNS resolution
-        - to: []
-          ports:
-            - protocol: UDP
-              port: 53
-            - protocol: TCP
-              port: 53
-        # Allow HTTP to PiHole instances
-        - to: []
-          ports:
-            - protocol: TCP
-              port: 80
-    
-    # Sealed secrets - IMPORTANT: You must populate these with encrypted values
-    sealedSecrets:
-      enabled: true
-      secrets:
-        nebula-sync-pihole1-secrets:
-          # REPLACE THESE WITH ACTUAL ENCRYPTED VALUES:
-          # Generate with: echo -n "Husk3r?!94" | kubeseal --raw --name nebula-sync-pihole1-secrets --namespace default
-          primary-password: ""     # <-- PUT ENCRYPTED VALUE HERE
-          replica-password-1: ""   # <-- PUT ENCRYPTED VALUE HERE
-          replica-password-2: ""   # <-- PUT ENCRYPTED VALUE HERE
-          replica-password-3: ""   # <-- PUT ENCRYPTED VALUE HERE
+      namespace: kube-system
