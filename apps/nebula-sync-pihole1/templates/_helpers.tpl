@@ -11,3 +11,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: nebula-sync-pihole1
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{- define "nebula-sync-pihole1.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "nebula-sync-pihole1.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end -}}
