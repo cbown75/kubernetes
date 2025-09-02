@@ -23,6 +23,7 @@ spec:
         name: flux-system
         namespace: flux-system
       interval: 1m0s
+      reconcileStrateg: Revision
   releaseName: nebula-sync-pihole1
   targetNamespace: pihole
   install:
