@@ -2,7 +2,7 @@ apiVersion: v2
 name: nebula-sync-pihole1
 description: A Helm chart for Nebula Sync PiHole synchronization service - PiHole1 instance
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "latest"
 keywords:
   - pihole
