@@ -24,82 +24,74 @@ spec:
         namespace: flux-system
       interval: 1m0s
       reconcileStrategy: Revision
-    releaseName: nebula-sync-pihole1
-    targetNamespace: pihole
-    install:
-      createNamespace: false # Namespace created above
-      remediation:
-        retries: 3
-    upgrade:
-      remediation:
-        retries: 3
-        remediateLastFailure: true
-    rollback:
-      timeout: 10m0s
-      recreate: true
-    values:
-      # Your PiHole configuration
-      nebulaSync:
-        primary:
-          url: "http://pihole1.home.cwbtech.net"
-          passwordSecretName: "nebula-sync-pihole1-secrets"
-          passwordSecretKey: "primary-password"
-        replicas:
-          urls:
-            - "http://pihole2.home.cwbtech.net"
-            - "http://pihole7.home.cwbtech.net"
-            - "http://pihole8.home.cwbtech.net"
-          passwordSecretName: "nebula-sync-pihole1-secrets"
-          passwordSecretKeys:
-            - "replica-password-1"
-            - "replica-password-2"
-            - "replica-password-3"
-        config:
-          fullSync: false
-          cron: "*/5 * * * *" # Every 5 minutes
-          timezone: "America/Phoenix"
-      # Disable unnecessary components
-      service:
-        enabled: false # No ingress traffic needed
-      # Security hardening
-      podSecurityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
-      securityContext:
-        allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: true
-        capabilities:
-          drop:
-            - ALL
-      # Resource limits
-      resources:
-        limits:
-          memory: "256Mi"
-          cpu: "200m"
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-      # Network policy for security
-      networkPolicy:
-        enabled: true
-        egress:
-          # Allow DNS resolution
-          - to: []
-            ports:
-              - protocol: UDP
-                port: 53
-              - protocol: TCP
-                port: 53
-          # Allow HTTP to PiHole instances
-          - to: []
-            ports:
-              - protocol: TCP
-                port: 80
-    # Dependencies
-    dependsOn:
-      - name: sealed-secrets
-        namespace: kube-system
+  releaseName: nebula-sync-pihole1
+  targetNamespace: pihole
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  rollback:
+    timeout: 10m0s
+    recreate: true
+  values:
+    nebulaSync:
+      primary:
+        url: "http://pihole1.home.cwbtech.net"
+        passwordSecretName: "nebula-sync-pihole1-secrets"
+        passwordSecretKey: "primary-password"
+      replicas:
+        urls:
+          - "http://pihole2.home.cwbtech.net"
+          - "http://pihole7.home.cwbtech.net"
+          - "http://pihole8.home.cwbtech.net"
+        passwordSecretName: "nebula-sync-pihole1-secrets"
+        passwordSecretKeys:
+          - "replica-password-1"
+          - "replica-password-2"
+          - "replica-password-3"
+      config:
+        fullSync: false
+        cron: "*/5 * * * *"
+        timezone: "America/Phoenix"
+    service:
+      enabled: false
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+      runAsGroup: 65534
+      fsGroup: 65534
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+    networkPolicy:
+      enabled: true
+      egress:
+        - to: []
+          ports:
+            - protocol: UDP
+              port: 53
+            - protocol: TCP
+              port: 53
+        - to: []
+          ports:
+            - protocol: TCP
+              port: 80
+  dependsOn:
+    - name: sealed-secrets
+      namespace: kube-system
