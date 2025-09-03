@@ -71,6 +71,8 @@ spec:
         domainListByGroup: true
         client: true
         clientByGroup: true
+    hostNetwork: true
+    dnsPolicy: ClusterFirstWithHostNet
     # Sealed Secrets Configuration
     sealedSecrets:
       enabled: true
