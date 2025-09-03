@@ -71,9 +71,6 @@ spec:
         domainListByGroup: true
         client: true
         clientByGroup: true
-    # Remove hostNetwork to work properly with NetworkPolicy
-    hostNetwork: false
-    dnsPolicy: ClusterFirst
     # Sealed Secrets Configuration
     sealedSecrets:
       enabled: true
