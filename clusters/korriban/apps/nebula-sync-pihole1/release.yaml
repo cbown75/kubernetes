@@ -31,14 +31,14 @@ spec:
     # Nebula Sync Configuration
     nebulaSync:
       primary:
-        url: "https://pihole1.home.cwbtech.net"
+        url: "http://pihole1.home.cwbtech.net"
         passwordSecretName: "nebula-sync-pihole1-secrets"
         passwordSecretKey: "primary-password"
       replicas:
         urls:
-          - "https://pihole2.home.cwbtech.net"
-          - "https://pihole7.home.cwbtech.net"
-          - "https://pihole8.home.cwbtech.net"
+          - "http://pihole2.home.cwbtech.net"
+          - "http://pihole7.home.cwbtech.net"
+          - "http://pihole8.home.cwbtech.net"
         passwordSecretName: "nebula-sync-pihole1-secrets"
         passwordSecretKeys:
           - "replica-password-1"
