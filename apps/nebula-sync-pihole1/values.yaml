@@ -45,14 +45,12 @@ service:
 networkPolicy:
   enabled: true
   egress:
-    # Allow DNS resolution
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
       to: []
-    # Allow HTTP traffic to PiHole instances
     - ports:
         - port: 80
           protocol: TCP
