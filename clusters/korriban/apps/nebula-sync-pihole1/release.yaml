@@ -116,6 +116,8 @@ spec:
           ports:
             - protocol: TCP
               port: 80
+            - protocol: TCP
+              port: 443
     # Service Configuration
     service:
       enabled: false
