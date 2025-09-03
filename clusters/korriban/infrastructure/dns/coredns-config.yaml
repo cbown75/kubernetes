@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: ".:53 {\n    errors\n    health {\n        lameduck 5s\n    }\n    ready\n    log . {\n        class error\n    }\n    prometheus :9153\n\n    # Forward home.cwbtech.net to your PiHole DNS servers\n    forward home.cwbtech.net 10.10.0.4 10.10.0.5 192.168.1.250 192.168.1.251 {\n        max_concurrent 1000\n    }\n\n    kubernetes cluster.local in-addr.arpa ip6.arpa {\n        pods insecure\n        fallthrough in-addr.arpa ip6.arpa\n        ttl 30\n    }\n    \n    # Everything else goes to /etc/resolv.conf (current behavior)\n    forward . /etc/resolv.conf {\n       max_concurrent 1000\n    }\n    \n    cache 30 {\n       disable success cluster.local\n       disable denial cluster.local\n    }\n    loop\n    reload\n    loadbalance\n}\n"
