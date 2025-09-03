@@ -35,19 +35,17 @@ securityContext:
   capabilities:
     drop:
       - ALL
-# Service disabled by default
 service:
   enabled: false
-# Network policy disabled by default
 networkPolicy:
   enabled: false
-# Sealed secrets disabled by default
 sealedSecrets:
   enabled: false
-# Volumes
 volumes:
   - name: tmp
     emptyDir: {}
 volumeMounts:
   - name: tmp
     mountPath: /tmp
+serviceMonitor:
+  enabled: false
