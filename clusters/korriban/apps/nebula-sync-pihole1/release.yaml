@@ -71,8 +71,9 @@ spec:
         domainListByGroup: true
         client: true
         clientByGroup: true
-    hostNetwork: true
-    dnsPolicy: ClusterFirstWithHostNet
+    # Remove hostNetwork to work properly with NetworkPolicy
+    hostNetwork: false
+    dnsPolicy: ClusterFirst
     # Sealed Secrets Configuration
     sealedSecrets:
       enabled: true
@@ -104,22 +105,9 @@ spec:
       requests:
         memory: "128Mi"
         cpu: "100m"
-    # Network Policy
+    # NetworkPolicy disabled - we'll use a custom one
     networkPolicy:
-      enabled: true
-      egress:
-        - to: []
-          ports:
-            - protocol: UDP
-              port: 53
-            - protocol: TCP
-              port: 53
-        - to: []
-          ports:
-            - protocol: TCP
-              port: 80
-            - protocol: TCP
-              port: 443
+      enabled: false
     # Service Configuration
     service:
       enabled: false
