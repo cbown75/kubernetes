@@ -35,19 +35,19 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         env:
-        # Primary pihole configuration
-        - name: PRIMARY_URL
-          value: {{ .Values.nebulaSync.primary.url | quote }}
+        # Primary pihole configuration - Combined URL|password format
+        - name: PRIMARY
+          value: "{{ .Values.nebulaSync.primary.url }}|$(PRIMARY_PASSWORD)"
         - name: PRIMARY_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ .Values.nebulaSync.primary.passwordSecretName }}
               key: {{ .Values.nebulaSync.primary.passwordSecretKey }}
         
-        # Replicas configuration  
+        # Replicas configuration - Combined URLs with passwords
+        - name: REPLICAS
+          value: "{{- range $index, $url := .Values.nebulaSync.replicas.urls }}{{- if $index }},{{ end }}{{ $url }}|$(REPLICA_{{ $index }}_PASSWORD){{- end }}"
         {{- range $index, $url := .Values.nebulaSync.replicas.urls }}
-        - name: REPLICA_{{ $index }}_URL
-          value: {{ $url | quote }}
         - name: REPLICA_{{ $index }}_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -60,35 +60,23 @@ spec:
           value: {{ .Values.nebulaSync.config.fullSync | quote }}
         - name: CRON
           value: {{ .Values.nebulaSync.config.cron | quote }}
-        - name: TIMEZONE
+        - name: TZ
           value: {{ .Values.nebulaSync.config.timezone | quote }}
         
-        # DNS sync
-        - name: SYNC_DNS
+        # Individual sync settings (only when FULL_SYNC=false)
+        - name: SYNC_CONFIG_DNS
           value: {{ .Values.nebulaSync.dns.enabled | quote }}
-        
-        # DHCP sync
-        - name: SYNC_DHCP
+        - name: SYNC_CONFIG_DHCP
           value: {{ .Values.nebulaSync.dhcp.enabled | quote }}
-        
-        # NTP sync
-        - name: SYNC_NTP
+        - name: SYNC_CONFIG_NTP
           value: {{ .Values.nebulaSync.ntp.enabled | quote }}
-        
-        # Resolver sync
-        - name: SYNC_RESOLVER
+        - name: SYNC_CONFIG_RESOLVER
           value: {{ .Values.nebulaSync.resolver.enabled | quote }}
-        
-        # Database sync
-        - name: SYNC_DATABASE
+        - name: SYNC_CONFIG_DATABASE
           value: {{ .Values.nebulaSync.database.enabled | quote }}
-        
-        # Misc sync
-        - name: SYNC_MISC
+        - name: SYNC_CONFIG_MISC
           value: {{ .Values.nebulaSync.misc.enabled | quote }}
-        
-        # Debug mode
-        - name: DEBUG
+        - name: SYNC_CONFIG_DEBUG
           value: {{ .Values.nebulaSync.debug.enabled | quote }}
         
         # Gravity sync options
@@ -96,9 +84,9 @@ spec:
           value: {{ .Values.nebulaSync.gravity.dhcpLeases | quote }}
         - name: SYNC_GRAVITY_GROUP
           value: {{ .Values.nebulaSync.gravity.group | quote }}
-        - name: SYNC_GRAVITY_ADLIST
+        - name: SYNC_GRAVITY_AD_LIST
           value: {{ .Values.nebulaSync.gravity.adList | quote }}
-        - name: SYNC_GRAVITY_ADLIST_BY_GROUP
+        - name: SYNC_GRAVITY_AD_LIST_BY_GROUP
           value: {{ .Values.nebulaSync.gravity.adListByGroup | quote }}
         - name: SYNC_GRAVITY_DOMAIN_LIST
           value: {{ .Values.nebulaSync.gravity.domainList | quote }}
@@ -108,6 +96,10 @@ spec:
           value: {{ .Values.nebulaSync.gravity.client | quote }}
         - name: SYNC_GRAVITY_CLIENT_BY_GROUP
           value: {{ .Values.nebulaSync.gravity.clientByGroup | quote }}
+        
+        # Run gravity after sync (be careful with this setting)
+        - name: RUN_GRAVITY
+          value: "true"
         
         # Additional environment variables
         {{- with .Values.env }}
