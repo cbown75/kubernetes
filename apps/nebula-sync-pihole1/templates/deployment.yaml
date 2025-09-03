@@ -2,32 +2,21 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "nebula-sync-pihole1.fullname" . }}
-  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "nebula-sync-pihole1.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount | default 1 }}
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       {{- include "nebula-sync-pihole1.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- with .Values.podAnnotations }}
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        checksum/secret: {{ include (print $.Template.BasePath "/sealed-secret.yaml") . | sha256sum }}
-        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
       labels:
-        {{- include "nebula-sync-pihole1.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- include "nebula-sync-pihole1.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -37,118 +26,116 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            # Primary PiHole configuration with password injection
-            - name: PRIMARY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.nebulaSync.primary.passwordSecretName }}
-                  key: {{ .Values.nebulaSync.primary.passwordSecretKey }}
-            - name: PRIMARY_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "nebula-sync-pihole1.fullname" . }}-config
-                  key: primary-url
-            - name: PRIMARY
-              value: "$(PRIMARY_URL)|$(PRIMARY_PASSWORD)"
-            
-            # Replica passwords
-            {{- range $index, $key := .Values.nebulaSync.replicas.passwordSecretKeys }}
-            - name: REPLICA_PASSWORD_{{ $index }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $.Values.nebulaSync.replicas.passwordSecretName }}
-                  key: {{ $key }}
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        # Primary pihole configuration
+        - name: PRIMARY
+          value: "{{ .Values.primary.url }}|{{ .Values.primary.password }}"
+        
+        # FIXED: Replicas configuration - store context before range
+        {{- $fullName := include "nebula-sync-pihole1.fullname" . -}}
+        {{- $releaseName := .Release.Name -}}
+        {{- $namespace := .Release.Namespace -}}
+        
+        # Build replicas string from URLs array
+        - name: REPLICAS
+          value: {{ .Values.replicas.urls | join "," | quote }}
+        
+        # Sync configuration options
+        - name: FULL_SYNC
+          value: {{ .Values.sync.full | quote }}
+        - name: RUN_GRAVITY
+          value: {{ .Values.sync.gravity | quote }}
+        - name: CRON
+          value: {{ .Values.sync.cron | quote }}
+        
+        # Sync config flags
+        {{- range $key, $value := .Values.sync.config }}
+        - name: SYNC_CONFIG_{{ $key | upper }}
+          value: {{ $value | quote }}
+        {{- end }}
+        
+        # Sync gravity flags
+        {{- range $key, $value := .Values.sync.gravity_options }}
+        - name: SYNC_GRAVITY_{{ $key | upper }}
+          value: {{ $value | quote }}
+        {{- end }}
+        
+        # FIXED: Additional environment variables with proper context
+        {{- with .Values.env }}
+        {{- range . }}
+        - name: {{ .name }}
+          {{- if .value }}
+          value: {{ .value | quote }}
+          {{- else if .valueFrom }}
+          valueFrom:
+            {{- if .valueFrom.secretKeyRef }}
+            secretKeyRef:
+              # Use $fullName from outside the range loop
+              name: {{ $fullName }}-secrets
+              key: {{ .valueFrom.secretKeyRef.key }}
+            {{- else if .valueFrom.configMapKeyRef }}
+            configMapKeyRef:
+              # Use $fullName from outside the range loop
+              name: {{ $fullName }}-config
+              key: {{ .valueFrom.configMapKeyRef.key }}
             {{- end }}
-            
-            # Replica URLs
-            {{- range $index, $url := .Values.nebulaSync.replicas.urls }}
-            - name: REPLICA_URL_{{ $index }}
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "nebula-sync-pihole1.fullname" . }}-config
-                  key: replica-url-{{ $index }}
-            {{- end }}
-            
-            # Construct REPLICAS environment variable (FIXED SYNTAX)
-            - name: REPLICAS
-              value: >-
-                {{- $replicas := list -}}
-                {{- range $index, $url := .Values.nebulaSync.replicas.urls -}}
-                  {{- $replicas = append $replicas (printf "$(REPLICA_URL_%d)|$(REPLICA_PASSWORD_%d)" $index $index) -}}
-                {{- end -}}
-                {{- join "," $replicas }}
-            
-            # Sync configuration
-            - name: FULL_SYNC
-              value: {{ .Values.nebulaSync.config.fullSync | quote }}
-            - name: CRON
-              value: {{ .Values.nebulaSync.config.cron | quote }}
-            - name: TZ
-              value: {{ .Values.nebulaSync.config.timezone | quote }}
-            
-            # Configuration sync settings
-            - name: SYNC_CONFIG_DNS
-              value: {{ .Values.nebulaSync.dns.enabled | quote }}
-            - name: SYNC_CONFIG_DHCP
-              value: {{ .Values.nebulaSync.dhcp.enabled | quote }}
-            - name: SYNC_CONFIG_NTP
-              value: {{ .Values.nebulaSync.ntp.enabled | quote }}
-            - name: SYNC_CONFIG_RESOLVER
-              value: {{ .Values.nebulaSync.resolver.enabled | quote }}
-            - name: SYNC_CONFIG_DATABASE
-              value: {{ .Values.nebulaSync.database.enabled | quote }}
-            - name: SYNC_CONFIG_MISC
-              value: {{ .Values.nebulaSync.misc.enabled | quote }}
-            - name: SYNC_CONFIG_DEBUG
-              value: {{ .Values.nebulaSync.debug.enabled | quote }}
-            
-            # Gravity sync settings
-            - name: SYNC_GRAVITY_DHCP_LEASES
-              value: {{ .Values.nebulaSync.gravity.dhcpLeases | quote }}
-            - name: SYNC_GRAVITY_GROUP
-              value: {{ .Values.nebulaSync.gravity.group | quote }}
-            - name: SYNC_GRAVITY_ADLIST
-              value: {{ .Values.nebulaSync.gravity.adList | quote }}
-            - name: SYNC_GRAVITY_ADLIST_BY_GROUP
-              value: {{ .Values.nebulaSync.gravity.adListByGroup | quote }}
-            - name: SYNC_GRAVITY_DOMAIN_LIST
-              value: {{ .Values.nebulaSync.gravity.domainList | quote }}
-            - name: SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP
-              value: {{ .Values.nebulaSync.gravity.domainListByGroup | quote }}
-            - name: SYNC_GRAVITY_CLIENT
-              value: {{ .Values.nebulaSync.gravity.client | quote }}
-            - name: SYNC_GRAVITY_CLIENT_BY_GROUP
-              value: {{ .Values.nebulaSync.gravity.clientByGroup | quote }}
-          
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
           {{- end }}
+        {{- end }}
+        {{- end }}
+        
+        # FIXED: Webhook configuration - proper context handling
+        {{- if .Values.webhooks }}
+        {{- if .Values.webhooks.success }}
+        - name: WEBHOOK_SYNC_SUCCESS_URL
+          value: {{ .Values.webhooks.success.url | quote }}
+        {{- with .Values.webhooks.success.body }}
+        - name: WEBHOOK_SYNC_SUCCESS_BODY
+          value: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.webhooks.success.headers }}
+        - name: WEBHOOK_SYNC_SUCCESS_HEADERS
+          value: {{ . | quote }}
+        {{- end }}
+        {{- end }}
+        
+        {{- if .Values.webhooks.failure }}
+        - name: WEBHOOK_SYNC_FAILURE_URL
+          value: {{ .Values.webhooks.failure.url | quote }}
+        {{- with .Values.webhooks.failure.body }}
+        - name: WEBHOOK_SYNC_FAILURE_BODY
+          value: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.webhooks.failure.headers }}
+        - name: WEBHOOK_SYNC_FAILURE_HEADERS
+          value: {{ . | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
       
-      {{- with .Values.volumes }}
+      # FIXED: Volume mounts with proper context preservation
+      {{- if .Values.persistence.enabled }}
       volumes:
-        {{- toYaml . | nindent 8 }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ $fullName }}-data
       {{- end }}
       
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      
       {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}

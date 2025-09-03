@@ -7,8 +7,6 @@ Expand the name of the chart.
 
 {{/*
 Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
 */}}
 {{- define "nebula-sync-pihole1.fullname" -}}
 {{- if .Values.fullnameOverride }}
@@ -31,7 +29,7 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Common labels
+Common labels - FIXED to ensure proper context is always expected
 */}}
 {{- define "nebula-sync-pihole1.labels" -}}
 helm.sh/chart: {{ include "nebula-sync-pihole1.chart" . }}
@@ -58,16 +56,5 @@ Create the name of the service account to use
 {{- default (include "nebula-sync-pihole1.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Validate replica configuration
-*/}}
-{{- define "nebula-sync-pihole1.validateReplicas" -}}
-{{- $urlCount := len .Values.nebulaSync.replicas.urls }}
-{{- $keyCount := len .Values.nebulaSync.replicas.passwordSecretKeys }}
-{{- if ne $urlCount $keyCount }}
-{{- fail (printf "Number of replica URLs (%d) must match number of password secret keys (%d)" $urlCount $keyCount) }}
 {{- end }}
 {{- end }}

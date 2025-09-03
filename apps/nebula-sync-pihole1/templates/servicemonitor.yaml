@@ -1,22 +1,78 @@
-{{- if .Values.service.enabled }}
-apiVersion: v1
-kind: Service
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
 metadata:
   name: {{ include "nebula-sync-pihole1.fullname" . }}
-  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "nebula-sync-pihole1.labels" . | nindent 4 }}
-  {{- with .Values.service.annotations }}
-  annotations:
+    {{- with .Values.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
-  type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.targetPort }}
-      protocol: TCP
-      name: http
+  # FIXED: Store context values before nested structures
+  {{- $fullName := include "nebula-sync-pihole1.fullname" . -}}
+  {{- $namespace := .Release.Namespace -}}
+  {{- $labels := include "nebula-sync-pihole1.selectorLabels" . -}}
+  
   selector:
-    {{- include "nebula-sync-pihole1.selectorLabels" . | nindent 4 }}
+    matchLabels:
+      {{- include "nebula-sync-pihole1.selectorLabels" . | nindent 6 }}
+  
+  # FIXED: Endpoints configuration with proper context
+  endpoints:
+  {{- range .Values.serviceMonitor.endpoints }}
+  - port: {{ .port }}
+    {{- if .interval }}
+    interval: {{ .interval }}
+    {{- end }}
+    {{- if .scrapeTimeout }}
+    scrapeTimeout: {{ .scrapeTimeout }}
+    {{- end }}
+    {{- if .path }}
+    path: {{ .path }}
+    {{- end }}
+    {{- if .scheme }}
+    scheme: {{ .scheme }}
+    {{- end }}
+    {{- if .params }}
+    params:
+      {{- range $key, $value := .params }}
+      {{ $key }}:
+        {{- range $value }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .relabelings }}
+    relabelings:
+      {{- range .relabelings }}
+      - sourceLabels: {{ .sourceLabels | toJson }}
+        {{- if .separator }}
+        separator: {{ .separator }}
+        {{- end }}
+        {{- if .targetLabel }}
+        targetLabel: {{ .targetLabel }}
+        {{- end }}
+        {{- if .regex }}
+        regex: {{ .regex }}
+        {{- end }}
+        {{- if .replacement }}
+        replacement: {{ .replacement }}
+        {{- end }}
+        {{- if .action }}
+        action: {{ .action }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .metricRelabelings }}
+    metricRelabelings:
+      {{- toYaml .metricRelabelings | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  
+  {{- if .Values.serviceMonitor.namespaceSelector }}
+  namespaceSelector:
+    matchNames:
+    - {{ $namespace }}
+  {{- end }}
 {{- end }}
