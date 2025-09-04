@@ -73,7 +73,12 @@ spec:
         clientByGroup: true
     # Back to hostNetwork - bypasses pod networking issues
     hostNetwork: true
-    dnsPolicy: ClusterFirstWithHostNet
+    dnsPolicy: "None"
+    dnsConfig:
+      nameservers:
+        - "10.10.4.4"
+        - "10.10.4.5"
+        - "10.10.4.1"
     # Sealed Secrets Configuration
     sealedSecrets:
       enabled: true
