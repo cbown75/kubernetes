@@ -39,10 +39,10 @@ spec:
         {{- toYaml .Values.dnsConfig | nindent 8 }}
       {{- end }}
       
-      # Init container that builds the environment variables
+      # Init container that creates PRIMARY and REPLICAS files
       initContainers:
       - name: secret-composer
-        image: busybox:1.35
+        image: alpine:3.18
         command: ['sh', '-c']
         args:
         - |
@@ -54,17 +54,15 @@ spec:
           REPLICA2_PASSWORD=$(cat /secrets/replica-password-2)
           REPLICA3_PASSWORD=$(cat /secrets/replica-password-3)
           
-          # Build the environment variables file
-          cat > /shared-config/env-vars << EOF
-          PRIMARY="{{ .Values.nebulaSync.primary.url }}|${PRIMARY_PASSWORD}"
-          REPLICAS="{{ index .Values.nebulaSync.replicas.urls 0 }}|${REPLICA1_PASSWORD},{{ index .Values.nebulaSync.replicas.urls 1 }}|${REPLICA2_PASSWORD},{{ index .Values.nebulaSync.replicas.urls 2 }}|${REPLICA3_PASSWORD}"
-          EOF
+          # Create files that can be read as PRIMARY_FILE and REPLICAS_FILE
+          echo "{{ .Values.nebulaSync.primary.url }}|${PRIMARY_PASSWORD}" > /shared-config/PRIMARY
+          echo "{{ index .Values.nebulaSync.replicas.urls 0 }}|${REPLICA1_PASSWORD},{{ index .Values.nebulaSync.replicas.urls 1 }}|${REPLICA2_PASSWORD},{{ index .Values.nebulaSync.replicas.urls 2 }}|${REPLICA3_PASSWORD}" > /shared-config/REPLICAS
           
           # Set secure permissions and verify
-          chmod 600 /shared-config/env-vars
-          echo "Configuration created successfully:"
-          echo "PRIMARY=$(head -1 /shared-config/env-vars | cut -d'=' -f1)=<URL>|<password>"
-          echo "REPLICAS=$(tail -1 /shared-config/env-vars | cut -d'=' -f1)=<URL1>|<password1>,<URL2>|<password2>,<URL3>|<password3>"
+          chmod 600 /shared-config/PRIMARY /shared-config/REPLICAS
+          echo "Configuration created successfully"
+          echo "PRIMARY file size: $(wc -c < /shared-config/PRIMARY) bytes"
+          echo "REPLICAS file size: $(wc -c < /shared-config/REPLICAS) bytes"
         
         volumeMounts:
         - name: shared-config
@@ -91,26 +89,13 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         
-        command: ['/bin/sh', '-c']
-        args:
-        - |
-          echo "Starting nebula-sync..."
-          
-          # Source the environment variables created by init container
-          if [ -f /shared-config/env-vars ]; then
-            set -a
-            source /shared-config/env-vars
-            set +a
-            echo "Loaded configuration from init container"
-          else
-            echo "ERROR: Configuration file not found!"
-            exit 1
-          fi
-          
-          # Start nebula-sync with the environment variables
-          exec /usr/bin/nebula-sync
-        
+        # Use PRIMARY_FILE and REPLICAS_FILE environment variables
         env:
+        - name: PRIMARY_FILE
+          value: "/shared-config/PRIMARY"
+        - name: REPLICAS_FILE
+          value: "/shared-config/REPLICAS"
+        
         # Sync configuration options
         - name: FULL_SYNC
           value: {{ .Values.nebulaSync.config.fullSync | quote }}
