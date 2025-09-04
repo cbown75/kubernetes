@@ -42,7 +42,7 @@ spec:
       # Init container that creates PRIMARY and REPLICAS files
       initContainers:
       - name: secret-composer
-        image: alpine:3.18
+        image: registry.k8s.io/busybox:1.36.1
         command: ['sh', '-c']
         args:
         - |
