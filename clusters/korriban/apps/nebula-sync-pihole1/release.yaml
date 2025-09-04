@@ -61,7 +61,7 @@ spec:
       misc:
         enabled: false
       debug:
-        enabled: false
+        enabled: true
       gravity:
         dhcpLeases: true
         group: true
