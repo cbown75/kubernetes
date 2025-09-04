@@ -71,6 +71,9 @@ spec:
         domainListByGroup: true
         client: true
         clientByGroup: true
+    # Back to hostNetwork - bypasses pod networking issues
+    hostNetwork: true
+    dnsPolicy: ClusterFirstWithHostNet
     # Sealed Secrets Configuration
     sealedSecrets:
       enabled: true
@@ -102,7 +105,7 @@ spec:
       requests:
         memory: "128Mi"
         cpu: "100m"
-    # NetworkPolicy disabled - we'll use a custom one
+    # NetworkPolicy disabled - not needed with hostNetwork
     networkPolicy:
       enabled: false
     # Service Configuration
