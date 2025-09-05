@@ -34,7 +34,7 @@ spec:
   chart:
     spec:
       chart: cilium
-      version: "1.16.4" # Latest stable for Istio compatibility
+      version: "1.16.4"
       sourceRef:
         kind: HelmRepository
         name: cilium
@@ -54,42 +54,100 @@ spec:
     force: true
     recreate: true
   values:
-    # CRITICAL: Migration-specific settings
-    operator:
-      unmanagedPodWatcher:
-        restart: false # Don't restart unmigrated pods initially
-      replicas: 2
     # Network configuration
     cluster:
       name: korriban
       id: 1
-    # CRITICAL: Use different tunnel to avoid Flannel conflict
-    routingMode: tunnel
-    tunnelProtocol: geneve # Different from Flannel's VXLAN
-    tunnelPort: 6081 # Different from Flannel's 8472
-    # CNI configuration for migration
-    cni:
-      customConf: true # Don't write CNI config initially
-      uninstall: false # Don't cleanup on shutdown during migration
-      exclusive: false # Allow other CNI plugins (for Istio compatibility)
-    # IPAM - use non-overlapping CIDR
+    # PRODUCTION IP allocation with /20 subnets
     ipam:
       mode: "cluster-pool"
       operator:
-        clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"] # Different from Flannel
+        clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
-    # CRITICAL: Disable policies during migration
+    # === CILIUM AGENT RESOURCES (CRITICAL NETWORKING) ===
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "512Mi"
+      limits:
+        memory: "2Gi"
+    # === CILIUM OPERATOR RESOURCES ===
+    operator:
+      replicas: 2
+      unmanagedPodWatcher:
+        restart: false
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          memory: "1Gi"
+    # === HUBBLE RELAY RESOURCES ===
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+        replicas: 2
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            memory: "512Mi"
+      # === HUBBLE UI RESOURCES ===
+      ui:
+        enabled: true
+        frontend:
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
+              memory: "256Mi"
+        backend:
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              memory: "512Mi"
+      # Hubble observability configuration
+      metrics:
+        enabled:
+          - dns
+          - drop
+          - tcp
+          - flow
+          - httpV2
+    # === ENVOY PROXY RESOURCES (L7 load balancing) ===
+    envoy:
+      enabled: true
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "128Mi"
+        limits:
+          memory: "512Mi"
+    # Network and eBPF configuration
+    routingMode: tunnel
+    tunnelProtocol: geneve
+    tunnelPort: 6081
+    # CNI configuration for migration
+    cni:
+      customConf: true
+      uninstall: false
+      exclusive: false
+    # Migration settings
     policyEnforcementMode: "never"
+    kubeProxyReplacement: false
     # eBPF configuration
     bpf:
-      hostLegacyRouting: true # Enable routing between overlays during migration
+      hostLegacyRouting: true
       masquerade: false
       preallocateMaps: true
-    # CRITICAL: Istio compatibility settings
+    # Istio compatibility
     socketLB:
-      hostNamespaceOnly: true # Required for Istio sidecar compatibility
-    # CRITICAL: For storage compatibility (NFS/Synology CSI)
-    kubeProxyReplacement: false # Keep kube-proxy during migration
+      hostNamespaceOnly: true
     # Security contexts for Talos
     securityContext:
       capabilities:
@@ -114,32 +172,9 @@ spec:
       autoMount:
         enabled: false
       hostRoot: /sys/fs/cgroup
-    # Resource limits
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-      requests:
-        cpu: "100m"
-        memory: "512Mi"
-    # Monitoring during migration
+    # Monitoring
     prometheus:
       enabled: true
       port: 9962
       serviceMonitor:
         enabled: true
-    # Hubble for observability
-    hubble:
-      enabled: true
-      relay:
-        enabled: true
-        replicas: 2
-      ui:
-        enabled: true
-      metrics:
-        enabled:
-          - dns
-          - drop
-          - tcp
-          - flow
-          - httpV2
