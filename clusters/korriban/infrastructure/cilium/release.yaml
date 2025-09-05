@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cilium-system
+  labels:
+    name: cilium-system
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/part-of: infrastructure
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: cilium
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://helm.cilium.io/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/part-of: infrastructure
+spec:
+  interval: 10m
+  timeout: 10m
+  targetNamespace: cilium-system
+  chart:
+    spec:
+      chart: cilium
+      version: "1.16.4" # Latest stable for Istio compatibility
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+      interval: 5m
+  install:
+    createNamespace: false # We create namespace above
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  rollback:
+    cleanupOnFail: true
+    force: true
+    recreate: true
+  values:
+    # CRITICAL: Migration-specific settings
+    operator:
+      unmanagedPodWatcher:
+        restart: false # Don't restart unmigrated pods initially
+      replicas: 2
+    # Network configuration
+    cluster:
+      name: korriban
+      id: 1
+    # CRITICAL: Use different tunnel to avoid Flannel conflict
+    routingMode: tunnel
+    tunnelProtocol: geneve # Different from Flannel's VXLAN
+    tunnelPort: 6081 # Different from Flannel's 8472
+    # CNI configuration for migration
+    cni:
+      customConf: true # Don't write CNI config initially
+      uninstall: false # Don't cleanup on shutdown during migration
+      exclusive: false # Allow other CNI plugins (for Istio compatibility)
+    # IPAM - use non-overlapping CIDR
+    ipam:
+      mode: "cluster-pool"
+      operator:
+        clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"] # Different from Flannel
+        clusterPoolIPv4MaskSize: 24
+    # CRITICAL: Disable policies during migration
+    policyEnforcementMode: "never"
+    # eBPF configuration
+    bpf:
+      hostLegacyRouting: true # Enable routing between overlays during migration
+      masquerade: true
+      preallocateMaps: true
+    # CRITICAL: Istio compatibility settings
+    socketLB:
+      hostNamespaceOnly: true # Required for Istio sidecar compatibility
+    # CRITICAL: For storage compatibility (NFS/Synology CSI)
+    kubeProxyReplacement: false # Keep kube-proxy during migration
+    # Security contexts for Talos
+    securityContext:
+      capabilities:
+        ciliumAgent:
+          - CHOWN
+          - KILL
+          - NET_ADMIN
+          - NET_RAW
+          - IPC_LOCK
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - DAC_OVERRIDE
+          - FOWNER
+          - SETGID
+          - SETUID
+        cleanCiliumState:
+          - NET_ADMIN
+          - SYS_ADMIN
+          - SYS_RESOURCE
+    # Talos-specific settings
+    cgroup:
+      autoMount: false
+      hostRoot: /sys/fs/cgroup
+    # Resource limits
+    resources:
+      limits:
+        cpu: "2000m"
+        memory: "2Gi"
+      requests:
+        cpu: "100m"
+        memory: "512Mi"
+    # Monitoring during migration
+    prometheus:
+      enabled: true
+      port: 9962
+      serviceMonitor:
+        enabled: true
+    # Hubble for observability
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+        replicas: 2
+      ui:
+        enabled: true
+      metrics:
+        enabled:
+          - dns
+          - drop
+          - tcp
+          - flow
+          - httpV2
