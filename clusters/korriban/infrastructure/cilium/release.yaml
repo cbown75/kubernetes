@@ -75,7 +75,7 @@ spec:
     operator:
       replicas: 2
       unmanagedPodWatcher:
-        restart: false
+        restart: true
       resources:
         requests:
           cpu: "100m"
@@ -111,14 +111,17 @@ spec:
               memory: "128Mi"
             limits:
               memory: "512Mi"
-      # Hubble observability configuration
+      # Enhanced observability for production
       metrics:
         enabled:
           - dns
           - drop
           - tcp
           - flow
+          - port-distribution
           - httpV2
+          - policy:sourceContext=app|workload-name|pod|reserved-identity
+          - policy:destinationContext=app|workload-name|pod|dns|reserved-identity
     # === ENVOY PROXY RESOURCES (L7 load balancing) ===
     envoy:
       enabled: true
@@ -128,24 +131,28 @@ spec:
           memory: "128Mi"
         limits:
           memory: "512Mi"
-    # Network and eBPF configuration
+    # PRODUCTION Network configuration
     routingMode: tunnel
     tunnelProtocol: geneve
     tunnelPort: 6081
-    # CNI configuration for migration
+    # PRODUCTION CNI configuration
     cni:
-      customConf: true
-      uninstall: false
       exclusive: false
-    # Migration settings
-    policyEnforcementMode: "never"
-    kubeProxyReplacement: false
-    # eBPF configuration
+      uninstall: false
+    # PRODUCTION Policy enforcement
+    policyEnforcementMode: "default"
+    # PRODUCTION kube-proxy replacement
+    kubeProxyReplacement: true
+    k8sServiceHost: 10.10.7.2
+    k8sServicePort: 6443
+    # PRODUCTION eBPF optimizations
     bpf:
-      hostLegacyRouting: true
-      masquerade: false
+      hostLegacyRouting: false
+      masquerade: true
       preallocateMaps: true
-    # Istio compatibility
+      ctMapEntriesGlobalTCP: 524288
+      ctMapEntriesGlobalAny: 262144
+    # PRODUCTION Istio compatibility
     socketLB:
       hostNamespaceOnly: true
     # Security contexts for Talos
@@ -172,9 +179,10 @@ spec:
       autoMount:
         enabled: false
       hostRoot: /sys/fs/cgroup
-    # Monitoring
+    # Enhanced monitoring for production
     prometheus:
       enabled: true
       port: 9962
       serviceMonitor:
         enabled: true
+        trustCRDsExist: true
