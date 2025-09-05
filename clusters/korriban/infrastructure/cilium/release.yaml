@@ -83,7 +83,7 @@ spec:
     # eBPF configuration
     bpf:
       hostLegacyRouting: true # Enable routing between overlays during migration
-      masquerade: true
+      masquerade: false
       preallocateMaps: true
     # CRITICAL: Istio compatibility settings
     socketLB:
