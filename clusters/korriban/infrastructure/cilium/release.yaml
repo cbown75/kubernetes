@@ -111,7 +111,8 @@ spec:
           - SYS_RESOURCE
     # Talos-specific settings
     cgroup:
-      autoMount: false
+      autoMount:
+        enabled: false
       hostRoot: /sys/fs/cgroup
     # Resource limits
     resources:
