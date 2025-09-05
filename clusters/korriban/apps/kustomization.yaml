@@ -7,4 +7,3 @@ resources:
   - alertmanager
   - alloy
   - cloudflared
-  - nebula-sync-pihole1
