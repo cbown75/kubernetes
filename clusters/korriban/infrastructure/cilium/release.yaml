@@ -41,7 +41,7 @@ spec:
         namespace: flux-system
       interval: 5m
   install:
-    createNamespace: false # We create namespace above
+    createNamespace: true
     remediation:
       retries: 3
   upgrade:
