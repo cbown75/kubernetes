@@ -28,13 +28,13 @@ metadata:
     app.kubernetes.io/name: cilium
     app.kubernetes.io/part-of: infrastructure
 spec:
-  targetNamespace: cilium-system
   interval: 10m
-  timeout: 15m
+  timeout: 15m # Increased timeout for Talos
+  targetNamespace: cilium-system
   chart:
     spec:
       chart: cilium
-      version: "1.16.3"
+      version: "1.16.4"
       sourceRef:
         kind: HelmRepository
         name: cilium
@@ -42,35 +42,52 @@ spec:
       interval: 12h
   install:
     createNamespace: false
+    replace: true
     remediation:
       retries: 3
-    replace: true
   upgrade:
+    cleanupOnFail: true
     remediation:
       retries: 3
       remediateLastFailure: true
-    cleanupOnFail: true
   rollback:
-    timeout: 10m
     cleanupOnFail: true
+    timeout: 10m
   values:
-    resources:
-      requests:
-        cpu: "200m"
-        memory: "512Mi"
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-    operator:
-      replicas: 2
-      unmanagedPodWatcher:
-        restart: true
+    # Cluster configuration
+    cluster:
+      name: korriban
+      id: 1
+    # Network configuration for Talos
+    ipam:
+      mode: "cluster-pool"
+      operator:
+        clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
+        clusterPoolIPv4MaskSize: 20
+    # Tunnel mode for simplicity (can change to native routing later)
+    routingMode: tunnel
+    tunnelProtocol: geneve
+    tunnelPort: 6081
+    # CNI Configuration - CRITICAL for Istio compatibility
+    cni:
+      # Enable CNI chaining mode for compatibility with Istio
+      chainingMode: "generic-veth"
+      # Allow other CNI plugins to coexist
+      exclusive: false
+      uninstall: false
+      # Standard CNI paths
+      confPath: "/etc/cni/net.d"
+      binPath: "/opt/cni/bin"
+    # Enable Envoy for L7 policies
+    envoy:
+      enabled: true
       resources:
         requests:
-          cpu: "100m"
-          memory: "128Mi"
+          cpu: 50m
+          memory: 128Mi
         limits:
-          memory: "1Gi"
+          memory: 512Mi
+    # Hubble for observability
     hubble:
       enabled: true
       relay:
@@ -78,26 +95,26 @@ spec:
         replicas: 2
         resources:
           requests:
-            cpu: "50m"
-            memory: "128Mi"
+            cpu: 50m
+            memory: 128Mi
           limits:
-            memory: "512Mi"
+            memory: 512Mi
       ui:
         enabled: true
-        frontend:
-          resources:
-            requests:
-              cpu: "25m"
-              memory: "64Mi"
-            limits:
-              memory: "256Mi"
         backend:
           resources:
             requests:
-              cpu: "50m"
-              memory: "128Mi"
+              cpu: 50m
+              memory: 128Mi
             limits:
-              memory: "512Mi"
+              memory: 512Mi
+        frontend:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
       metrics:
         enabled:
           - dns
@@ -106,37 +123,45 @@ spec:
           - flow
           - port-distribution
           - httpV2
-          - policy:sourceContext=app|workload-name|pod|reserved-identity
-          - policy:destinationContext=app|workload-name|pod|dns|reserved-identity
-    envoy:
-      enabled: true
+          - "policy:sourceContext=app|workload-name|pod|reserved-identity"
+          - "policy:destinationContext=app|workload-name|pod|dns|reserved-identity"
+    # Operator configuration
+    operator:
+      replicas: 2
       resources:
         requests:
-          cpu: "50m"
-          memory: "128Mi"
+          cpu: 100m
+          memory: 128Mi
         limits:
-          memory: "512Mi"
-    routingMode: tunnel
-    tunnelProtocol: geneve
-    tunnelPort: 6081
-    cni:
-      chainingMode: "generic-veth"
-      exclusive: false
-      uninstall: false
-      confPath: "/etc/cni/net.d"
-      binPath: "/opt/cni/bin"
+          memory: 1Gi
+      # IMPORTANT: For Talos, ensure the operator can restart unmanaged pods
+      unmanagedPodWatcher:
+        restart: true
+    # Agent resources
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+    # Policy enforcement
     policyEnforcementMode: "default"
+    # Replace kube-proxy for better performance
     kubeProxyReplacement: true
     k8sServiceHost: 10.10.7.2
     k8sServicePort: 6443
+    # eBPF optimizations
     bpf:
       hostLegacyRouting: false
       masquerade: true
       preallocateMaps: true
       ctMapEntriesGlobalTCP: 524288
       ctMapEntriesGlobalAny: 262144
+    # Socket LB for Istio compatibility
     socketLB:
       hostNamespaceOnly: true
+    # Security contexts for Talos
     securityContext:
       capabilities:
         ciliumAgent:
@@ -155,10 +180,12 @@ spec:
           - NET_ADMIN
           - SYS_ADMIN
           - SYS_RESOURCE
+    # Talos-specific settings
     cgroup:
       autoMount:
         enabled: false
       hostRoot: /sys/fs/cgroup
+    # Prometheus monitoring
     prometheus:
       enabled: true
       port: 9962

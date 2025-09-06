@@ -45,9 +45,11 @@ spec:
   dependsOn:
     - name: istio-base
       namespace: istio-system
+    # FIXED: Point to Cilium in flux-system namespace
     - name: cilium
-      namespace: cilium-system
+      namespace: flux-system
   interval: 30m
+  timeout: 10m
   chart:
     spec:
       chart: cni
@@ -57,13 +59,11 @@ spec:
         namespace: flux-system
   values:
     cni:
-      # === CRITICAL CNI CHAINING CONFIGURATION ===
-      # Enable chained mode for Cilium compatibility
+      # Enable chained mode to work WITH Cilium
       chained: true
       # CNI paths matching Cilium configuration
       cniBinDir: "/opt/cni/bin"
       cniConfDir: "/etc/cni/net.d"
-      # Let it auto-detect the Cilium config file
       cniConfFileName: ""
       # Repair settings for race condition mitigation
       repair:
@@ -71,7 +71,6 @@ spec:
         repairPods: true
         deletePods: false
         labelPods: false
-      # Logging for troubleshooting
       logLevel: "info"
     # Exclude system namespaces from iptables redirection
     excludeNamespaces:
@@ -82,10 +81,6 @@ spec:
       - cert-manager
       - metallb-system
       - cilium-system
-    # Node selector and tolerations for DaemonSet
-    nodeSelector: {}
-    tolerations:
-      - operator: Exists
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -98,9 +93,11 @@ spec:
       namespace: istio-system
     - name: istio-cni
       namespace: istio-system
+    # FIXED: Also depend on Cilium to ensure proper ordering
     - name: cilium
-      namespace: cilium-system
+      namespace: flux-system
   interval: 30m
+  timeout: 10m
   chart:
     spec:
       chart: istiod
@@ -110,12 +107,22 @@ spec:
         namespace: flux-system
   values:
     pilot:
-      # === CRITICAL: Enable CNI mode ===
+      # Enable CNI mode
       cni:
         enabled: true
       autoscaleEnabled: true
     meshConfig:
       accessLogFile: /dev/stdout
+      defaultConfig:
+        proxyStatsMatcher:
+          inclusionRegexps:
+            - ".*outlier_detection.*"
+            - ".*circuit_breakers.*"
+            - ".*upstream_rq_retry.*"
+            - ".*upstream_rq_pending.*"
+            - ".*_cx_.*"
+            - ".*osconfig.*"
+            - ".*rbac.*"
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -127,6 +134,7 @@ spec:
     - name: istiod
       namespace: istio-system
   interval: 30m
+  timeout: 10m
   chart:
     spec:
       chart: gateway
