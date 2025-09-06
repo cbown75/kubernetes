@@ -46,7 +46,7 @@ spec:
     destinations:
       - name: prometheus-external
         type: prometheus
-        url: "http://prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+        url: "http://prometheus-server.monitoring.svc.cluster.local:9090/api/v1/write"
       - name: loki-external
         type: loki
         url: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
