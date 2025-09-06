@@ -135,10 +135,19 @@ spec:
     routingMode: tunnel
     tunnelProtocol: geneve
     tunnelPort: 6081
-    # PRODUCTION CNI configuration
+    # === CRITICAL CNI CHAINING CONFIGURATION ===
     cni:
+      # Enable CNI chaining mode for compatibility with Istio
+      chainingMode: "generic-veth"
+      # Critical: Use custom configuration to prevent overwriting
+      customConf: true
+      configMap: "cni-configuration"
+      # Required: Allow other CNI plugins to coexist
       exclusive: false
       uninstall: false
+      # Standard CNI paths
+      confPath: "/etc/cni/net.d"
+      binPath: "/opt/cni/bin"
     # PRODUCTION Policy enforcement
     policyEnforcementMode: "default"
     # PRODUCTION kube-proxy replacement
@@ -152,7 +161,7 @@ spec:
       preallocateMaps: true
       ctMapEntriesGlobalTCP: 524288
       ctMapEntriesGlobalAny: 262144
-    # PRODUCTION Istio compatibility
+    # PRODUCTION Istio compatibility - CRITICAL for socket LB
     socketLB:
       hostNamespaceOnly: true
     # Security contexts for Talos

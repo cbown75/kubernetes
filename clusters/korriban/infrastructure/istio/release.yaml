@@ -55,9 +55,24 @@ spec:
         namespace: flux-system
   values:
     cni:
+      # === CRITICAL CNI CHAINING CONFIGURATION ===
+      # Enable chained mode for Cilium compatibility
       chained: true
+      # CNI paths matching Cilium configuration
+      cniBinDir: "/opt/cni/bin"
+      cniConfDir: "/etc/cni/net.d"
+      # Don't specify cniConfFileName - let it auto-detect
+      cniConfFileName: ""
+      # Repair settings for race condition mitigation
+      repair:
+        enabled: true
+        repairPods: true
+        deletePods: false
+        labelPods: false
+      # Logging for troubleshooting
+      logLevel: "info"
+    # Exclude system namespaces from iptables redirection
     excludeNamespaces:
-      # keep infra/system namespaces out of iptables redirection
       - kube-system
       - kube-public
       - istio-system
@@ -88,6 +103,9 @@ spec:
         namespace: flux-system
   values:
     pilot:
+      # === CRITICAL: Enable CNI mode ===
+      cni:
+        enabled: true
       autoscaleEnabled: true
     meshConfig:
       accessLogFile: /dev/stdout

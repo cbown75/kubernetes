@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cni-configuration
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/part-of: infrastructure
+data:
+  cni-config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "cilium-istio-chain",
+      "plugins": [
+        {
+          "type": "cilium-cni",
+          "chaining-mode": "generic-veth"
+        },
+        {
+          "type": "istio-cni",
+          "log_level": "info",
+          "log_uds_address": "/var/run/istio-cni/log.sock",
+          "kubernetes": {
+            "kubeconfig": "/etc/cni/net.d/ZZZ-istio-cni-kubeconfig",
+            "cni_bin_dir": "/opt/cni/bin",
+            "exclude_namespaces": ["istio-system", "kube-system", "cilium-system"]
+          }
+        }
+      ]
+    }
