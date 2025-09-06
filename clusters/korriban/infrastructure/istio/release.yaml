@@ -45,6 +45,8 @@ spec:
   dependsOn:
     - name: istio-base
       namespace: istio-system
+    - name: cilium
+      namespace: cilium-system
   interval: 30m
   chart:
     spec:
@@ -96,6 +98,8 @@ spec:
       namespace: istio-system
     - name: istio-cni
       namespace: istio-system
+    - name: cilium
+      namespace: cilium-system
   interval: 30m
   chart:
     spec:
