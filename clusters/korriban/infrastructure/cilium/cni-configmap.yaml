@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cni-configuration
-  namespace: kube-system
+  namespace: cilium-system
   labels:
     app.kubernetes.io/name: cilium
     app.kubernetes.io/part-of: infrastructure
