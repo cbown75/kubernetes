@@ -61,7 +61,7 @@ spec:
       # CNI paths matching Cilium configuration
       cniBinDir: "/opt/cni/bin"
       cniConfDir: "/etc/cni/net.d"
-      # Don't specify cniConfFileName - let it auto-detect
+      # Let it auto-detect the Cilium config file
       cniConfFileName: ""
       # Repair settings for race condition mitigation
       repair:
@@ -79,8 +79,11 @@ spec:
       - monitoring
       - cert-manager
       - metallb-system
-      - traefik-system
       - cilium-system
+    # Node selector and tolerations for DaemonSet
+    nodeSelector: {}
+    tolerations:
+      - operator: Exists
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease

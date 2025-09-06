@@ -1,75 +1,45 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: cilium-system
-  labels:
-    name: cilium-system
-    app.kubernetes.io/name: cilium
-    app.kubernetes.io/part-of: infrastructure
-    pod-security.kubernetes.io/enforce: privileged
-    pod-security.kubernetes.io/audit: privileged
-    pod-security.kubernetes.io/warn: privileged
----
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
-metadata:
-  name: cilium
-  namespace: flux-system
-spec:
-  interval: 1h
-  url: https://helm.cilium.io/
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: cilium
-  namespace: flux-system
+  namespace: cilium-system
   labels:
     app.kubernetes.io/name: cilium
     app.kubernetes.io/part-of: infrastructure
 spec:
-  interval: 10m
-  timeout: 10m
   targetNamespace: cilium-system
+  interval: 10m
+  timeout: 15m
   chart:
     spec:
       chart: cilium
-      version: "1.16.4"
+      version: "1.16.3"
       sourceRef:
         kind: HelmRepository
         name: cilium
         namespace: flux-system
-      interval: 5m
+      interval: 12h
   install:
-    createNamespace: false
+    createNamespace: true
     remediation:
       retries: 3
+    replace: true
   upgrade:
-    cleanupOnFail: true
     remediation:
       retries: 3
       remediateLastFailure: true
-  rollback:
     cleanupOnFail: true
-    force: true
-    recreate: true
+  rollback:
+    timeout: 10m
+    cleanupOnFail: true
   values:
-    # Network configuration
-    cluster:
-      name: korriban
-      id: 1
-    # PRODUCTION IP allocation with /20 subnets
-    ipam:
-      mode: "cluster-pool"
-      operator:
-        clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
-        clusterPoolIPv4MaskSize: 20
-    # === CILIUM AGENT RESOURCES (CRITICAL NETWORKING) ===
+    # === CILIUM AGENT RESOURCES ===
     resources:
       requests:
-        cpu: "100m"
+        cpu: "200m"
         memory: "512Mi"
       limits:
+        cpu: "2000m"
         memory: "2Gi"
     # === CILIUM OPERATOR RESOURCES ===
     operator:
@@ -139,10 +109,7 @@ spec:
     cni:
       # Enable CNI chaining mode for compatibility with Istio
       chainingMode: "generic-veth"
-      # Critical: Use custom configuration to prevent overwriting
-      customConf: true
-      configMap: "cni-configuration"
-      # Required: Allow other CNI plugins to coexist
+      # CRITICAL: Allow other CNI plugins to coexist
       exclusive: false
       uninstall: false
       # Standard CNI paths
