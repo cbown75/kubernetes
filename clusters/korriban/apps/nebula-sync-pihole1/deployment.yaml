@@ -17,49 +17,37 @@ spec:
         app: nebula-sync-pihole1
         instance: pihole1
     spec:
-      initContainers:
-        # Init container builds the PRIMARY and REPLICAS environment variables
-        - name: setup-config
-          image: busybox:1.36
-          command: ['sh', '-c']
-          args:
-            - |
-              echo "Setting up nebula-sync configuration..."
-
-              # Read passwords from mounted secrets
-              PRIMARY_PASS=$(cat /secrets/primary-password)
-              REPLICA1_PASS=$(cat /secrets/replica-password-1)
-              REPLICA2_PASS=$(cat /secrets/replica-password-2)
-              REPLICA3_PASS=$(cat /secrets/replica-password-3)
-
-              # Create config files with URL|password format
-              echo "http://pihole1.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
-              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
-
-              echo "Configuration complete"
-          volumeMounts:
-            - name: secrets
-              mountPath: /secrets
-              readOnly: true
-            - name: config
-              mountPath: /config
       containers:
         - name: nebula-sync
           image: ghcr.io/lovelaze/nebula-sync:latest
           imagePullPolicy: Always
-          command: ['sh', '-c']
-          args:
-            - |
-              # Export the PRIMARY and REPLICAS from config files
-              export PRIMARY=$(cat /config/primary)
-              export REPLICAS=$(cat /config/replicas)
-              echo "Starting nebula-sync..."
-              echo "Primary: http://pihole1.home.cwbtech.net"
-              echo "Replicas: pihole2, pihole7, pihole8"
-              echo "Schedule: Every 5 minutes"
-              # Start nebula-sync
-              exec /usr/local/bin/nebula-sync run
           env:
+            # Direct environment variables from secrets
+            - name: PRIMARY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nebula-sync-pihole1-secrets
+                  key: primary-password
+            - name: REPLICA_PASSWORD_1
+              valueFrom:
+                secretKeyRef:
+                  name: nebula-sync-pihole1-secrets
+                  key: replica-password-1
+            - name: REPLICA_PASSWORD_2
+              valueFrom:
+                secretKeyRef:
+                  name: nebula-sync-pihole1-secrets
+                  key: replica-password-2
+            - name: REPLICA_PASSWORD_3
+              valueFrom:
+                secretKeyRef:
+                  name: nebula-sync-pihole1-secrets
+                  key: replica-password-3
+            # Build PRIMARY and REPLICAS inline
+            - name: PRIMARY
+              value: "http://pihole1.home.cwbtech.net|$(PRIMARY_PASSWORD)"
+            - name: REPLICAS
+              value: "http://pihole2.home.cwbtech.net|$(REPLICA_PASSWORD_1),http://pihole7.home.cwbtech.net|$(REPLICA_PASSWORD_2),http://pihole8.home.cwbtech.net|$(REPLICA_PASSWORD_3)"
             # Scheduling
             - name: CRON
               value: "*/5 * * * *" # Every 5 minutes
@@ -103,10 +91,6 @@ spec:
             # Run gravity after sync
             - name: RUN_GRAVITY
               value: "true"
-          volumeMounts:
-            - name: config
-              mountPath: /config
-              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -114,10 +98,3 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
-      volumes:
-        - name: secrets
-          secret:
-            secretName: nebula-sync-pihole1-secrets
-            defaultMode: 0400
-        - name: config
-          emptyDir: {}
