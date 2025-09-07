@@ -35,8 +35,8 @@ spec:
               REPLICA3_PASS=$(cat /secrets/replica-password-3)
 
               # Using IP addresses
-              echo "http://192.168.1.250|${PRIMARY_PASS}" > /config/primary
-              echo "http://192.168.1.251|${REPLICA1_PASS},http://10.10.0.4|${REPLICA2_PASS},http://10.10.0.5|${REPLICA3_PASS}" > /config/replicas
+              echo "http://pihole1.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
+              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
 
               echo "Configuration complete"
           volumeMounts:
