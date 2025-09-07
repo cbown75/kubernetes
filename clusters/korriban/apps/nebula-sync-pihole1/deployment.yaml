@@ -1,19 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nebula-sync
+  name: nebula-sync-pihole1
   namespace: pihole
   labels:
-    app: nebula-sync
+    app: nebula-sync-pihole1
+    instance: pihole1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nebula-sync
+      app: nebula-sync-pihole1
   template:
     metadata:
       labels:
-        app: nebula-sync
+        app: nebula-sync-pihole1
+        instance: pihole1
     spec:
       initContainers:
         # Init container builds the PRIMARY and REPLICAS environment variables
