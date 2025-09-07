@@ -1,121 +1,121 @@
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: nebula-sync-pihole1
-  namespace: flux-system
+  name: nebula-sync
+  namespace: pihole
+  labels:
+    app: nebula-sync
 spec:
-  interval: 5m0s
-  chart:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nebula-sync
+  template:
+    metadata:
+      labels:
+        app: nebula-sync
     spec:
-      chart: apps/nebula-sync-pihole1
-      sourceRef:
-        kind: GitRepository
-        name: flux-system
-        namespace: flux-system
-      interval: 1m0s
-      reconcileStrategy: Revision
-  releaseName: nebula-sync-pihole1
-  targetNamespace: pihole
-  install:
-    createNamespace: false
-    remediation:
-      retries: 3
-  upgrade:
-    remediation:
-      retries: 3
-      remediateLastFailure: true
-  rollback:
-    timeout: 10m0s
-    recreate: true
-  values:
-    # Nebula Sync Configuration
-    nebulaSync:
-      primary:
-        url: "http://pihole1.home.cwbtech.net"
-        passwordSecretName: "nebula-sync-pihole1-secrets"
-        passwordSecretKey: "primary-password"
-      replicas:
-        urls:
-          - "http://pihole2.home.cwbtech.net"
-          - "http://pihole7.home.cwbtech.net"
-          - "http://pihole8.home.cwbtech.net"
-        passwordSecretName: "nebula-sync-pihole1-secrets"
-        passwordSecretKeys:
-          - "replica-password-1"
-          - "replica-password-2"
-          - "replica-password-3"
-      config:
-        fullSync: false
-        cron: "*/5 * * * *"
-        timezone: "America/Phoenix"
-      dns:
-        enabled: true
-      dhcp:
-        enabled: true
-      ntp:
-        enabled: true
-      resolver:
-        enabled: true
-      database:
-        enabled: true
-      misc:
-        enabled: false
-      debug:
-        enabled: true
-      gravity:
-        dhcpLeases: true
-        group: true
-        adList: true
-        adListByGroup: true
-        domainList: true
-        domainListByGroup: true
-        client: true
-        clientByGroup: true
-    # Back to hostNetwork - bypasses pod networking issues
-    hostNetwork: true
-    dnsPolicy: "None"
-    dnsConfig:
-      nameservers:
-        - "10.10.4.4"
-        - "10.10.4.5"
-        - "10.10.4.1"
-    # Sealed Secrets Configuration
-    sealedSecrets:
-      enabled: true
-      secrets:
-        nebula-sync-pihole1-secrets:
-          primary-password: "AgDyN8QseJtSO8NheFE30sH8XXBryhlYUUOE6t0TRxkmJj22+W77RJG+AT3iBk/Y5MqCxr865s3WJ3XtPkhAtFXj/S02M1BJHHf+yvZnzanihA36X6cVKyNQpUrmnycAWwTPmxojYKw27Vk6b9ormTf5bhAIKK1Emyp/rCAd//SBiPRbAx0eXzi54c7UTINzWU+Za6mjzN6k+B4q7PR6RFV4kjc3ZqQpJRzE307A4PJKvNwHAMOXkOkxNSt+AZhvhmRNH90ofqVXOm+cQwoiaKCnsjGPg9qrL20mOmbv1lPL4abEy2NbubK6J/F58X6lzDSG5PresoHhy452dUOwA0TojdpILygHscSx5XgRYSGjgQ9YctqgS62lwmONwaHIr94GexMn2aP8t6E9SwFwO2Ou2UWVBn9co98CE9UtVTugYoQvTVfZBoCnqVO81844pR5kRCcIUDZ6ipBcgLDE0lKGTl3/h0XwIvOa04Qs1dprHsw8gSjlAIMlNceqmM7mi2WHfVayhVt5mYujaLkI+J91bCBFP8h9Z3XNXLRXthWqqhOGfN/TSPhx7SjJE81ue5igEhR+nypXsGJXDeCw2oMG/2SoHJmSHxkNDWpBW8ch/cXWR3s2fZViAnZenwScZLA2J8yyZf9wZjm+06PH6CoX5kO1nY3NT6SMAQNI7eWjPDqu7ve9SSOvQj4d4aBIiTCqfixf+CuGN56XOU6GBuCYUws9fE3Uzu0jDn5JBJaJ9jZpjYDvJANG3jaHng=="
-          replica-password-1: "AgDyN8QseJtSO8NheFE30sH8XXBryhlYUUOE6t0TRxkmJj22+W77RJG+AT3iBk/Y5MqCxr865s3WJ3XtPkhAtFXj/S02M1BJHHf+yvZnzanihA36X6cVKyNQpUrmnycAWwTPmxojYKw27Vk6b9ormTf5bhAIKK1Emyp/rCAd//SBiPRbAx0eXzi54c7UTINzWU+Za6mjzN6k+B4q7PR6RFV4kjc3ZqQpJRzE307A4PJKvNwHAMOXkOkxNSt+AZhvhmRNH90ofqVXOm+cQwoiaKCnsjGPg9qrL20mOmbv1lPL4abEy2NbubK6J/F58X6lzDSG5PresoHhy452dUOwA0TojdpILygHscSx5XgRYSGjgQ9YctqgS62lwmONwaHIr94GexMn2aP8t6E9SwFwO2Ou2UWVBn9co98CE9UtVTugYoQvTVfZBoCnqVO81844pR5kRCcIUDZ6ipBcgLDE0lKGTl3/h0XwIvOa04Qs1dprHsw8gSjlAIMlNceqmM7mi2WHfVayhVt5mYujaLkI+J91bCBFP8h9Z3XNXLRXthWqqhOGfN/TSPhx7SjJE81ue5igEhR+nypXsGJXDeCw2oMG/2SoHJmSHxkNDWpBW8ch/cXWR3s2fZViAnZenwScZLA2J8yyZf9wZjm+06PH6CoX5kO1nY3NT6SMAQNI7eWjPDqu7ve9SSOvQj4d4aBIiTCqfixf+CuGN56XOU6GBuCYUws9fE3Uzu0jDn5JBJaJ9jZpjYDvJANG3jaHng=="
-          replica-password-2: "AgDyN8QseJtSO8NheFE30sH8XXBryhlYUUOE6t0TRxkmJj22+W77RJG+AT3iBk/Y5MqCxr865s3WJ3XtPkhAtFXj/S02M1BJHHf+yvZnzanihA36X6cVKyNQpUrmnycAWwTPmxojYKw27Vk6b9ormTf5bhAIKK1Emyp/rCAd//SBiPRbAx0eXzi54c7UTINzWU+Za6mjzN6k+B4q7PR6RFV4kjc3ZqQpJRzE307A4PJKvNwHAMOXkOkxNSt+AZhvhmRNH90ofqVXOm+cQwoiaKCnsjGPg9qrL20mOmbv1lPL4abEy2NbubK6J/F58X6lzDSG5PresoHhy452dUOwA0TojdpILygHscSx5XgRYSGjgQ9YctqgS62lwmONwaHIr94GexMn2aP8t6E9SwFwO2Ou2UWVBn9co98CE9UtVTugYoQvTVfZBoCnqVO81844pR5kRCcIUDZ6ipBcgLDE0lKGTl3/h0XwIvOa04Qs1dprHsw8gSjlAIMlNceqmM7mi2WHfVayhVt5mYujaLkI+J91bCBFP8h9Z3XNXLRXthWqqhOGfN/TSPhx7SjJE81ue5igEhR+nypXsGJXDeCw2oMG/2SoHJmSHxkNDWpBW8ch/cXWR3s2fZViAnZenwScZLA2J8yyZf9wZjm+06PH6CoX5kO1nY3NT6SMAQNI7eWjPDqu7ve9SSOvQj4d4aBIiTCqfixf+CuGN56XOU6GBuCYUws9fE3Uzu0jDn5JBJaJ9jZpjYDvJANG3jaHng=="
-          replica-password-3: "AgDyN8QseJtSO8NheFE30sH8XXBryhlYUUOE6t0TRxkmJj22+W77RJG+AT3iBk/Y5MqCxr865s3WJ3XtPkhAtFXj/S02M1BJHHf+yvZnzanihA36X6cVKyNQpUrmnycAWwTPmxojYKw27Vk6b9ormTf5bhAIKK1Emyp/rCAd//SBiPRbAx0eXzi54c7UTINzWU+Za6mjzN6k+B4q7PR6RFV4kjc3ZqQpJRzE307A4PJKvNwHAMOXkOkxNSt+AZhvhmRNH90ofqVXOm+cQwoiaKCnsjGPg9qrL20mOmbv1lPL4abEy2NbubK6J/F58X6lzDSG5PresoHhy452dUOwA0TojdpILygHscSx5XgRYSGjgQ9YctqgS62lwmONwaHIr94GexMn2aP8t6E9SwFwO2Ou2UWVBn9co98CE9UtVTugYoQvTVfZBoCnqVO81844pR5kRCcIUDZ6ipBcgLDE0lKGTl3/h0XwIvOa04Qs1dprHsw8gSjlAIMlNceqmM7mi2WHfVayhVt5mYujaLkI+J91bCBFP8h9Z3XNXLRXthWqqhOGfN/TSPhx7SjJE81ue5igEhR+nypXsGJXDeCw2oMG/2SoHJmSHxkNDWpBW8ch/cXWR3s2fZViAnZenwScZLA2J8yyZf9wZjm+06PH6CoX5kO1nY3NT6SMAQNI7eWjPDqu7ve9SSOvQj4d4aBIiTCqfixf+CuGN56XOU6GBuCYUws9fE3Uzu0jDn5JBJaJ9jZpjYDvJANG3jaHng=="
-    # Security Configuration
-    podSecurityContext:
-      runAsNonRoot: true
-      runAsUser: 65534
-      runAsGroup: 65534
-      fsGroup: 65534
-      seccompProfile:
-        type: RuntimeDefault
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop:
-          - ALL
-    # Resource Configuration
-    resources:
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-    # NetworkPolicy disabled - not needed with hostNetwork
-    networkPolicy:
-      enabled: false
-    # Service Configuration
-    service:
-      enabled: false
-  dependsOn:
-    - name: sealed-secrets
-      namespace: kube-system
+      initContainers:
+        # Init container builds the PRIMARY and REPLICAS environment variables
+        - name: setup-config
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "Setting up nebula-sync configuration..."
+
+              # Read passwords from mounted secrets
+              PRIMARY_PASS=$(cat /secrets/primary-password)
+              REPLICA1_PASS=$(cat /secrets/replica-password-1)
+              REPLICA2_PASS=$(cat /secrets/replica-password-2)
+              REPLICA3_PASS=$(cat /secrets/replica-password-3)
+
+              # Create config files with URL|password format
+              echo "http://pihole1.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
+              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
+
+              echo "Configuration complete"
+          volumeMounts:
+            - name: secrets
+              mountPath: /secrets
+              readOnly: true
+            - name: config
+              mountPath: /config
+      containers:
+        - name: nebula-sync
+          image: ghcr.io/lovelaze/nebula-sync:latest
+          imagePullPolicy: Always
+          command: ['sh', '-c']
+          args:
+            - |
+              # Export the PRIMARY and REPLICAS from config files
+              export PRIMARY=$(cat /config/primary)
+              export REPLICAS=$(cat /config/replicas)
+              echo "Starting nebula-sync..."
+              echo "Primary: http://pihole1.home.cwbtech.net"
+              echo "Replicas: pihole2, pihole7, pihole8"
+              echo "Schedule: Every 5 minutes"
+              # Start nebula-sync
+              exec /usr/local/bin/nebula-sync run
+          env:
+            # Scheduling
+            - name: CRON
+              value: "*/5 * * * *" # Every 5 minutes
+            - name: TZ
+              value: "America/Phoenix"
+            # Sync mode
+            - name: FULL_SYNC
+              value: "false"
+            # Sync configuration options
+            - name: SYNC_CONFIG_DNS
+              value: "true"
+            - name: SYNC_CONFIG_DHCP
+              value: "true"
+            - name: SYNC_CONFIG_NTP
+              value: "true"
+            - name: SYNC_CONFIG_RESOLVER
+              value: "true"
+            - name: SYNC_CONFIG_DATABASE
+              value: "true"
+            - name: SYNC_CONFIG_MISC
+              value: "false"
+            - name: SYNC_CONFIG_DEBUG
+              value: "false"
+            # Gravity sync options
+            - name: SYNC_GRAVITY_DHCP_LEASES
+              value: "true"
+            - name: SYNC_GRAVITY_GROUP
+              value: "true"
+            - name: SYNC_GRAVITY_AD_LIST
+              value: "true"
+            - name: SYNC_GRAVITY_AD_LIST_BY_GROUP
+              value: "true"
+            - name: SYNC_GRAVITY_DOMAIN_LIST
+              value: "true"
+            - name: SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP
+              value: "true"
+            - name: SYNC_GRAVITY_CLIENT
+              value: "true"
+            - name: SYNC_GRAVITY_CLIENT_BY_GROUP
+              value: "true"
+            # Run gravity after sync
+            - name: RUN_GRAVITY
+              value: "true"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: secrets
+          secret:
+            secretName: nebula-sync-pihole1-secrets
+            defaultMode: 0400
+        - name: config
+          emptyDir: {}
