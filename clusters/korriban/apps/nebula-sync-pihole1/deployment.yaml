@@ -18,45 +18,41 @@ spec:
         instance: pihole1
     spec:
       initContainers:
-        # Build the environment variables using a shell
-        - name: setup-env
+        # Build PRIMARY and REPLICAS as files that nebula-sync can read
+        - name: setup-config
           image: busybox:1.36
           command: ['sh', '-c']
           args:
             - |
-              # Read passwords and build the environment file
+              echo "Setting up nebula-sync configuration..."
+
+              # Read passwords from mounted secrets
               PRIMARY_PASS=$(cat /secrets/primary-password)
               REPLICA1_PASS=$(cat /secrets/replica-password-1)
               REPLICA2_PASS=$(cat /secrets/replica-password-2)
               REPLICA3_PASS=$(cat /secrets/replica-password-3)
 
-              # Create environment file for the main container
-              cat > /env-config/env-file <<EOF
-              PRIMARY=http://pihole1.home.cwbtech.net|${PRIMARY_PASS}
-              REPLICAS=http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}
-              EOF
+              # Create files for PRIMARY_FILE and REPLICAS_FILE environment variables
+              echo "http://pihole1.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
+              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
 
-              echo "Environment configured"
+              echo "Configuration complete"
           volumeMounts:
             - name: secrets
               mountPath: /secrets
               readOnly: true
-            - name: env-config
-              mountPath: /env-config
+            - name: config
+              mountPath: /config
       containers:
         - name: nebula-sync
           image: ghcr.io/lovelaze/nebula-sync:latest
           imagePullPolicy: Always
-          command: ['/bin/sh', '-c']
-          args:
-            - |
-              # Source the environment file
-              set -a
-              . /env-config/env-file
-              set +a
-              # Run nebula-sync
-              exec /usr/local/bin/nebula-sync run
           env:
+            # Use file-based configuration
+            - name: PRIMARY_FILE
+              value: "/config/primary"
+            - name: REPLICAS_FILE
+              value: "/config/replicas"
             # Scheduling
             - name: CRON
               value: "*/5 * * * *" # Every 5 minutes
@@ -101,8 +97,8 @@ spec:
             - name: RUN_GRAVITY
               value: "true"
           volumeMounts:
-            - name: env-config
-              mountPath: /env-config
+            - name: config
+              mountPath: /config
               readOnly: true
           resources:
             requests:
@@ -116,5 +112,5 @@ spec:
           secret:
             secretName: nebula-sync-pihole1-secrets
             defaultMode: 0400
-        - name: env-config
+        - name: config
           emptyDir: {}
