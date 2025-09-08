@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/name: metrics-server
     app.kubernetes.io/part-of: monitoring-stack
 spec:
-  targetNamespace: kube-system # metrics-server should run in kube-system
+  targetNamespace: monitoring
   interval: 10m
   timeout: 10m
   chart:
