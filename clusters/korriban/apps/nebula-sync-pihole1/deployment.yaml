@@ -17,8 +17,6 @@ spec:
         app: nebula-sync-pihole1
         instance: pihole1
     spec:
-      # Use host network to bypass Cilium NAT
-      hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       initContainers:
         - name: setup-config
