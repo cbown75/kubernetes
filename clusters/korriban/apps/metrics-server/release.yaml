@@ -16,7 +16,7 @@ metadata:
     app.kubernetes.io/name: metrics-server
     app.kubernetes.io/part-of: monitoring-stack
 spec:
-  targetNamespace: monitoring
+  targetNamespace: kube-system # metrics-server should run in kube-system
   interval: 10m
   timeout: 10m
   chart:
@@ -42,11 +42,6 @@ spec:
     force: true
     recreate: true
   values:
-    # Image configuration
-    image:
-      repository: registry.k8s.io/metrics-server/metrics-server
-      tag: "" # Will use chart default
-      pullPolicy: IfNotPresent
     # Arguments for metrics-server
     args:
       - --cert-dir=/tmp
@@ -67,21 +62,11 @@ spec:
     service:
       type: ClusterIP
       port: 443
-      annotations: {}
-      labels: {}
     # Enable APIService
     apiService:
       create: true
-      annotations: {}
-      insecureSkipTLSVerify: true
-    # Pod annotations
-    podAnnotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/port: "10250"
     # Priority class
     priorityClassName: system-cluster-critical
-    # Host network (not needed for Talos)
-    hostNetwork: false
     # Replicas for high availability
     replicas: 2
     # Pod disruption budget
