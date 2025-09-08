@@ -71,7 +71,7 @@ spec:
     # CNI Configuration - CRITICAL for Istio compatibility
     cni:
       # Enable CNI chaining mode for compatibility with Istio
-      chainingMode: "generic-veth"
+      chainingMode: none
       # Allow other CNI plugins to coexist
       exclusive: false
       uninstall: false
