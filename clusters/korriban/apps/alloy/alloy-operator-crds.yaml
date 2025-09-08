@@ -7,7 +7,7 @@ spec:
   interval: 1h
   url: https://github.com/grafana/alloy-operator
   ref:
-    tag: v1.2.1
+    branch: main
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
