@@ -64,9 +64,14 @@ spec:
       operator:
         clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
-    # Tunnel mode for simplicity (can change to native routing later)
+    # CRITICAL: Configure devices to exclude flannel
+    devices: "eth+ cilium_*" # Only manage eth* and cilium_* devices
+    # Exclude flannel's IP ranges from local address detection
+    excludeLocalAddress:
+      - "10.244.0.0/16" # Flannel's default pod CIDR
+    # Tunnel mode configuration
     routingMode: tunnel
-    tunnelProtocol: geneve
+    tunnelProtocol: geneve # Use geneve to avoid VXLAN conflicts with flannel
     tunnelPort: 6081
     # CNI Configuration - CRITICAL for Istio compatibility
     cni:
@@ -155,6 +160,8 @@ spec:
     bpf:
       hostLegacyRouting: false
       masquerade: true
+      # CRITICAL: Only masquerade on eth0, not flannel interfaces
+      masqueradeInterfaces: "eth0"
       preallocateMaps: true
       ctMapEntriesGlobalTCP: 524288
       ctMapEntriesGlobalAny: 262144

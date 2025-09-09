@@ -1,3 +1,6 @@
 .envrc
 infrastructure/storage/synology-csi-driver/templates/client-info.yml
 scripts/create-nebula-sync-secrets.sh
+dhcp-routes-patch.yaml
+talos-routing-fix.yaml
+scripts/apply-routing-fix.sh
