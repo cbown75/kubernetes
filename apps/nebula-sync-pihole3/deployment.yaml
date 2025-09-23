@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula-sync-pihole3
+  namespace: pihole
+  labels:
+    app: nebula-sync-pihole3
+    instance: pihole3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nebula-sync-pihole3
+  template:
+    metadata:
+      labels:
+        app: nebula-sync-pihole3
+        instance: pihole3
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        - name: setup-config
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "Setting up nebula-sync configuration..."
+
+              # Read passwords from mounted secrets
+              PRIMARY_PASS=$(cat /secrets/primary-password)
+              REPLICA1_PASS=$(cat /secrets/replica-password-1)
+              REPLICA2_PASS=$(cat /secrets/replica-password-2)
+              REPLICA3_PASS=$(cat /secrets/replica-password-3)
+
+              # Using IP addresses
+              echo "http://pihole3.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
+              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
+
+              echo "Configuration complete"
+          volumeMounts:
+            - name: secrets
+              mountPath: /secrets
+              readOnly: true
+            - name: config
+              mountPath: /config
+      containers:
+        - name: nebula-sync
+          image: ghcr.io/lovelaze/nebula-sync:latest
+          imagePullPolicy: Always
+          env:
+            - name: PRIMARY_FILE
+              value: "/config/primary"
+            - name: REPLICAS_FILE
+              value: "/config/replicas"
+            - name: CRON
+              value: "*/5 * * * *"
+            - name: TZ
+              value: "America/Phoenix"
+            - name: FULL_SYNC
+              value: "false"
+            - name: SYNC_CONFIG_DNS
+              value: "true"
+            - name: SYNC_CONFIG_DHCP
+              value: "true"
+            - name: SYNC_CONFIG_NTP
+              value: "true"
+            - name: SYNC_CONFIG_RESOLVER
+              value: "true"
+            - name: SYNC_CONFIG_DATABASE
+              value: "true"
+            - name: SYNC_CONFIG_MISC
+              value: "false"
+            - name: SYNC_CONFIG_DEBUG
+              value: "false" # Turn off debug mode for production
+            - name: SYNC_GRAVITY_DHCP_LEASES
+              value: "true"
+            - name: SYNC_GRAVITY_GROUP
+              value: "true"
+            - name: SYNC_GRAVITY_AD_LIST
+              value: "true"
+            - name: SYNC_GRAVITY_AD_LIST_BY_GROUP
+              value: "true"
+            - name: SYNC_GRAVITY_DOMAIN_LIST
+              value: "true"
+            - name: SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP
+              value: "true"
+            - name: SYNC_GRAVITY_CLIENT
+              value: "true"
+            - name: SYNC_GRAVITY_CLIENT_BY_GROUP
+              value: "true"
+            - name: RUN_GRAVITY
+              value: "true"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: secrets
+          secret:
+            secretName: nebula-sync-pihole3-secrets
+            defaultMode: 0400
+        - name: config
+          emptyDir: {}
