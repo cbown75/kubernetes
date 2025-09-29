@@ -31,8 +31,8 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: istio-system
-        - podSelector:
+              kubernetes.io/metadata.name: istio-system
+          podSelector:
             matchLabels:
               istio: ingress
       ports:
@@ -48,13 +48,6 @@ spec:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/component: gateway
-      ports:
-        - protocol: TCP
-          port: 3100
-    - from:
-        - podSelector:
-            matchLabels:
               app.kubernetes.io/name: loki
       ports:
         - protocol: TCP
@@ -64,19 +57,16 @@ spec:
         - protocol: TCP
           port: 7946
   egress:
-    - to: []
-      ports:
+    - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
-    - to: []
-      ports:
+    - ports:
         - protocol: TCP
           port: 2049
         - protocol: UDP
           port: 2049
-    - to: []
-      ports:
+    - ports:
         - protocol: TCP
           port: 443
