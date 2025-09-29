@@ -29,12 +29,10 @@ spec:
               # Read passwords from mounted secrets
               PRIMARY_PASS=$(cat /secrets/primary-password)
               REPLICA1_PASS=$(cat /secrets/replica-password-1)
-              REPLICA2_PASS=$(cat /secrets/replica-password-2)
-              REPLICA3_PASS=$(cat /secrets/replica-password-3)
 
               # Using IP addresses
               echo "http://pihole3.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
-              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
+              echo "http://pihole4.home.cwbtech.net|${REPLICA1_PASS}" > /config/replicas
 
               echo "Configuration complete"
           volumeMounts:

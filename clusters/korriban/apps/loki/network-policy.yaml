@@ -14,7 +14,6 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow Grafana to access Loki
     - from:
         - podSelector:
             matchLabels:
@@ -22,7 +21,6 @@ spec:
       ports:
         - protocol: TCP
           port: 3100
-    # Allow Prometheus to scrape metrics
     - from:
         - podSelector:
             matchLabels:
@@ -30,7 +28,6 @@ spec:
       ports:
         - protocol: TCP
           port: 3100
-    # Allow Istio ingress gateway
     - from:
         - namespaceSelector:
             matchLabels:
@@ -41,7 +38,6 @@ spec:
       ports:
         - protocol: TCP
           port: 3100
-    # Allow log collection agents (Alloy/Promtail/etc)
     - from:
         - podSelector:
             matchLabels:
@@ -49,15 +45,21 @@ spec:
       ports:
         - protocol: TCP
           port: 3100
+    - from:
+        - ipBlock:
+            cidr: 10.10.0.0/22
+        - ipBlock:
+            cidr: 10.10.4.0/22
+      ports:
+        - protocol: TCP
+          port: 3100
   egress:
-    # Allow DNS resolution
     - to: []
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
-    # Allow NFS access (typically no restrictions needed for storage)
     - to: []
       ports:
         - protocol: TCP
