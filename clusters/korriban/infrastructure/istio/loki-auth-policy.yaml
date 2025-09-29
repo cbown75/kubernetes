@@ -17,5 +17,8 @@ spec:
       to:
         - operation:
             hosts: ["loki.home.cwbtech.net"]
-            paths: ["/loki/api/v1/push"]
-            methods: ["POST"]
+            paths:
+              - "/loki/api/v1/push"
+              - "/ready"
+              - "/metrics"
+            methods: ["GET", "POST"]
