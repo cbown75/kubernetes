@@ -14,7 +14,7 @@ spec:
             prefix: /
       route:
         - destination:
-            host: loki.monitoring.svc.cluster.local
+            host: loki-gateway.monitoring.svc.cluster.local
             port:
               number: 80
       timeout: 30s
