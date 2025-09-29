@@ -4,4 +4,3 @@ resources:
   - release.yaml
   - config.yaml
   - gateway.yaml
-  - loki-auth-policy.yaml
