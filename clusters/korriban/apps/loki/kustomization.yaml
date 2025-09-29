@@ -5,3 +5,4 @@ resources:
   - grafana-datasource.yaml
   - network-policy.yaml
   - istio-routing.yaml
+  - destination-rule.yaml
