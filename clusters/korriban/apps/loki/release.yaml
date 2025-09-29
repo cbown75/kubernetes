@@ -45,6 +45,14 @@ spec:
           drop:
             - ALL
         readOnlyRootFilesystem: true
+      server:
+        http_listen_port: 3100
+        grpc_listen_port: 9095
+        http_server_read_timeout: 120s
+        http_server_write_timeout: 120s
+        http_server_idle_timeout: 120s
+        grpc_server_max_recv_msg_size: 104857600
+        grpc_server_max_send_msg_size: 104857600
       commonConfig:
         replication_factor: 1
         ring:
@@ -61,6 +69,21 @@ spec:
             index:
               prefix: loki_index_
               period: 24h
+      distributor:
+        ring:
+          kvstore:
+            store: inmemory
+      ingester:
+        chunk_idle_period: 1h
+        chunk_block_size: 262144
+        chunk_retain_period: 1m
+        max_chunk_age: 1h
+        flush_check_period: 30s
+        flush_op_timeout: 120s
+        wal:
+          enabled: true
+          dir: /var/loki/wal
+          replay_memory_ceiling: 1GB
       limits_config:
         retention_period: 168h
         reject_old_samples: true
@@ -68,6 +91,11 @@ spec:
         max_entries_limit_per_query: 5000
         max_streams_per_user: 10000
         max_global_streams_per_user: 10000
+        ingestion_rate_mb: 10
+        ingestion_burst_size_mb: 20
+        per_stream_rate_limit: 5MB
+        per_stream_rate_limit_burst: 15MB
+        query_timeout: 120s
       compactor:
         working_directory: /var/loki/compactor
         compaction_interval: 10m
@@ -78,11 +106,11 @@ spec:
       replicas: 1
       resources:
         limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
           cpu: 500m
           memory: 1Gi
-        requests:
-          cpu: 250m
-          memory: 512Mi
       persistence:
         enabled: true
         size: 10Gi
@@ -92,7 +120,7 @@ spec:
         enableStatefulSetAutoDeletePVC: false
       extraEnv:
         - name: GOMEMLIMIT
-          value: 900MiB
+          value: 1800MiB
     backend:
       replicas: 0
     read:
@@ -121,11 +149,11 @@ spec:
       enabled: true
       resources:
         limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
           cpu: 100m
           memory: 128Mi
-        requests:
-          cpu: 50m
-          memory: 64Mi
       podSecurityContext:
         fsGroup: 101
         runAsGroup: 101
@@ -139,6 +167,14 @@ spec:
           drop:
             - ALL
         readOnlyRootFilesystem: true
+      nginxConfig:
+        httpSnippet: |
+          client_body_timeout 120s;
+          client_header_timeout 120s;
+          send_timeout 120s;
+          proxy_read_timeout 120s;
+          proxy_connect_timeout 120s;
+          proxy_send_timeout 120s;
     memcached:
       podSecurityContext:
         fsGroup: 11211

@@ -17,7 +17,8 @@ spec:
             host: loki.monitoring.svc.cluster.local
             port:
               number: 3100
-      timeout: 120s
+      timeout: 180s
       retries:
-        attempts: 3
-        perTryTimeout: 60s
+        attempts: 2
+        perTryTimeout: 120s
+        retryOn: 5xx,refused-stream,unavailable,cancelled,resource-exhausted
