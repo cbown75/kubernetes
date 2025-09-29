@@ -1,0 +1,21 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: loki-external-access
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingress
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            ipBlocks:
+              - "10.10.0.0/22"
+              - "10.10.4.0/22"
+      to:
+        - operation:
+            hosts: ["loki.home.cwbtech.net"]
+            paths: ["/loki/api/v1/push"]
+            methods: ["POST"]

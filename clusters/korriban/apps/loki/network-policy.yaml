@@ -46,13 +46,23 @@ spec:
         - protocol: TCP
           port: 3100
     - from:
-        - ipBlock:
-            cidr: 10.10.0.0/22
-        - ipBlock:
-            cidr: 10.10.4.0/22
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: gateway
       ports:
         - protocol: TCP
           port: 3100
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: loki
+      ports:
+        - protocol: TCP
+          port: 3100
+        - protocol: TCP
+          port: 9095
+        - protocol: TCP
+          port: 7946
   egress:
     - to: []
       ports:
