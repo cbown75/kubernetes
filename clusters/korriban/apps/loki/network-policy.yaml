@@ -66,3 +66,7 @@ spec:
           port: 2049
         - protocol: UDP
           port: 2049
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
