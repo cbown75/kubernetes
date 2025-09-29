@@ -16,7 +16,7 @@ spec:
         - destination:
             host: loki.monitoring.svc.cluster.local
             port:
-              number: 3100
+              number: 80
       timeout: 30s
       retries:
         attempts: 3
