@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  hosts:
+    - n8n.home.cwbtech.net
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: n8n.n8n.svc.cluster.local
+            port:
+              number: 5678
+      timeout: 300s # N8N workflows can take time
+      retries:
+        attempts: 2
+        perTryTimeout: 60s
