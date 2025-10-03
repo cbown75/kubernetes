@@ -46,7 +46,7 @@ kubectl create secret generic n8n-secrets \
   --from-literal=redis-password="$REDIS_PASSWORD" \
   --namespace=n8n \
   --dry-run=client -o yaml |
-  kubeseal --controller-namespace=sealed-secrets \
+  kubeseal --controller-namespace=kube-system \
     --controller-name=sealed-secrets \
     --format=yaml >sealed-secrets.yaml
 
@@ -54,7 +54,6 @@ echo -e "${GREEN}✓ Sealed secrets generated successfully!${NC}"
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Review the generated sealed-secrets.yaml file"
-echo "2. Commit it to git: git add sealed-secrets.yaml && git commit -m 'Add N8N sealed secrets'"
-echo "3. Push to trigger FluxCD: git push"
+echo "2. Commit and push to trigger FluxCD"
 echo ""
 echo -e "${GREEN}Done!${NC}"
