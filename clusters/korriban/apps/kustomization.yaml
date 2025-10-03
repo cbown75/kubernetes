@@ -10,3 +10,4 @@ resources:
   - nebula-sync-pihole1
   - metrics-server
   - plex-monitoring
+  - n8n
