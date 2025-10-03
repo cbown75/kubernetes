@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: n8n
+# Reference the base N8N deployment
+resources:
+  - ../../../../apps/n8n
+  - sealed-secrets.yaml
+  - istio-routing.yaml
+commonLabels:
+  app.kubernetes.io/instance: n8n-korriban
+  app.kubernetes.io/managed-by: flux
