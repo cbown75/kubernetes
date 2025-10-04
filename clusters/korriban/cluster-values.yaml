@@ -22,3 +22,8 @@ data:
   # Monitoring configuration
   monitoring.retention.prometheus: "15d"
   monitoring.retention.loki: "14d"
+  # PiHole Sync Configuration
+  pihole.primary.host: "pihole1.home.cwbtech.net"
+  pihole.replica1.host: "pihole2.home.cwbtech.net"
+  pihole.replica2.host: "pihole7.home.cwbtech.net"
+  pihole.replica3.host: "pihole8.home.cwbtech.net"

@@ -32,11 +32,20 @@ spec:
               REPLICA2_PASS=$(cat /secrets/replica-password-2)
               REPLICA3_PASS=$(cat /secrets/replica-password-3)
 
-              # Using IP addresses
-              echo "http://pihole1.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
-              echo "http://pihole2.home.cwbtech.net|${REPLICA1_PASS},http://pihole7.home.cwbtech.net|${REPLICA2_PASS},http://pihole8.home.cwbtech.net|${REPLICA3_PASS}" > /config/replicas
+              # Read pihole hosts from environment (will be injected by kustomize)
+              echo "http://${PIHOLE_PRIMARY_HOST}|${PRIMARY_PASS}" > /config/primary
+              echo "http://${PIHOLE_REPLICA1_HOST}|${REPLICA1_PASS},http://${PIHOLE_REPLICA2_HOST}|${REPLICA2_PASS},http://${PIHOLE_REPLICA3_HOST}|${REPLICA3_PASS}" > /config/replicas
 
               echo "Configuration complete"
+          env:
+            - name: PIHOLE_PRIMARY_HOST
+              value: "placeholder" # Will be replaced by kustomize
+            - name: PIHOLE_REPLICA1_HOST
+              value: "placeholder" # Will be replaced by kustomize
+            - name: PIHOLE_REPLICA2_HOST
+              value: "placeholder" # Will be replaced by kustomize
+            - name: PIHOLE_REPLICA3_HOST
+              value: "placeholder" # Will be replaced by kustomize
           volumeMounts:
             - name: secrets
               mountPath: /secrets
@@ -71,29 +80,24 @@ spec:
             - name: SYNC_CONFIG_MISC
               value: "false"
             - name: SYNC_CONFIG_DEBUG
-              value: "false" # Turn off debug mode for production
-            - name: SYNC_GRAVITY_DHCP_LEASES
+              value: "false"
+            - name: SYNC_GRAVITY_ADLIST
               value: "true"
-            - name: SYNC_GRAVITY_GROUP
+            - name: SYNC_GRAVITY_BLACKLIST
               value: "true"
-            - name: SYNC_GRAVITY_AD_LIST
+            - name: SYNC_GRAVITY_WHITELIST
               value: "true"
-            - name: SYNC_GRAVITY_AD_LIST_BY_GROUP
+            - name: SYNC_GRAVITY_REGEX_BLACKLIST
               value: "true"
-            - name: SYNC_GRAVITY_DOMAIN_LIST
+            - name: SYNC_GRAVITY_REGEX_WHITELIST
               value: "true"
-            - name: SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP
+            - name: SYNC_GRAVITY_GROUPS
               value: "true"
-            - name: SYNC_GRAVITY_CLIENT
-              value: "true"
-            - name: SYNC_GRAVITY_CLIENT_BY_GROUP
-              value: "true"
-            - name: RUN_GRAVITY
+            - name: SYNC_GRAVITY_CLIENTS
               value: "true"
           volumeMounts:
             - name: config
               mountPath: /config
-              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -105,6 +109,5 @@ spec:
         - name: secrets
           secret:
             secretName: nebula-sync-pihole1-secrets
-            defaultMode: 0400
         - name: config
           emptyDir: {}
