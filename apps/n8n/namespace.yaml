@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: n8n
-  labels:
-    name: n8n
-    app.kubernetes.io/name: n8n
-    istio-injection: enabled
