@@ -5,4 +5,3 @@ resources:
   - base/
   - infrastructure/
   - apps/
-  - grafana-mcp/
