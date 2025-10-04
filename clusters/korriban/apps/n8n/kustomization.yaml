@@ -1,72 +1,25 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
+apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
-namespace: n8n
-resources:
-  - ../../../../apps/n8n
-  - sealed-secrets.yaml
-  - istio-routing.yaml
-commonLabels:
-  app.kubernetes.io/instance: n8n-korriban
-  app.kubernetes.io/managed-by: flux
-configMapGenerator:
-  - name: n8n-config
-    literals:
-      - domain=placeholder # Will be replaced
-replacements:
-  - source:
-      kind: ConfigMap
-      name: cluster-value
-      namespace: flux-system
-      fieldPath: data.domain\.n8n
-    targets:
-      - select:
-          kind: ConfigMap
-          name: n8n-config
-        fieldPaths:
-          - data.domain
-        options:
-          create: true
-  - source:
-      kind: ConfigMap
-      name: cluster-values
-      namespace: flux-system
-      fieldPath: data.storage\.general
-    targets:
-      - select:
-          kind: PersistentVolumeClaim
-          name: n8n-pvc
-        fieldPaths:
-          - spec.storageClassName
-  - source:
-      kind: ConfigMap
-      name: cluster-values
-      namespace: flux-system
-      fieldPath: data.storage\.fast
-    targets:
-      - select:
-          kind: PersistentVolumeClaim
-          name: postgres-pvc
-        fieldPaths:
-          - spec.storageClassName
-  - source:
-      kind: ConfigMap
-      name: cluster-values
-      namespace: flux-system
-      fieldPath: data.storage\.fast
-    targets:
-      - select:
-          kind: PersistentVolumeClaim
-          name: redis-pvc
-        fieldPaths:
-          - spec.storageClassName
-  - source:
-      kind: ConfigMap
-      name: cluster-values
-      namespace: flux-system
-      fieldPath: data.domain\.n8n
-    targets:
-      - select:
-          kind: VirtualService
-          name: n8n
-        fieldPaths:
-          - spec.hosts.0
+metadata:
+  name: n8n
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: ./apps/n8n/overlays/korriban
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: n8n
+      namespace: n8n
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: postgres
+      namespace: n8n
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: redis
+      namespace: n8n

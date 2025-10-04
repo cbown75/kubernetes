@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: n8n
+# Reference the base
+resources:
+  - ../../base
+  - sealed-secrets.yaml
+  - istio-routing.yaml
+# Cluster-specific labels
+commonLabels:
+  app.kubernetes.io/instance: korriban
+# Patch the deployments with cluster-specific values
+patches:
+  # Patch N8N deployment with korriban domain
+  - path: patches/n8n-domain-patch.yaml
+    target:
+      kind: Deployment
+      name: n8n
+  # Patch storage classes
+  - path: patches/storage-patch.yaml
+    target:
+      kind: PersistentVolumeClaim

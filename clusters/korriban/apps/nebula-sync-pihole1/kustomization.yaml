@@ -4,6 +4,7 @@ namespace: pihole
 resources:
   - ../../../../apps/nebula-sync-pihole1
   - sealed-secret.yaml
+  - cluster-values-overlay.yaml
 commonLabels:
   app.kubernetes.io/instance: nebula-sync-pihole1-korriban
   app.kubernetes.io/managed-by: flux
@@ -11,7 +12,6 @@ replacements:
   - source:
       kind: ConfigMap
       name: cluster-values
-      namespace: flux-system
       fieldPath: data.pihole\.primary\.host
     targets:
       - select:
@@ -22,7 +22,6 @@ replacements:
   - source:
       kind: ConfigMap
       name: cluster-values
-      namespace: flux-system
       fieldPath: data.pihole\.replica1\.host
     targets:
       - select:
@@ -33,7 +32,6 @@ replacements:
   - source:
       kind: ConfigMap
       name: cluster-values
-      namespace: flux-system
       fieldPath: data.pihole\.replica2\.host
     targets:
       - select:
@@ -44,7 +42,6 @@ replacements:
   - source:
       kind: ConfigMap
       name: cluster-values
-      namespace: flux-system
       fieldPath: data.pihole\.replica3\.host
     targets:
       - select:

@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+spec:
+  template:
+    spec:
+      containers:
+        - name: n8n
+          env:
+            - name: N8N_HOST
+              value: "n8nk.home.cwbtech.net"
+            - name: N8N_EDITOR_BASE_URL
+              value: "https://n8nk.home.cwbtech.net"
+            - name: WEBHOOK_URL
+              value: "https://n8nk.home.cwbtech.net"
