@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: pihole
+resources:
+  - ../../base
+  - sealed-secrets.yaml
+commonAnnotations:
+  app.kubernetes.io/instance: nebula-sync-pihole5-korriban
+  app.kubernetes.io/managed-by: flux
+  app.kubernetes.io/part-of: pihole
+patches:
+  - path: patches/pihole-hosts-patch.yaml
+    target:
+      kind: Deployment
+      name: nebula-sync-pihole5

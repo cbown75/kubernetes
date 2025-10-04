@@ -9,6 +9,7 @@ resources:
   - cloudflared
   - nebula-sync-pihole1
   - nebula-sync-pihole3
+  - nebula-sync-pihole5
   - metrics-server
   - plex-monitoring
   - n8n
