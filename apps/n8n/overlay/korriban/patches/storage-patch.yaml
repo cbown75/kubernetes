@@ -1,18 +1,20 @@
-- op: replace
-  path: /spec/storageClassName
-  value: synology-holocron-general
-  target:
-    kind: PersistentVolumeClaim
-    name: n8n-pvc
-- op: replace
-  path: /spec/storageClassName
-  value: synology-holocron-fast
-  target:
-    kind: PersistentVolumeClaim
-    name: postgres-pvc
-- op: replace
-  path: /spec/storageClassName
-  value: synology-holocron-fast
-  target:
-    kind: PersistentVolumeClaim
-    name: redis-pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-pvc
+spec:
+  storageClassName: synology-holocron-general
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  storageClassName: synology-holocron-fast
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+spec:
+  storageClassName: synology-holocron-fast

@@ -1,25 +1,4 @@
-apiVersion: kustomize.toolkit.fluxcd.io/v1
+apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-metadata:
-  name: n8n
-  namespace: flux-system
-spec:
-  interval: 5m
-  path: ./apps/n8n/overlays/korriban
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  healthChecks:
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: n8n
-      namespace: n8n
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: postgres
-      namespace: n8n
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: redis
-      namespace: n8n
+resources:
+  - ../../../../apps/n8n/overlay/korriban
