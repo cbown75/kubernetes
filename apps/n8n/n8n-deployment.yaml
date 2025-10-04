@@ -6,7 +6,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: synology-holocron-general # Standard iSCSI for workflow data
+  storageClassName: default-storage-general # Placeholder - will be patched per cluster
   resources:
     requests:
       storage: 10Gi
@@ -38,7 +38,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # N8N doesn't support multiple replicas well
+    type: Recreate
   selector:
     matchLabels:
       app: n8n
@@ -48,7 +48,7 @@ spec:
         app: n8n
     spec:
       securityContext:
-        fsGroup: 1000 # node user
+        fsGroup: 1000
       containers:
         - name: n8n
           image: n8nio/n8n:latest
@@ -88,17 +88,20 @@ spec:
                   key: redis-password
             - name: EXECUTIONS_MODE
               value: queue
-            # N8N Configuration
+            # N8N Configuration - Domain from ConfigMap
             - name: N8N_HOST
-              value: n8nk.home.cwbtech.net
+              valueFrom:
+                configMapKeyRef:
+                  name: n8n-config
+                  key: domain
             - name: N8N_PORT
               value: "5678"
             - name: N8N_PROTOCOL
               value: https
             - name: N8N_EDITOR_BASE_URL
-              value: https://n8nk.home.cwbtech.net
+              value: https://$(N8N_HOST)
             - name: WEBHOOK_URL
-              value: https://n8nk.home.cwbtech.net
+              value: https://$(N8N_HOST)
             - name: N8N_TRUST_PROXY_HEADER
               value: "true"
             # Timezone

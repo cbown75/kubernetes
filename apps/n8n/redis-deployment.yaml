@@ -6,7 +6,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: synology-holocron-fast # High-performance iSCSI for cache
+  storageClassName: default-storage-fast # Placeholder - will be patched per cluster
   resources:
     requests:
       storage: 2Gi
@@ -37,7 +37,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # Don't run multiple redis instances
+    type: Recreate
   selector:
     matchLabels:
       app: redis
@@ -47,7 +47,7 @@ spec:
         app: redis
     spec:
       securityContext:
-        fsGroup: 999 # redis user
+        fsGroup: 999
       containers:
         - name: redis
           image: redis:7-alpine

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-values
+  namespace: flux-system
+data:
+  # Cluster identification
+  cluster.name: "korriban"
+  # Domain configuration
+  domain.base: "home.cwbtech.net"
+  domain.n8n: "n8nk.home.cwbtech.net"
+  # Storage configuration
+  storage.fast: "synology-holocron-fast"
+  storage.general: "synology-holocron-general"
+  storage.backup: "nfs-holocron-backup"
+  # Network configuration
+  network.subnet: "10.10.7.0/24"
+  metallb.ip.istio: "10.10.7.210"
+  # DNS configuration
+  dns.pihole.primary: "10.10.4.4"
+  dns.pihole.secondary: "10.10.4.5"
+  # Monitoring configuration
+  monitoring.retention.prometheus: "15d"
+  monitoring.retention.loki: "14d"

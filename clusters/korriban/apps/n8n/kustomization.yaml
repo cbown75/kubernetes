@@ -1,11 +1,73 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: n8n
-# Reference the base N8N deployment
 resources:
   - ../../../../apps/n8n
   - sealed-secrets.yaml
   - istio-routing.yaml
+  - cluster-values.yaml
 commonLabels:
   app.kubernetes.io/instance: n8n-korriban
   app.kubernetes.io/managed-by: flux
+configMapGenerator:
+  - name: n8n-config
+    literals:
+      - domain=placeholder # Will be replaced
+replacements:
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      namespace: flux-system
+      fieldPath: data.domain\.n8n
+    targets:
+      - select:
+          kind: ConfigMap
+          name: n8n-config
+        fieldPaths:
+          - data.domain
+        options:
+          create: true
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      namespace: flux-system
+      fieldPath: data.storage\.general
+    targets:
+      - select:
+          kind: PersistentVolumeClaim
+          name: n8n-pvc
+        fieldPaths:
+          - spec.storageClassName
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      namespace: flux-system
+      fieldPath: data.storage\.fast
+    targets:
+      - select:
+          kind: PersistentVolumeClaim
+          name: postgres-pvc
+        fieldPaths:
+          - spec.storageClassName
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      namespace: flux-system
+      fieldPath: data.storage\.fast
+    targets:
+      - select:
+          kind: PersistentVolumeClaim
+          name: redis-pvc
+        fieldPaths:
+          - spec.storageClassName
+  - source:
+      kind: ConfigMap
+      name: cluster-config
+      namespace: flux-system
+      fieldPath: data.domain\.n8n
+    targets:
+      - select:
+          kind: VirtualService
+          name: n8n
+        fieldPaths:
+          - spec.hosts.0

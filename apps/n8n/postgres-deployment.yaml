@@ -6,7 +6,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: synology-holocron-fast # High-performance iSCSI for database
+  storageClassName: default-storage-fast # Placeholder - will be patched per cluster
   resources:
     requests:
       storage: 10Gi
@@ -37,7 +37,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate # Don't run multiple postgres instances
+    type: Recreate
   selector:
     matchLabels:
       app: postgres
@@ -47,7 +47,7 @@ spec:
         app: postgres
     spec:
       securityContext:
-        fsGroup: 999 # postgres user
+        fsGroup: 999
       containers:
         - name: postgres
           image: postgres:15-alpine
