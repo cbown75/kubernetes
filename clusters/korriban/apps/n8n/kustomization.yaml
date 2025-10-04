@@ -5,7 +5,6 @@ resources:
   - ../../../../apps/n8n
   - sealed-secrets.yaml
   - istio-routing.yaml
-  - cluster-values.yaml
 commonLabels:
   app.kubernetes.io/instance: n8n-korriban
   app.kubernetes.io/managed-by: flux

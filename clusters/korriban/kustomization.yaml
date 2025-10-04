@@ -4,3 +4,5 @@ resources:
   - gitrepository-infrastructure.yaml
   - infrastructure/
   - apps/
+  - grafana-mcp/
+  - cluster-values.yaml
