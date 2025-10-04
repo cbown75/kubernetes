@@ -8,7 +8,7 @@ resources:
 commonLabels:
   app.kubernetes.io/instance: korriban
 patches:
-  - path: patches/n8n-domain-patch.yaml
+  - path: patches/domain-patch.yaml
     target:
       kind: Deployment
       name: n8n
