@@ -28,7 +28,7 @@ replacements:
           create: true
   - source:
       kind: ConfigMap
-      name: cluster-config
+      name: cluster-values
       namespace: flux-system
       fieldPath: data.storage\.general
     targets:
@@ -39,7 +39,7 @@ replacements:
           - spec.storageClassName
   - source:
       kind: ConfigMap
-      name: cluster-config
+      name: cluster-values
       namespace: flux-system
       fieldPath: data.storage\.fast
     targets:
@@ -50,7 +50,7 @@ replacements:
           - spec.storageClassName
   - source:
       kind: ConfigMap
-      name: cluster-config
+      name: cluster-values
       namespace: flux-system
       fieldPath: data.storage\.fast
     targets:
@@ -61,7 +61,7 @@ replacements:
           - spec.storageClassName
   - source:
       kind: ConfigMap
-      name: cluster-config
+      name: cluster-values
       namespace: flux-system
       fieldPath: data.domain\.n8n
     targets:
