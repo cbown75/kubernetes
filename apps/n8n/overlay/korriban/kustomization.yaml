@@ -5,7 +5,7 @@ resources:
   - ../../base
   - sealed-secrets.yaml
   - istio-routing.yaml
-commonLabels:
+commonAnnotations:
   app.kubernetes.io/instance: korriban
 patches:
   - path: patches/domain-patch.yaml
