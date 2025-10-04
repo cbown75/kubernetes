@@ -8,6 +8,7 @@ resources:
   - alloy
   - cloudflared
   - nebula-sync-pihole1
+  - nebula-sync-pihole3
   - metrics-server
   - plex-monitoring
   - n8n

@@ -30,11 +30,17 @@ spec:
               PRIMARY_PASS=$(cat /secrets/primary-password)
               REPLICA1_PASS=$(cat /secrets/replica-password-1)
 
-              # Using IP addresses
-              echo "http://pihole3.home.cwbtech.net|${PRIMARY_PASS}" > /config/primary
-              echo "http://pihole4.home.cwbtech.net|${REPLICA1_PASS}" > /config/replicas
+              # Read pihole hosts from environment (will be patched by overlay)
+              echo "http://${PIHOLE_PRIMARY_HOST}|${PRIMARY_PASS}" > /config/primary
+              echo "http://${PIHOLE_REPLICA1_HOST}|${REPLICA1_PASS}" > /config/replicas
 
               echo "Configuration complete"
+          env:
+            # Placeholder values - will be patched by overlay
+            - name: PIHOLE_PRIMARY_HOST
+              value: "placeholder.example.com"
+            - name: PIHOLE_REPLICA1_HOST
+              value: "placeholder.example.com"
           volumeMounts:
             - name: secrets
               mountPath: /secrets
@@ -51,7 +57,7 @@ spec:
             - name: REPLICAS_FILE
               value: "/config/replicas"
             - name: CRON
-              value: "*/5 * * * *"
+              value: "*/10 * * * *" # Every 10 minutes as per docker-compose
             - name: TZ
               value: "America/Phoenix"
             - name: FULL_SYNC
@@ -59,7 +65,7 @@ spec:
             - name: SYNC_CONFIG_DNS
               value: "true"
             - name: SYNC_CONFIG_DHCP
-              value: "true"
+              value: "false" # Disabled as per docker-compose
             - name: SYNC_CONFIG_NTP
               value: "true"
             - name: SYNC_CONFIG_RESOLVER
@@ -69,9 +75,9 @@ spec:
             - name: SYNC_CONFIG_MISC
               value: "false"
             - name: SYNC_CONFIG_DEBUG
-              value: "false" # Turn off debug mode for production
+              value: "false"
             - name: SYNC_GRAVITY_DHCP_LEASES
-              value: "true"
+              value: "false"
             - name: SYNC_GRAVITY_GROUP
               value: "true"
             - name: SYNC_GRAVITY_AD_LIST
@@ -86,12 +92,6 @@ spec:
               value: "true"
             - name: SYNC_GRAVITY_CLIENT_BY_GROUP
               value: "true"
-            - name: RUN_GRAVITY
-              value: "true"
-          volumeMounts:
-            - name: config
-              mountPath: /config
-              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -99,10 +99,12 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
       volumes:
         - name: secrets
           secret:
             secretName: nebula-sync-pihole3-secrets
-            defaultMode: 0400
         - name: config
           emptyDir: {}
