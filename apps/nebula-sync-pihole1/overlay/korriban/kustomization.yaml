@@ -4,6 +4,12 @@ namespace: pihole
 resources:
   - ../../base
   - sealed-secrets.yaml
-commonLabels:
+commonAnnotations:
   app.kubernetes.io/instance: nebula-sync-pihole1-korriban
   app.kubernetes.io/managed-by: flux
+  app.kubernetes.io/part-of: pihole
+patches:
+  - path: patches/pihole-hosts-patch.yaml
+    target:
+      kind: Deployment
+      name: nebula-sync-pihole1

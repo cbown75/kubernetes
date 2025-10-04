@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula-sync-pihole1
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: setup-config
+          env:
+            - name: PIHOLE_PRIMARY_HOST
+              value: "pihole1.home.cwbtech.net"
+            - name: PIHOLE_REPLICA1_HOST
+              value: "pihole2.home.cwbtech.net"
+            - name: PIHOLE_REPLICA2_HOST
+              value: "pihole7.home.cwbtech.net"
+            - name: PIHOLE_REPLICA3_HOST
+              value: "pihole8.home.cwbtech.net"

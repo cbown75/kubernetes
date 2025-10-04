@@ -32,20 +32,21 @@ spec:
               REPLICA2_PASS=$(cat /secrets/replica-password-2)
               REPLICA3_PASS=$(cat /secrets/replica-password-3)
 
-              # Read pihole hosts from environment (will be injected by kustomize)
+              # Read pihole hosts from environment (will be patched by overlay)
               echo "http://${PIHOLE_PRIMARY_HOST}|${PRIMARY_PASS}" > /config/primary
               echo "http://${PIHOLE_REPLICA1_HOST}|${REPLICA1_PASS},http://${PIHOLE_REPLICA2_HOST}|${REPLICA2_PASS},http://${PIHOLE_REPLICA3_HOST}|${REPLICA3_PASS}" > /config/replicas
 
               echo "Configuration complete"
           env:
+            # Placeholder values - will be patched by overlay
             - name: PIHOLE_PRIMARY_HOST
-              value: "pihole1.home.cwbtech.net"
+              value: "placeholder.example.com"
             - name: PIHOLE_REPLICA1_HOST
-              value: "pihole2.home.cwbtech.net"
+              value: "placeholder.example.com"
             - name: PIHOLE_REPLICA2_HOST
-              value: "pihole7.home.cwbtech.net"
+              value: "placeholder.example.com"
             - name: PIHOLE_REPLICA3_HOST
-              value: "pihole8.home.cwbtech.net"
+              value: "placeholder.example.com"
           volumeMounts:
             - name: secrets
               mountPath: /secrets
@@ -95,9 +96,6 @@ spec:
               value: "true"
             - name: SYNC_GRAVITY_CLIENTS
               value: "true"
-          volumeMounts:
-            - name: config
-              mountPath: /config
           resources:
             requests:
               cpu: 50m
@@ -105,6 +103,9 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
       volumes:
         - name: secrets
           secret:
