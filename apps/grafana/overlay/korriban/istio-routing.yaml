@@ -17,7 +17,7 @@ spec:
             prefix: "/public/"
       route:
         - destination:
-            host: monitoring-grafana.monitoring.svc.cluster.local
+            host: grafana.monitoring.svc.cluster.local
             port:
               number: 80
       timeout: 60s # Longer timeout for large files
@@ -35,7 +35,7 @@ spec:
             prefix: /
       route:
         - destination:
-            host: monitoring-grafana.monitoring.svc.cluster.local
+            host: grafana.monitoring.svc.cluster.local
             port:
               number: 80
       timeout: 10s
