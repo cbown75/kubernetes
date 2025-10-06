@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: default-storage-class # Will be patched by overlay
+  resources:
+    requests:
+      storage: 10Gi
