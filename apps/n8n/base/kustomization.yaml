@@ -5,6 +5,7 @@ resources:
   - postgres-deployment.yaml
   - redis-deployment.yaml
   - n8n-deployment.yaml
+  - n8n-worker-deployment.yaml
 commonLabels:
   app.kubernetes.io/name: n8n
   app.kubernetes.io/part-of: n8n
