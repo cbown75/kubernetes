@@ -88,6 +88,11 @@ spec:
                   key: redis-password
             - name: EXECUTIONS_MODE
               value: queue
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: encryption-key
             # N8N Configuration - Will be patched by overlay
             - name: N8N_HOST
               value: n8n.example.com
@@ -99,8 +104,8 @@ spec:
               value: https://n8n.example.com
             - name: WEBHOOK_URL
               value: https://n8n.example.com
-            - name: N8N_PROXY_HOPS
-              value: "1"
+            - name: N8N_TRUST_PROXY_HEADER
+              value: "true"
             # Runner Configuration
             - name: N8N_RUNNERS_ENABLED
               value: "true"
