@@ -49,7 +49,7 @@ spec:
       tunnelName: "korriban-k8s"
       secretName: "cloudflare-tunnel-cloudflared"
       ingress:
-        - hostname: n8nk.home.cwbtech.net
+        - hostname: n8n.home.cwbtech.net
           service: http://n8n.n8n.svc.cluster.local:5678
     resources:
       limits:

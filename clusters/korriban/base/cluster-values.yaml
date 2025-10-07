@@ -8,7 +8,7 @@ data:
   cluster.name: "korriban"
   # Domain configuration
   domain.base: "home.cwbtech.net"
-  domain.n8n: "n8nk.home.cwbtech.net"
+  domain.n8n: "n8n.home.cwbtech.net"
   # Storage configuration
   storage.fast: "synology-holocron-fast"
   storage.general: "synology-holocron-general"

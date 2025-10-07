@@ -5,7 +5,7 @@ metadata:
   namespace: n8n
 spec:
   hosts:
-    - "n8nk.home.cwbtech.net"
+    - "n8n.home.cwbtech.net"
   gateways:
     - istio-system/public-gw
   http:

@@ -9,8 +9,8 @@ spec:
         - name: n8n
           env:
             - name: N8N_HOST
-              value: "n8nk.home.cwbtech.net"
+              value: "n8n.home.cwbtech.net"
             - name: N8N_EDITOR_BASE_URL
-              value: "https://n8nk.home.cwbtech.net"
+              value: "https://n8n.home.cwbtech.net"
             - name: WEBHOOK_URL
-              value: "https://n8nk.home.cwbtech.net"
+              value: "https://n8n.home.cwbtech.net"
