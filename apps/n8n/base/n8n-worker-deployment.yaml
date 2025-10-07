@@ -10,8 +10,8 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
       maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: n8n-worker
@@ -26,9 +26,11 @@ spec:
         - name: n8n-worker
           image: n8nio/n8n:latest
           imagePullPolicy: Always
-          command: ["n8n", "worker"]
+          command:
+            - n8n
+            - worker
           env:
-            # Database Configuration (same as main instance)
+            # Database Configuration
             - name: DB_TYPE
               value: postgresdb
             - name: DB_POSTGRESDB_HOST
@@ -47,7 +49,7 @@ spec:
                 secretKeyRef:
                   name: n8n-secrets
                   key: postgres-password
-            # Redis Configuration (same as main instance)
+            # Redis Configuration
             - name: QUEUE_BULL_REDIS_HOST
               value: redis
             - name: QUEUE_BULL_REDIS_PORT
@@ -62,7 +64,12 @@ spec:
               value: queue
             - name: EXECUTIONS_PROCESS
               value: main
-            # Timezone (same as main instance)
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: encryption-key
+            # Timezone
             - name: TZ
               value: America/Phoenix
             - name: GENERIC_TIMEZONE
@@ -72,7 +79,7 @@ spec:
               value: production
           resources:
             requests:
-              cpu: 1000m
+              cpu: "1"
               memory: 1Gi
             limits:
               cpu: "2"
@@ -82,7 +89,7 @@ spec:
               command:
                 - node
                 - -e
-                - "process.exit(0)"
+                - process.exit(0)
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 5
@@ -91,7 +98,7 @@ spec:
               command:
                 - node
                 - -e
-                - "process.exit(0)"
+                - process.exit(0)
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3

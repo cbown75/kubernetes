@@ -31,8 +31,19 @@ echo -e "${YELLOW}Enter Redis password:${NC}"
 read -s REDIS_PASSWORD
 echo ""
 
+echo -e "${YELLOW}Enter N8N encryption key (or press enter to generate):${NC}"
+read -s ENCRYPTION_KEY
+echo ""
+
+# Generate encryption key if not provided
+if [ -z "$ENCRYPTION_KEY" ]; then
+  echo -e "${YELLOW}Generating random encryption key...${NC}"
+  ENCRYPTION_KEY=$(openssl rand -base64 24)
+  echo -e "${GREEN}Generated encryption key: ${ENCRYPTION_KEY}${NC}"
+fi
+
 if [ -z "$POSTGRES_PASSWORD" ] || [ -z "$REDIS_PASSWORD" ]; then
-  echo -e "${RED}Error: Passwords cannot be empty${NC}"
+  echo -e "${RED}Error: PostgreSQL and Redis passwords cannot be empty${NC}"
   exit 1
 fi
 
@@ -44,16 +55,21 @@ kubectl create secret generic n8n-secrets \
   --from-literal=postgres-user=n8n \
   --from-literal=postgres-password="$POSTGRES_PASSWORD" \
   --from-literal=redis-password="$REDIS_PASSWORD" \
+  --from-literal=encryption-key="$ENCRYPTION_KEY" \
   --namespace=n8n \
   --dry-run=client -o yaml |
   kubeseal --controller-namespace=kube-system \
     --controller-name=sealed-secrets \
-    --format=yaml >sealed-secrets.yaml
+    --format=yaml >apps/n8n/overlay/korriban/sealed-secrets.yaml
 
 echo -e "${GREEN}✓ Sealed secrets generated successfully!${NC}"
 echo ""
+echo -e "${YELLOW}IMPORTANT: Save this encryption key securely:${NC}"
+echo -e "${GREEN}${ENCRYPTION_KEY}${NC}"
+echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo "1. Review the generated sealed-secrets.yaml file"
-echo "2. Commit and push to trigger FluxCD"
+echo "2. Save the encryption key in a secure location (password manager)"
+echo "3. Commit and push sealed-secrets.yaml to trigger FluxCD"
 echo ""
 echo -e "${GREEN}Done!${NC}"
