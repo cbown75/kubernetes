@@ -99,8 +99,8 @@ spec:
               value: https://n8n.example.com
             - name: WEBHOOK_URL
               value: https://n8n.example.com
-            - name: N8N_TRUST_PROXY_HEADER
-              value: "true"
+            - name: N8N_PROXY_HOPS
+              value: "1"
             # Runner Configuration
             - name: N8N_RUNNERS_ENABLED
               value: "true"
