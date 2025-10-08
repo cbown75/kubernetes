@@ -1,14 +1,207 @@
----
 name: Kube Lint
-on: [pull_request]
-
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "k8s/**"
+      - "kubernetes/**"
+      - "manifests/**"
+      - "**/*.yaml"
+      - "**/*.yml"
 permissions:
   contents: read
   pull-requests: read
-
+env:
+  KUBE_VERSION: "1.29.0"
 jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: wagoid/commitlint-github-action@v6
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.filter.outputs.charts }}
+      manifests: ${{ steps.filter.outputs.manifests }}
+      chart_files: ${{ steps.filter.outputs.charts_files }}
+      manifest_files: ${{ steps.filter.outputs.manifests_files }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          list-files: shell
+          filters: |
+            charts:
+              - 'charts/**'
+              - '**/Chart.yaml'
+              - '**/values*.{yml,yaml}'
+              - '**/templates/**/*.{yml,yaml}'
+            manifests:
+              - 'k8s/**/*.{yml,yaml}'
+              - 'kubernetes/**/*.{yml,yaml}'
+              - 'manifests/**/*.{yml,yaml}'
+              - '*.{yml,yaml}'
+  helm_lint_and_schema:
+    needs: changes
+    if: needs.changes.outputs.charts == 'true' || needs.changes.outputs.manifests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.2
+      - name: Setup kubeconform
+        uses: bmuschko/setup-kubeconform@v1
+      - name: Determine changed chart roots
+        id: chart_roots
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(printf '%s\n' "${{ needs.changes.outputs.chart_files }}")
+          declare -A roots=()
+          for f in "${files[@]}"; do
+            [[ -z "$f" ]] && continue
+            d="$f"
+            while [[ "$d" != "." && "$d" != "/" ]]; do
+              if [[ -f "$d/Chart.yaml" ]]; then roots["$d"]=1; break; fi
+              d="$(dirname "$d")"
+            done
+          done
+          # Fallback: scan charts/ if filter missed Chart.yaml
+          if [[ ${#roots[@]} -eq 0 && -d charts ]]; then
+            while IFS= read -r -d '' c; do roots["$c"]=1; done < <(find charts -type f -name Chart.yaml -printf '%h\0')
+          fi
+          printf '%s\n' "${!roots[@]}" | sort > /tmp/charts.txt
+          echo "count=$(wc -l < /tmp/charts.txt | xargs)" >> "$GITHUB_OUTPUT"
+          {
+            echo "list<<EOF"
+            cat /tmp/charts.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Helm lint (changed charts)
+        if: steps.chart_roots.outputs.count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read -r chart; do
+            [[ -z "$chart" ]] && continue
+            echo "::group::helm lint $chart"
+            helm dependency build "$chart" || true
+            helm lint "$chart"
+            echo "::endgroup::"
+          done < <(printf '%s\n' "${{ steps.chart_roots.outputs.list }}")
+      - name: Schema validate rendered charts with kubeconform
+        if: steps.chart_roots.outputs.count != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while read -r chart; do
+            [[ -z "$chart" ]] && continue
+            echo "::group::helm template | kubeconform $chart"
+            helm template "$chart" \
+              --kube-version "${KUBE_VERSION}" \
+            | kubeconform -strict -ignore-missing-schemas -summary -
+            echo "::endgroup::"
+          done < <(printf '%s\n' "${{ steps.chart_roots.outputs.list }}")
+      - name: Schema validate raw manifests with kubeconform
+        if: needs.changes.outputs.manifests == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ needs.changes.outputs.manifest_files }}" \
+          | grep -E '\.ya?ml$' \
+          | xargs -r -n 100 kubeconform -strict -ignore-missing-schemas -kubernetes-version "${KUBE_VERSION}" -summary
+  policy_checks:
+    needs: changes
+    if: needs.changes.outputs.charts == 'true' || needs.changes.outputs.manifests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15.2
+      - name: Setup kubeconform
+        uses: bmuschko/setup-kubeconform@v1
+      - name: Install kube-score
+        shell: bash
+        run: |
+          set -e
+          ver="1.17.0"
+          curl -fsSL "https://github.com/zegl/kube-score/releases/download/v${ver}/kube-score_${ver}_linux_amd64.tar.gz" \
+          | tar xz
+          sudo mv kube-score /usr/local/bin/
+      - name: Setup Polaris
+        uses: FairwindsOps/polaris/.github/actions/setup-polaris@master
+        with:
+          version: "10.1.1"
+      - name: Install Conftest
+        shell: bash
+        run: |
+          set -e
+          ver="0.54.0"
+          curl -fsSL "https://github.com/open-policy-agent/conftest/releases/download/v${ver}/conftest_${ver}_Linux_x86_64.tar.gz" \
+          | tar xz
+          sudo mv conftest /usr/local/bin/
+      - name: Build combined manifest set for policy checks
+        id: collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="/tmp/policy"
+          mkdir -p "$STAGE/rendered" "$STAGE/raw"
+          # Raw manifests from PR
+          printf '%s\n' "${{ needs.changes.outputs.manifest_files }}" \
+          | grep -E '\.ya?ml$' \
+          | while read -r f; do
+              [[ -f "$f" ]] && cp "$f" "$STAGE/raw/$(echo "$f" | tr '/' '_')"
+            done
+          # Render changed charts
+          mapfile -t files < <(printf '%s\n' "${{ needs.changes.outputs.chart_files }}")
+          declare -A roots=()
+          for f in "${files[@]}"; do
+            [[ -z "$f" ]] && continue
+            d="$f"
+            while [[ "$d" != "." && "$d" != "/" ]]; do
+              if [[ -f "$d/Chart.yaml" ]]; then roots["$d"]=1; break; fi
+              d="$(dirname "$d")"
+            done
+          done
+          if [[ ${#roots[@]} -eq 0 && -d charts ]]; then
+            while IFS= read -r -d '' c; do roots["$c"]=1; done < <(find charts -type f -name Chart.yaml -printf '%h\0')
+          fi
+          for chart in "${!roots[@]}"; do
+            out="$STAGE/rendered/$(echo "$chart" | tr '/' '_').yaml"
+            helm dependency build "$chart" || true
+            helm template "$chart" --kube-version "${KUBE_VERSION}" > "$out"
+          done
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+      - name: Polaris audit
+        shell: bash
+        run: |
+          set -e
+          polaris audit \
+            --audit-path "${{ steps.collect.outputs.stage }}" \
+            --only-show-failed-tests true \
+            --set-exit-code-on-danger
+      - name: kube-score analysis
+        shell: bash
+        run: |
+          set -e
+          kube-score score "${{ steps.collect.outputs.stage }}" --exit-one-on-warning
+      - name: Conftest policy check (if policies present)
+        shell: bash
+        run: |
+          set -e
+          if [ -d policy ]; then
+            conftest test "${{ steps.collect.outputs.stage }}"
+          else
+            echo "No ./policy directory. Skipping Conftest."
+          fi
