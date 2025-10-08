@@ -5,17 +5,19 @@ metadata:
   namespace: monitoring
   labels:
     app.kubernetes.io/name: webhook-receiver
-    app.kubernetes.io/component: alerting
     app.kubernetes.io/part-of: monitoring-stack
+    app.kubernetes.io/component: alerting
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: webhook-receiver
+      app.kubernetes.io/part-of: monitoring-stack
   template:
     metadata:
       labels:
         app.kubernetes.io/name: webhook-receiver
+        app.kubernetes.io/part-of: monitoring-stack
         app.kubernetes.io/component: alerting
     spec:
       serviceAccountName: webhook-receiver
@@ -28,15 +30,10 @@ spec:
       containers:
         - name: webhook-receiver
           image: prom/alertmanager:v0.27.0
-          imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
             - -c
-            - "cat > /tmp/webhook-server.sh << 'EOF'\n#!/bin/sh\necho \"Starting webhook receiver on port 8080...\"\n\nwhile true; do\n  {\n    read -r line\n    endpoint=$(echo \"$line\" | cut -d' ' -f2)\n    echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Received webhook at: $endpoint\"\n    \n    # Read remaining headers\n    while read -r header; do\n      case \"$header\" in\n        \"\"*) break ;;\n      esac\n    done\n    \n    # Send response\n    echo -e \"HTTP/1.1 200 OK\\r\\nContent-Length: 2\\r\\n\\r\\nOK\"\n  } | nc -l -p 8080\ndone\nEOF\n\nchmod +x /tmp/webhook-server.sh\nexec /tmp/webhook-server.sh\n"
-          ports:
-            - name: http
-              containerPort: 8080
-              protocol: TCP
+            - "cat > /tmp/webhook-server.sh << 'EOF'\n#!/bin/sh\necho \"Starting webhook receiver on port 8080...\" >&2\n\nwhile true; do\n  {\n    read -r line\n    endpoint=$(echo \"$line\" | cut -d' ' -f2)\n    # Log to stderr so it doesn't go to the HTTP client\n    echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Received webhook at: $endpoint\" >&2\n    \n    # Read request headers until blank line\n    content_length=0\n    while read -r header; do\n      # Remove carriage return\n      header=$(echo \"$header\" | tr -d '\\r')\n      case \"$header\" in\n        \"\") break ;;\n        Content-Length:*) content_length=$(echo \"$header\" | cut -d: -f2 | tr -d ' ') ;;\n      esac\n    done\n    \n    # Read request body if present\n    if [ \"$content_length\" -gt 0 ]; then\n      dd bs=1 count=$content_length 2>/dev/null\n    fi\n    \n    # Send proper HTTP response (to stdout, which goes to client)\n    printf \"HTTP/1.1 200 OK\\r\\n\"\n    printf \"Content-Type: text/plain\\r\\n\"\n    printf \"Content-Length: 2\\r\\n\"\n    printf \"\\r\\n\"\n    printf \"OK\"\n  } | nc -l -p 8080\ndone\nEOF\n\nchmod +x /tmp/webhook-server.sh\nexec /tmp/webhook-server.sh\n"
           env:
             - name: WEBHOOK_PASSWORD
               valueFrom:
@@ -44,6 +41,10 @@ spec:
                   name: alertmanager-secrets
                   key: webhook-password
                   optional: true
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
