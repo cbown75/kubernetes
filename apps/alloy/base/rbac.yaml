@@ -15,6 +15,7 @@ rules:
       - services
       - endpoints
       - pods
+      - pods/log
       - events
       - namespaces
       - persistentvolumes
@@ -49,7 +50,6 @@ rules:
     resources:
       - ingresses
     verbs: ["get", "list", "watch"]
-  # Prometheus Operator CRDs
   - apiGroups: ["monitoring.coreos.com"]
     resources:
       - servicemonitors
