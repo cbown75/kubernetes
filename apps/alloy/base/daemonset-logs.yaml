@@ -1,31 +1,30 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: alloy-singleton
+  name: alloy-logs
   namespace: monitoring
   labels:
     app.kubernetes.io/name: alloy
-    app.kubernetes.io/component: singleton
+    app.kubernetes.io/component: logs
     app.kubernetes.io/part-of: monitoring-stack
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: alloy
-      app.kubernetes.io/component: singleton
+      app.kubernetes.io/component: logs
   template:
     metadata:
       labels:
         app.kubernetes.io/name: alloy
-        app.kubernetes.io/component: singleton
+        app.kubernetes.io/component: logs
         app.kubernetes.io/part-of: monitoring-stack
     spec:
       serviceAccountName: alloy
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
-        fsGroup: 10001
-        runAsGroup: 10001
-        runAsNonRoot: true
-        runAsUser: 10001
+        runAsUser: 0
       containers:
         - name: alloy
           image: docker.io/grafana/alloy:v1.11.0
@@ -33,7 +32,7 @@ spec:
           args:
             - run
             - /etc/alloy/config.alloy
-            - --storage.path=/tmp/alloy
+            - --storage.path=/var/lib/alloy
             - --server.http.listen-addr=0.0.0.0:12345
             - --stability.level=public-preview
           ports:
@@ -50,24 +49,43 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: etcmachineid
+              mountPath: /etc/machine-id
+              readOnly: true
             - name: alloy-data
-              mountPath: /tmp/alloy
+              mountPath: /var/lib/alloy
           resources:
             requests:
               cpu: 50m
               memory: 128Mi
             limits:
-              cpu: 200m
+              cpu: 500m
               memory: 512Mi
           securityContext:
-            allowPrivilegeEscalation: false
+            privileged: true
             capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: true
+              add:
+                - SYS_ADMIN
       volumes:
         - name: config
           configMap:
-            name: alloy-singleton
+            name: alloy-logs
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: etcmachineid
+          hostPath:
+            path: /etc/machine-id
         - name: alloy-data
-          emptyDir: {}
+          hostPath:
+            path: /var/lib/alloy
+            type: DirectoryOrCreate
