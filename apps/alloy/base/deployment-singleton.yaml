@@ -50,6 +50,8 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /etc/alloy
+            - name: alloy-data
+              mountPath: /tmp/alloy
           resources:
             requests:
               cpu: 50m
@@ -67,3 +69,5 @@ spec:
         - name: config
           configMap:
             name: alloy-singleton
+        - name: alloy-data
+          emptyDir: {}
