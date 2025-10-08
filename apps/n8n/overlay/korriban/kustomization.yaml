@@ -14,3 +14,4 @@ patches:
       name: n8n
 patchesStrategicMerge:
   - patches/storage-patch.yaml
+  - patches/disable-istio-databases.yaml
