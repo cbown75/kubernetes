@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-headless
+  namespace: monitoring
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: http-metrics
+      port: 3100
+      targetPort: http-metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/component: single-binary

@@ -1,0 +1,24 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  hosts:
+    - "loki.home.cwbtech.net"
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: loki-gateway.monitoring.svc.cluster.local
+            port:
+              number: 80
+      timeout: 180s
+      retries:
+        attempts: 2
+        perTryTimeout: 120s
+        retryOn: 5xx,refused-stream,unavailable,cancelled,resource-exhausted

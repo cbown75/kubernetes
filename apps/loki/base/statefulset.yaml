@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  serviceName: loki-headless
+  replicas: 1
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: loki
+      app.kubernetes.io/component: single-binary
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loki
+        app.kubernetes.io/component: single-binary
+    spec:
+      serviceAccountName: loki
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: loki
+          image: grafana/loki:3.3.2
+          imagePullPolicy: IfNotPresent
+          args:
+            - -config.file=/etc/loki/config.yaml
+            - -target=all
+          ports:
+            - name: http-metrics
+              containerPort: 3100
+              protocol: TCP
+            - name: grpc
+              containerPort: 9095
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http-metrics
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http-metrics
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /etc/loki
+            - name: runtime-config
+              mountPath: /etc/loki/runtime-config
+            - name: storage
+              mountPath: /var/loki
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: loki-config
+        - name: runtime-config
+          configMap:
+            name: loki-runtime
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        storageClassName: nfs-holocron-general
