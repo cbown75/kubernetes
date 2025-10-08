@@ -19,7 +19,6 @@ spec:
           annotations:
             summary: "AlertManager instance is down"
             description: "AlertManager instance {{ $labels.instance }} has been down for more than 5 minutes."
-
         # AlertManager configuration reload failed
         - alert: AlertmanagerConfigurationReloadFailure
           expr: alertmanager_config_last_reload_successful != 1
@@ -29,7 +28,6 @@ spec:
           annotations:
             summary: "AlertManager configuration reload failure"
             description: "AlertManager {{ $labels.instance }} configuration reload error."
-
         # AlertManager notification failures
         - alert: AlertmanagerNotificationFailures
           expr: rate(alertmanager_notifications_failed_total[5m]) > 0.01
@@ -39,7 +37,6 @@ spec:
           annotations:
             summary: "AlertManager notification failures"
             description: "AlertManager {{ $labels.instance }} is failing to send notifications."
-
         # AlertManager cluster not ready
         - alert: AlertmanagerClusterDown
           expr: alertmanager_cluster_members != 3
@@ -49,7 +46,6 @@ spec:
           annotations:
             summary: "AlertManager cluster not ready"
             description: "AlertManager cluster has {{ $value }} members, expected 3."
-
     - name: infrastructure.rules
       rules:
         # Node down
@@ -61,7 +57,6 @@ spec:
           annotations:
             summary: "Node {{ $labels.instance }} is down"
             description: "Node {{ $labels.instance }} has been down for more than 5 minutes."
-
         # High CPU usage
         - alert: HighCPUUsage
           expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
@@ -71,7 +66,6 @@ spec:
           annotations:
             summary: "High CPU usage on {{ $labels.instance }}"
             description: "CPU usage is above 80% on {{ $labels.instance }}"
-
         # High memory usage
         - alert: HighMemoryUsage
           expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
@@ -81,7 +75,6 @@ spec:
           annotations:
             summary: "High memory usage on {{ $labels.instance }}"
             description: "Memory usage is above 90% on {{ $labels.instance }}"
-
         # Disk space low
         - alert: DiskSpaceLow
           expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
@@ -91,7 +84,6 @@ spec:
           annotations:
             summary: "Disk space low on {{ $labels.instance }}"
             description: "Disk usage is above 85% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
-
         # Disk space critical
         - alert: DiskSpaceCritical
           expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 95
@@ -101,7 +93,6 @@ spec:
           annotations:
             summary: "Disk space critical on {{ $labels.instance }}"
             description: "Disk usage is above 95% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
-
     - name: kubernetes.rules
       rules:
         # Pod crash looping
@@ -113,7 +104,6 @@ spec:
           annotations:
             summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
             description: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) is restarting {{ printf "%.2f" $value }} times / 15 minutes.'
-
         # Pod not ready
         - alert: PodNotReady
           expr: kube_pod_status_phase{phase=~"Pending|Unknown"} == 1
@@ -123,7 +113,6 @@ spec:
           annotations:
             summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} not ready"
             description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for longer than 15 minutes."
-
         # Deployment replica mismatch
         - alert: DeploymentReplicasMismatch
           expr: kube_deployment_spec_replicas != kube_deployment_status_ready_replicas
@@ -133,7 +122,6 @@ spec:
           annotations:
             summary: "Deployment replica mismatch for {{ $labels.namespace }}/{{ $labels.deployment }}"
             description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $labels.spec_replicas }} desired but {{ $labels.ready_replicas }} ready replicas."
-
         # StatefulSet replica mismatch
         - alert: StatefulSetReplicasMismatch
           expr: kube_statefulset_status_replicas_ready != kube_statefulset_status_replicas
@@ -143,7 +131,6 @@ spec:
           annotations:
             summary: "StatefulSet replica mismatch for {{ $labels.namespace }}/{{ $labels.statefulset }}"
             description: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has {{ $labels.replicas }} desired but {{ $labels.ready_replicas }} ready replicas."
-
     - name: storage.rules
       rules:
         # PVC usage high
@@ -155,7 +142,6 @@ spec:
           annotations:
             summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} usage high"
             description: 'PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ printf "%.2f" $value }}% full.'
-
         # PVC usage critical
         - alert: PersistentVolumeUsageCritical
           expr: (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) * 100 > 95
@@ -165,7 +151,6 @@ spec:
           annotations:
             summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} usage critical"
             description: 'PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ printf "%.2f" $value }}% full.'
-
     - name: flux.rules
       rules:
         # FluxCD reconciliation failure
@@ -177,7 +162,6 @@ spec:
           annotations:
             summary: "FluxCD reconciliation failed for {{ $labels.kind }}/{{ $labels.name }}"
             description: "FluxCD {{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} failed to reconcile."
-
         # FluxCD suspended
         - alert: FluxResourceSuspended
           expr: gotk_suspend_status == 1
