@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: alloy-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      app.kubernetes.io/component: metrics
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 60s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: alloy-logs
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: logs
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      app.kubernetes.io/component: logs
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 60s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: alloy-singleton
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: singleton
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      app.kubernetes.io/component: singleton
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 60s

@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alloy-logs
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: logs
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      app.kubernetes.io/component: logs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alloy
+        app.kubernetes.io/component: logs
+        app.kubernetes.io/part-of: monitoring-stack
+    spec:
+      serviceAccountName: alloy
+      hostNetwork: false
+      hostPID: false
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      containers:
+        - name: alloy
+          image: docker.io/grafana/alloy:v1.0.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --storage.path=/var/lib/alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+            - --stability.level=public-preview
+          ports:
+            - containerPort: 12345
+              name: http-metrics
+              protocol: TCP
+          env:
+            - name: ALLOY_DEPLOY_MODE
+              value: "helm"
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: alloy-positions
+              mountPath: /var/lib/alloy
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - DAC_READ_SEARCH
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-logs
+        - name: varlog
+          hostPath:
+            path: /var/log
+            type: Directory
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+            type: DirectoryOrCreate
+        - name: alloy-positions
+          hostPath:
+            path: /var/lib/alloy-positions
+            type: DirectoryOrCreate

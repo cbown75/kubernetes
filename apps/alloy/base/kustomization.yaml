@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - serviceaccount.yaml
+  - rbac.yaml
+  - configmap-metrics.yaml
+  - configmap-logs.yaml
+  - configmap-singleton.yaml
+  - statefulset-metrics.yaml
+  - daemonset-logs.yaml
+  - deployment-singleton.yaml
+  - services.yaml
+  - servicemonitors.yaml
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: monitoring-stack

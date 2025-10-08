@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: monitoring-stack
+data:
+  config.alloy: "// Cluster discovery\ndiscovery.kubernetes \"cluster\" {\n  role = \"pod\"\n}\n\n// Prometheus remote write to local Prometheus\nprometheus.remote_write \"prometheus\" {\n  endpoint {\n    url = \"http://prometheus-server.monitoring.svc.cluster.local:9090/api/v1/write\"\n    \n    queue_config {\n      capacity = 10000\n      max_shards = 10\n      min_shards = 1\n    }\n  }\n}\n\n// Scrape kubelet metrics\ndiscovery.kubernetes \"kubelet\" {\n  role = \"node\"\n}\n\nprometheus.scrape \"kubelet\" {\n  targets    = discovery.kubernetes.kubelet.targets\n  scheme     = \"https\"\n  bearer_token_file = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\n  tls_config {\n    ca_file = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n    insecure_skip_verify = true\n  }\n  forward_to = [prometheus.remote_write.prometheus.receiver]\n}\n\n// Scrape cAdvisor metrics\nprometheus.scrape \"cadvisor\" {\n  targets    = discovery.kubernetes.kubelet.targets\n  scheme     = \"https\"\n  metrics_path = \"/metrics/cadvisor\"\n  bearer_token_file = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\n  tls_config {\n    ca_file = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n    insecure_skip_verify = true\n  }\n  forward_to = [prometheus.remote_write.prometheus.receiver]\n}\n\n// Scrape ServiceMonitors\nprometheus.operator.servicemonitors \"servicemonitors\" {\n  forward_to = [prometheus.remote_write.prometheus.receiver]\n}\n\n// Scrape PodMonitors  \nprometheus.operator.podmonitors \"podmonitors\" {\n  forward_to = [prometheus.remote_write.prometheus.receiver]\n}\n"
