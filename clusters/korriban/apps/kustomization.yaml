@@ -13,3 +13,4 @@ resources:
   - metrics-server
   - plex-monitoring
   - n8n
+  - webhook-receiver

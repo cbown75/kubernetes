@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-receiver
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: webhook-receiver
+    app.kubernetes.io/component: alerting
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webhook-receiver
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webhook-receiver
+        app.kubernetes.io/component: alerting
+    spec:
+      serviceAccountName: webhook-receiver
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: webhook-receiver
+          image: prom/alertmanager:v0.27.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cat > /tmp/webhook-server.sh << 'EOF'
+              #!/bin/sh
+              echo "Starting webhook receiver on port 8080..."
+
+              while true; do
+                {
+                  echo -ne "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+                } | nc -l -p 8080 -q 1 | while IFS= read -r line; do
+                  case "$line" in
+                    POST*)
+                      endpoint=$(echo "$line" | cut -d' ' -f2)
+                      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Received webhook at: $endpoint"
+                      ;;
+                    Content-Length:*)
+                      ;;
+                    Authorization:*)
+                      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Auth: ${line#Authorization: }"
+                      ;;
+                    "")
+                      break
+                      ;;
+                  esac
+                done
+              done
+              EOF
+
+              chmod +x /tmp/webhook-server.sh
+              exec /tmp/webhook-server.sh
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: WEBHOOK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-secrets
+                  key: webhook-password
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
