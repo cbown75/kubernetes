@@ -32,35 +32,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - |
-              cat > /tmp/webhook-server.sh << 'EOF'
-              #!/bin/sh
-              echo "Starting webhook receiver on port 8080..."
-
-              while true; do
-                {
-                  echo -ne "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
-                } | nc -l -p 8080 -q 1 | while IFS= read -r line; do
-                  case "$line" in
-                    POST*)
-                      endpoint=$(echo "$line" | cut -d' ' -f2)
-                      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Received webhook at: $endpoint"
-                      ;;
-                    Content-Length:*)
-                      ;;
-                    Authorization:*)
-                      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Auth: ${line#Authorization: }"
-                      ;;
-                    "")
-                      break
-                      ;;
-                  esac
-                done
-              done
-              EOF
-
-              chmod +x /tmp/webhook-server.sh
-              exec /tmp/webhook-server.sh
+            - "cat > /tmp/webhook-server.sh << 'EOF'\n#!/bin/sh\necho \"Starting webhook receiver on port 8080...\"\n\nwhile true; do\n  {\n    read -r line\n    endpoint=$(echo \"$line\" | cut -d' ' -f2)\n    echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Received webhook at: $endpoint\"\n    \n    # Read remaining headers\n    while read -r header; do\n      case \"$header\" in\n        \"\"*) break ;;\n      esac\n    done\n    \n    # Send response\n    echo -e \"HTTP/1.1 200 OK\\r\\nContent-Length: 2\\r\\n\\r\\nOK\"\n  } | nc -l -p 8080\ndone\nEOF\n\nchmod +x /tmp/webhook-server.sh\nexec /tmp/webhook-server.sh\n"
           ports:
             - name: http
               containerPort: 8080
