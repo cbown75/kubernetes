@@ -15,7 +15,7 @@ data:
     # Storage configuration
     storage:
       backend: filesystem
-      filesystem_storage_backend:
+      filesystem:
         dir: /data
 
     # Retention settings
