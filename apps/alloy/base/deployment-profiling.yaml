@@ -60,6 +60,6 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: alloy-tracing
+            name: alloy-profiling # ⬅️ FIXED: Was "alloy-tracing", now correct
         - name: alloy-data
           emptyDir: {}
