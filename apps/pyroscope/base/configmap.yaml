@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pyroscope-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/part-of: monitoring-stack
+data:
+  config.yaml: |
+    server:
+      http_listen_port: 4040
+
+    # Storage configuration
+    storage:
+      backend: filesystem
+      filesystem:
+        path: /data
+
+    # Retention settings
+    limits:
+      max_query_lookback: 720h  # 30 days
+      max_query_length: 24h
+
+    # Ingestion settings
+    distributor:
+      receivers:
+        - service_name: pyroscope
+          port: 4040
+          protocol: http
+
+    # Compactor settings
+    compactor:
+      working_directory: /data/compactor
+      compaction_interval: 2h
+
+    # Enable components
+    target: all
+
+    # Memberlist for clustering (single instance for now)
+    memberlist:
+      join_members: []
+
+    # Observability
+    analytics:
+      enabled: false

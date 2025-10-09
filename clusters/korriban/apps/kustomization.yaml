@@ -16,3 +16,5 @@ resources:
   - webhook-receiver
   - kube-state-metrics
   - prometheus-node-exporter
+  - pyroscope
+  - tempo

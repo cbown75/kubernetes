@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: pyroscope
+  namespace: monitoring
+spec:
+  hosts:
+    - "pyroscope.home.cwbtech.net"
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: pyroscope.monitoring.svc.cluster.local
+            port:
+              number: 4040
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s

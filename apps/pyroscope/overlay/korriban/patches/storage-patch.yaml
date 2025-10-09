@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pyroscope
+  namespace: monitoring
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        storageClassName: synology-holocron-general
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi

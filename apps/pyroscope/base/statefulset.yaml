@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pyroscope
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  serviceName: pyroscope
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyroscope
+  template:
+    metadata:
+      labels:
+        app: pyroscope
+        app.kubernetes.io/name: pyroscope
+    spec:
+      serviceAccountName: pyroscope
+      securityContext:
+        fsGroup: 10001
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+      containers:
+        - name: pyroscope
+          image: grafana/pyroscope:1.13.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - -config.file=/etc/pyroscope/config.yaml
+            - -target=all
+          ports:
+            - name: http
+              containerPort: 4040
+              protocol: TCP
+          volumeMounts:
+            - name: pyroscope-config
+              mountPath: /etc/pyroscope
+            - name: storage
+              mountPath: /data
+          env:
+            - name: PYROSCOPE_LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: pyroscope-config
+          configMap:
+            name: pyroscope-config
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi
