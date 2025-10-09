@@ -15,3 +15,4 @@ resources:
   - n8n
   - webhook-receiver
   - kube-state-metrics
+  - prometheus-node-exporter
