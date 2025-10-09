@@ -10,32 +10,18 @@ data:
   config.yaml: |
     server:
       http_listen_port: 4040
+      log_level: info
 
     # Storage configuration
     storage:
       backend: filesystem
-      filesystem:
-        path: /data
+      filesystem_storage_backend:
+        dir: /data
 
     # Retention settings
     limits:
       max_query_lookback: 720h  # 30 days
       max_query_length: 24h
-
-    # Ingestion settings
-    distributor:
-      receivers:
-        - service_name: pyroscope
-          port: 4040
-          protocol: http
-
-    # Compactor settings
-    compactor:
-      working_directory: /data/compactor
-      compaction_interval: 2h
-
-    # Enable components
-    target: all
 
     # Memberlist for clustering (single instance for now)
     memberlist:
@@ -43,4 +29,4 @@ data:
 
     # Observability
     analytics:
-      enabled: false
+      reporting_enabled: false
