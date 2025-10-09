@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-tracing
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: tracing
+    app.kubernetes.io/part-of: monitoring-stack
+data:
+  config.alloy: |
+    // OTLP receiver for traces (gRPC)
+    otelcol.receiver.otlp "default" {
+      grpc {
+        endpoint = "0.0.0.0:4317"
+      }
+
+      http {
+        endpoint = "0.0.0.0:4318"
+      }
+
+      output {
+        traces  = [otelcol.processor.batch.default.input]
+      }
+    }
+
+    // Batch processor to improve efficiency
+    otelcol.processor.batch "default" {
+      output {
+        traces  = [otelcol.exporter.otlp.tempo.input]
+      }
+    }
+
+    // Export traces to Tempo
+    otelcol.exporter.otlp "tempo" {
+      client {
+        endpoint = "tempo.monitoring.svc.cluster.local:4317"
+        tls {
+          insecure = true
+        }
+      }
+    }

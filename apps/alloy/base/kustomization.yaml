@@ -7,11 +7,17 @@ resources:
   - configmap-metrics.yaml
   - configmap-logs.yaml
   - configmap-singleton.yaml
+  - configmap-tracing.yaml
+  - configmap-profiling.yaml
   - statefulset-metrics.yaml
   - daemonset-logs.yaml
   - deployment-singleton.yaml
+  - deployment-tracing.yaml
+  - deployment-profiling.yaml
   - services.yaml
+  - services-additional.yaml
   - servicemonitors.yaml
+  - servicemonitors-additional.yaml
 commonLabels:
   app.kubernetes.io/managed-by: kustomize
   app.kubernetes.io/part-of: monitoring-stack

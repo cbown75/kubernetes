@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy-tracing
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: tracing
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: tracing
+  ports:
+    - name: http-metrics
+      port: 12345
+      targetPort: 12345
+      protocol: TCP
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy-profiling
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: profiling
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: profiling
+  ports:
+    - name: http-metrics
+      port: 12345
+      targetPort: 12345
+      protocol: TCP

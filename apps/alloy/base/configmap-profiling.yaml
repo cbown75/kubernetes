@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-profiling
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: profiling
+    app.kubernetes.io/part-of: monitoring-stack
+data:
+  config.alloy: |
+    // Pyroscope write endpoint
+    pyroscope.write "pyroscope" {
+      endpoint {
+        url = "http://pyroscope.monitoring.svc.cluster.local:4040"
+      }
+    }
+
+    // Discover pods with profiling enabled
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+
+    // Scrape profiling data from pods with annotations
+    discovery.relabel "profiling" {
+      targets = discovery.kubernetes.pods.targets
+
+      // Only scrape pods with pyroscope.io/scrape=true annotation
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_pyroscope_io_scrape"]
+        regex         = "true"
+        action        = "keep"
+      }
+
+      // Get profile port from annotation or use default 4040
+      rule {
+        source_labels = ["__meta_kubernetes_pod_annotation_pyroscope_io_port"]
+        regex         = "(\\d+)"
+        target_label  = "__address__"
+        replacement   = "$1"
+        action        = "replace"
+      }
+
+      // Set application name from pod label
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        target_label  = "__name__"
+        action        = "replace"
+      }
+
+      // Add namespace label
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+        action        = "replace"
+      }
+
+      // Add pod name label
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+        action        = "replace"
+      }
+    }
+
+    // Scrape profiling data
+    pyroscope.scrape "kubernetes_pods" {
+      targets    = discovery.relabel.profiling.output
+      forward_to = [pyroscope.write.pyroscope.receiver]
+    }
