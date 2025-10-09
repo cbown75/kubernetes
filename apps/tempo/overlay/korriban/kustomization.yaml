@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: monitoring
 resources:
   - ../../base
-  - istio-routing.yaml
 commonAnnotations:
   app.kubernetes.io/instance: korriban
 patches:
