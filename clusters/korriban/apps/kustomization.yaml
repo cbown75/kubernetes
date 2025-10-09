@@ -14,3 +14,4 @@ resources:
   - plex-monitoring
   - n8n
   - webhook-receiver
+  - kube-state-metrics
