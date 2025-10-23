@@ -54,7 +54,6 @@ spec:
     cleanupOnFail: true
     timeout: 10m
   values:
-    rollOutCiliumPods: true
     cluster:
       name: korriban
       id: 1
@@ -63,7 +62,7 @@ spec:
       operator:
         clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
-    devices: "eth+ cilium_*"
+    devices: "eth0"
     excludeLocalAddress:
       - "10.244.0.0/16"
     routingMode: tunnel
@@ -120,8 +119,6 @@ spec:
           - httpV2
           - "policy:sourceContext=app|workload-name|pod|reserved-identity"
           - "policy:destinationContext=app|workload-name|pod|dns|reserved-identity"
-        serviceMonitor:
-          enabled: true
     operator:
       replicas: 2
       resources:
@@ -182,3 +179,4 @@ spec:
       serviceMonitor:
         enabled: true
         trustCRDsExist: true
+    rollOutCiliumPods: true
