@@ -5,6 +5,5 @@ resources:
   - storage
   - sealed-secrets
   - cilium
-  - metallb
   - dns
   #- istio
