@@ -66,6 +66,7 @@ spec:
         clusterPoolIPv4MaskSize: 20
     # CRITICAL: Configure devices to exclude flannel
     devices: "eth+ cilium_*" # Only manage eth* and cilium_* devices
+    directRoutingDevice: "eth0"
     # Exclude flannel's IP ranges from local address detection
     excludeLocalAddress:
       - "10.244.0.0/16" # Flannel's default pod CIDR
