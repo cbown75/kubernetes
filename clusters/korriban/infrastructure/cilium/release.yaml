@@ -54,6 +54,7 @@ spec:
     cleanupOnFail: true
     timeout: 10m
   values:
+    rollOutCiliumPods: true
     cluster:
       name: korriban
       id: 1
@@ -119,6 +120,8 @@ spec:
           - httpV2
           - "policy:sourceContext=app|workload-name|pod|reserved-identity"
           - "policy:destinationContext=app|workload-name|pod|dns|reserved-identity"
+        serviceMonitor:
+          enabled: true
     operator:
       replicas: 2
       resources:
