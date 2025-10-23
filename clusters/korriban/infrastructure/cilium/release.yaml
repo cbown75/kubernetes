@@ -142,8 +142,7 @@ spec:
           - flow
           - port-distribution
           - httpV2
-          - "policy:sourceContext=app|workload-name|pod|reserved-identity"
-          - "policy:destinationContext=app|workload-name|pod|dns|reserved-identity"
+          - "policy:sourceContext=app|workload-name|pod|reserved-identity;destinationContext=app|workload-name|pod|dns|reserved-identity"
     operator:
       replicas: 2
       resources:
