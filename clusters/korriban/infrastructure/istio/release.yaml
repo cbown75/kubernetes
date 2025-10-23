@@ -25,6 +25,9 @@ metadata:
   name: istio-base
   namespace: istio-system
 spec:
+  dependsOn:
+    - name: cert-manager
+      namespace: flux-system
   interval: 30m
   chart:
     spec:
@@ -45,7 +48,6 @@ spec:
   dependsOn:
     - name: istio-base
       namespace: istio-system
-    # FIXED: Point to Cilium in flux-system namespace
     - name: cilium
       namespace: flux-system
   interval: 30m
