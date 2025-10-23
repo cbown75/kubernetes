@@ -7,5 +7,5 @@ resources:
   - cilium
   - cert-manager
   - metallb
-  - istio
   - dns
+  #- istio
