@@ -62,7 +62,7 @@ spec:
       operator:
         clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
-    devices: "eth0"
+    devices: "e+"
     excludeLocalAddress:
       - "10.244.0.0/16"
     routingMode: tunnel
@@ -142,11 +142,11 @@ spec:
     k8sServicePort: 6443
     nodePort:
       enabled: true
-      directRoutingDevice: eth0
+      directRoutingDevice: "e+"
     bpf:
       hostLegacyRouting: false
       masquerade: true
-      masqueradeInterfaces: "eth0"
+      masqueradeInterfaces: "e+"
       preallocateMaps: true
       ctMapEntriesGlobalTCP: 524288
       ctMapEntriesGlobalAny: 262144
@@ -180,6 +180,4 @@ spec:
       serviceMonitor:
         enabled: true
         trustCRDsExist: true
-    rollOutCiliumPods: true
-    extraArgs:
-      - --direct-routing-device=eth0
+    rollOutCiliumPods: false
