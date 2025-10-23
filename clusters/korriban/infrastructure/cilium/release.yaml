@@ -56,10 +56,8 @@ spec:
     cleanupOnFail: true
     timeout: 10m
   values:
-    # CRITICAL FIX: Explicitly enable RBAC resource creation
     rbac:
       create: true
-    # CRITICAL FIX: Explicitly configure ServiceAccounts
     serviceAccounts:
       cilium:
         create: true
@@ -77,6 +75,8 @@ spec:
         create: true
         name: hubble-ui
         automount: true
+    securityContext:
+      privileged: true
     cluster:
       name: korriban
       id: 1
