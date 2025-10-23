@@ -1,4 +1,3 @@
----
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
@@ -15,6 +14,9 @@ metadata:
   name: cert-manager
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: sealed-secrets
+      namespace: kube-system
   interval: 30m
   targetNamespace: cert-manager
   chart:
