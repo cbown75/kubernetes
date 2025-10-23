@@ -6,6 +6,6 @@ resources:
   - sealed-secrets
   - cert-manager
   - metallb
-  - istio
+  #- istio
   - dns
   - cilium
