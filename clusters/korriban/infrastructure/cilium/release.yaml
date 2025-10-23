@@ -63,6 +63,7 @@ spec:
         clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
     devices: "eth+ ens+"
+    autoDirectNodeRoutes: true
     excludeLocalAddress:
       - "10.244.0.0/16"
     routingMode: tunnel
