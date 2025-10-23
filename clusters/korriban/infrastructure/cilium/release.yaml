@@ -43,10 +43,12 @@ spec:
   install:
     createNamespace: false
     replace: true
+    crds: CreateReplace
     remediation:
       retries: 3
   upgrade:
     cleanupOnFail: true
+    crds: CreateReplace
     remediation:
       retries: 3
       remediateLastFailure: true
@@ -54,6 +56,27 @@ spec:
     cleanupOnFail: true
     timeout: 10m
   values:
+    # CRITICAL FIX: Explicitly enable RBAC resource creation
+    rbac:
+      create: true
+    # CRITICAL FIX: Explicitly configure ServiceAccounts
+    serviceAccounts:
+      cilium:
+        create: true
+        name: cilium
+        automount: true
+      operator:
+        create: true
+        name: cilium-operator
+        automount: true
+      hubbleRelay:
+        create: true
+        name: hubble-relay
+        automount: true
+      ui:
+        create: true
+        name: hubble-ui
+        automount: true
     cluster:
       name: korriban
       id: 1
