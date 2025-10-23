@@ -141,6 +141,7 @@ spec:
     k8sServiceHost: 10.10.7.2
     k8sServicePort: 6443
     nodePort:
+      enabled: true
       directRoutingDevice: eth0
     bpf:
       hostLegacyRouting: false
@@ -180,3 +181,5 @@ spec:
         enabled: true
         trustCRDsExist: true
     rollOutCiliumPods: true
+    extraArgs:
+      - --direct-routing-device=eth0
