@@ -4,8 +4,8 @@ resources:
   # Core infrastructure (order matters for dependencies)
   - storage
   - sealed-secrets
-  - cert-manager
-  - metallb
-  #- istio
-  - dns
   - cilium
+  #- cert-manager
+  #- metallb
+  #- istio
+  #- dns
