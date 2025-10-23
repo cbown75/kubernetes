@@ -5,7 +5,6 @@ resources:
   - storage
   - sealed-secrets
   - cilium
-  - cert-manager
   - metallb
   - dns
   #- istio
