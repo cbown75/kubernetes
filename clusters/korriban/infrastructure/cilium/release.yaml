@@ -29,7 +29,7 @@ metadata:
     app.kubernetes.io/part-of: infrastructure
 spec:
   interval: 10m
-  timeout: 15m # Increased timeout for Talos
+  timeout: 15m
   targetNamespace: cilium-system
   chart:
     spec:
@@ -54,37 +54,26 @@ spec:
     cleanupOnFail: true
     timeout: 10m
   values:
-    # Cluster configuration
     cluster:
       name: korriban
       id: 1
-    # Network configuration for Talos
     ipam:
       mode: "cluster-pool"
       operator:
         clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
-    # CRITICAL: Configure devices to exclude flannel
-    devices: "eth+ cilium_*" # Only manage eth* and cilium_* devices
-    directRoutingDevice: "eth0"
-    # Exclude flannel's IP ranges from local address detection
+    devices: "eth+ cilium_*"
     excludeLocalAddress:
-      - "10.244.0.0/16" # Flannel's default pod CIDR
-    # Tunnel mode configuration
+      - "10.244.0.0/16"
     routingMode: tunnel
-    tunnelProtocol: geneve # Use geneve to avoid VXLAN conflicts with flannel
+    tunnelProtocol: geneve
     tunnelPort: 6081
-    # CNI Configuration - CRITICAL for Istio compatibility
     cni:
-      # Enable CNI chaining mode for compatibility with Istio
       chainingMode: none
-      # Allow other CNI plugins to coexist
       exclusive: false
       uninstall: false
-      # Standard CNI paths
       confPath: "/etc/cni/net.d"
       binPath: "/opt/cni/bin"
-    # Enable Envoy for L7 policies
     envoy:
       enabled: true
       resources:
@@ -93,7 +82,6 @@ spec:
           memory: 128Mi
         limits:
           memory: 512Mi
-    # Hubble for observability
     hubble:
       enabled: true
       relay:
@@ -131,7 +119,6 @@ spec:
           - httpV2
           - "policy:sourceContext=app|workload-name|pod|reserved-identity"
           - "policy:destinationContext=app|workload-name|pod|dns|reserved-identity"
-    # Operator configuration
     operator:
       replicas: 2
       resources:
@@ -140,10 +127,8 @@ spec:
           memory: 128Mi
         limits:
           memory: 1Gi
-      # IMPORTANT: For Talos, ensure the operator can restart unmanaged pods
       unmanagedPodWatcher:
         restart: true
-    # Agent resources
     resources:
       requests:
         cpu: 200m
@@ -151,25 +136,21 @@ spec:
       limits:
         cpu: 2000m
         memory: 2Gi
-    # Policy enforcement
     policyEnforcementMode: "default"
-    # Replace kube-proxy for better performance
     kubeProxyReplacement: true
     k8sServiceHost: 10.10.7.2
     k8sServicePort: 6443
-    # eBPF optimizations
+    nodePort:
+      directRoutingDevice: eth0
     bpf:
       hostLegacyRouting: false
       masquerade: true
-      # CRITICAL: Only masquerade on eth0, not flannel interfaces
       masqueradeInterfaces: "eth0"
       preallocateMaps: true
       ctMapEntriesGlobalTCP: 524288
       ctMapEntriesGlobalAny: 262144
-    # Socket LB for Istio compatibility
     socketLB:
       hostNamespaceOnly: true
-    # Security contexts for Talos
     securityContext:
       capabilities:
         ciliumAgent:
@@ -188,12 +169,10 @@ spec:
           - NET_ADMIN
           - SYS_ADMIN
           - SYS_RESOURCE
-    # Talos-specific settings
     cgroup:
       autoMount:
         enabled: false
       hostRoot: /sys/fs/cgroup
-    # Prometheus monitoring
     prometheus:
       enabled: true
       port: 9962
