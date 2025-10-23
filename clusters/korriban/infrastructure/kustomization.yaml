@@ -5,6 +5,7 @@ resources:
   - storage
   - sealed-secrets
   - cert-manager
+  - cert-manager-secrets
   - metallb
   - istio
   - dns
