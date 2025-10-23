@@ -4,7 +4,7 @@ resources:
   # Core infrastructure (order matters for dependencies)
   - storage
   - sealed-secrets
-  - cert-manager
+  #- cert-manager
   #- metallb
   #- istio
   #- dns
