@@ -3,7 +3,9 @@ kind: Kustomization
 resources:
   - prometheus
   - grafana
-  - loki
+  - prometheus-node-exporter
+  - kube-state-metrics
+#  - loki
 #  - alertmanager
 #  - alloy
 #  - cloudflared
@@ -14,7 +16,5 @@ resources:
 #  - plex-monitoring
 #  - n8n
 #  - webhook-receiver
-#  - kube-state-metrics
-#  - prometheus-node-exporter
 #  - pyroscope
 #  - tempo
