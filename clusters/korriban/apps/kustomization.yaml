@@ -3,13 +3,13 @@ kind: Kustomization
 resources:
   - prometheus
   - grafana
+  - alloy
   - prometheus-node-exporter
   - kube-state-metrics
   - webhook-receiver
   - metrics-server
 #  - loki
 #  - alertmanager
-#  - alloy
 #  - cloudflared
 #  - nebula-sync-pihole1
 #  - nebula-sync-pihole3
