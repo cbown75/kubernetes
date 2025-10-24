@@ -12,12 +12,12 @@ echo -e "${BLUE}=== Cert-Manager Cloudflare Sealed Secret Creator ===${NC}"
 echo ""
 
 # Prompt for Cloudflare API token
-read -sp "Enter Cloudflare API Token: " CF_API_TOKEN
+read -sp "Enter Cloudflare API Token: " API_TOKEN
 echo ""
 echo ""
 
 # Validate input
-if [ -z "$CF_API_TOKEN" ]; then
+if [ -z "$API_TOKEN" ]; then
   echo -e "${RED}❌ API token cannot be empty${NC}"
   exit 1
 fi
@@ -25,8 +25,8 @@ fi
 echo -e "${BLUE}Creating sealed secret...${NC}"
 
 # Create and seal the secret using the repo cert
-kubectl create secret generic traefik-cloudflare \
-  --from-literal=CF_API_TOKEN="$CF_API_TOKEN" \
+kubectl create secret generic cloudflare-api-token \
+  --from-literal=api-token="$API_TOKEN" \
   --namespace=cert-manager \
   --dry-run=client -o yaml |
   kubeseal --format yaml --cert public-cert.pem \
