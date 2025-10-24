@@ -30,13 +30,13 @@ kubectl create secret generic cloudflare-api-token \
   --namespace=cert-manager \
   --dry-run=client -o yaml |
   kubeseal --format yaml --cert public-cert.pem \
-    >clusters/korriban/infrastructure/cert-manager/cloudflare-secret.yaml
+    >infrastructure/cert-manager/overlay/korriban/cloudflare-secret.yaml
 
 echo -e "${GREEN}✅ Sealed secret created${NC}"
 echo ""
 echo -e "${GREEN}=== Success! ===${NC}"
 echo -e "${YELLOW}File updated:${NC}"
-echo "  ✓ clusters/korriban/infrastructure/cert-manager/cloudflare-secret.yaml"
+echo "  ✓ infrastructure/cert-manager/overlay/korriban/cloudflare-secret.yaml"
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo "  1. Commit and push the changes"
