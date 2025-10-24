@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    app.kubernetes.io/name: istio
+    app.kubernetes.io/part-of: istio
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+    istio.io/rev: default
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: istio
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://istio-release.storage.googleapis.com/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istio-base
+  namespace: istio-system
+spec:
+  dependsOn:
+    - name: cert-manager
+      namespace: flux-system
+  interval: 30m
+  chart:
+    spec:
+      chart: base
+      sourceRef:
+        kind: HelmRepository
+        name: istio
+        namespace: flux-system
+  install:
+    createNamespace: true
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istio-cni
+  namespace: istio-system
+spec:
+  dependsOn:
+    - name: istio-base
+      namespace: istio-system
+    - name: cilium
+      namespace: flux-system
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: cni
+      sourceRef:
+        kind: HelmRepository
+        name: istio
+        namespace: flux-system
+  values:
+    cni:
+      # Enable chained mode to work WITH Cilium
+      chained: true
+      # CNI paths matching Cilium configuration
+      cniBinDir: "/opt/cni/bin"
+      cniConfDir: "/etc/cni/net.d"
+      cniConfFileName: ""
+      # Repair settings for race condition mitigation
+      repair:
+        enabled: true
+        repairPods: true
+        deletePods: false
+        labelPods: false
+      logLevel: "info"
+    # Exclude system namespaces from iptables redirection
+    excludeNamespaces:
+      - kube-system
+      - kube-public
+      - istio-system
+      - monitoring
+      - cert-manager
+      - metallb-system
+      - cilium-system
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istiod
+  namespace: istio-system
+spec:
+  dependsOn:
+    - name: istio-base
+      namespace: istio-system
+    - name: istio-cni
+      namespace: istio-system
+    # FIXED: Also depend on Cilium to ensure proper ordering
+    - name: cilium
+      namespace: flux-system
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: istiod
+      sourceRef:
+        kind: HelmRepository
+        name: istio
+        namespace: flux-system
+  values:
+    pilot:
+      # Enable CNI mode
+      cni:
+        enabled: true
+      autoscaleEnabled: true
+    meshConfig:
+      accessLogFile: /dev/stdout
+      defaultConfig:
+        proxyStatsMatcher:
+          inclusionRegexps:
+            - ".*outlier_detection.*"
+            - ".*circuit_breakers.*"
+            - ".*upstream_rq_retry.*"
+            - ".*upstream_rq_pending.*"
+            - ".*_cx_.*"
+            - ".*osconfig.*"
+            - ".*rbac.*"
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istio-ingress
+  namespace: istio-system
+spec:
+  dependsOn:
+    - name: istiod
+      namespace: istio-system
+  interval: 30m
+  timeout: 10m
+  chart:
+    spec:
+      chart: gateway
+      sourceRef:
+        kind: HelmRepository
+        name: istio
+        namespace: flux-system
+  values:
+    service:
+      type: LoadBalancer
+      loadBalancerIP: 10.10.7.210
+      annotations:
+        metallb.universe.tf/address-pool: default
+      externalTrafficPolicy: Local
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: istio-gw-wildcard-home-cwbtech
+  namespace: istio-system
+spec:
+  secretName: istio-gw-tls
+  dnsNames:
+    - "*.home.cwbtech.net"
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-cloudflare
+  privateKey:
+    rotationPolicy: Always

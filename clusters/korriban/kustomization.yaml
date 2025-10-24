@@ -6,3 +6,5 @@ resources:
   - infrastructure/cert-manager-config.yaml
   - infrastructure/metallb-base.yaml
   - infrastructure/metallb-config.yaml
+  - infrastructure/istio-base.yaml
+  - infrastructure/istio-config.yaml
