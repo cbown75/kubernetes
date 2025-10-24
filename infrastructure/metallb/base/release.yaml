@@ -108,18 +108,18 @@ spec:
             - NET_ADMIN
           drop:
             - ALL
-    prometheus:
-      namespace: monitoring
-      serviceAccount: metallb-controller
-      app.kubernetes.io/part-of: monitoring-stack
-      serviceMonitor:
-        enabled: true
-        additionalLabels:
-          app.kubernetes.io/part-of: monitoring-stack
-      prometheusRule:
-        enabled: true
-        additionalLabels:
-          app.kubernetes.io/part-of: monitoring-stack
+            #    prometheus:
+            #      namespace: monitoring
+            #      serviceAccount: metallb-controller
+            #      app.kubernetes.io/part-of: monitoring-stack
+            #      serviceMonitor:
+            #        enabled: true
+            #        additionalLabels:
+            #          app.kubernetes.io/part-of: monitoring-stack
+            #      prometheusRule:
+            #        enabled: true
+            #        additionalLabels:
+            #          app.kubernetes.io/part-of: monitoring-stack
     crds:
       enabled: true
       validationFailurePolicy: Fail
