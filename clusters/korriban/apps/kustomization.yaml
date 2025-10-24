@@ -2,19 +2,19 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - prometheus
-  - grafana
-  - loki
-  - alertmanager
-  - alloy
-  - cloudflared
-  - nebula-sync-pihole1
-  - nebula-sync-pihole3
-  - nebula-sync-pihole5
-  - metrics-server
-  - plex-monitoring
-  - n8n
-  - webhook-receiver
-  - kube-state-metrics
-  - prometheus-node-exporter
-  - pyroscope
-  - tempo
+#  - grafana
+#  - loki
+#  - alertmanager
+#  - alloy
+#  - cloudflared
+#  - nebula-sync-pihole1
+#  - nebula-sync-pihole3
+#  - nebula-sync-pihole5
+#  - metrics-server
+#  - plex-monitoring
+#  - n8n
+#  - webhook-receiver
+#  - kube-state-metrics
+#  - prometheus-node-exporter
+#  - pyroscope
+#  - tempo

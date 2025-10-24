@@ -10,6 +10,13 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}=== N8N Sealed Secrets Generator ===${NC}"
 echo ""
 
+# Check if we're in the right directory
+if [ ! -d "apps/n8n" ]; then
+  echo -e "${RED}Error: Please run this script from the repository root${NC}"
+  echo -e "${RED}Expected to find: apps/n8n/${NC}"
+  exit 1
+fi
+
 # Check if kubeseal is installed
 if ! command -v kubeseal &>/dev/null; then
   echo -e "${RED}Error: kubeseal is not installed${NC}"
@@ -49,6 +56,9 @@ fi
 
 echo ""
 echo -e "${GREEN}Generating sealed secrets...${NC}"
+
+# Create the output directory if it doesn't exist
+mkdir -p apps/n8n/overlay/korriban
 
 # Create temporary secret
 kubectl create secret generic n8n-secrets \
