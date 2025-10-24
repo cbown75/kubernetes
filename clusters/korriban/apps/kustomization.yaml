@@ -5,6 +5,8 @@ resources:
   - grafana
   - prometheus-node-exporter
   - kube-state-metrics
+  - webhook-receiver
+  - metrics-server
 #  - loki
 #  - alertmanager
 #  - alloy
@@ -12,9 +14,7 @@ resources:
 #  - nebula-sync-pihole1
 #  - nebula-sync-pihole3
 #  - nebula-sync-pihole5
-#  - metrics-server
 #  - plex-monitoring
 #  - n8n
-#  - webhook-receiver
 #  - pyroscope
 #  - tempo
