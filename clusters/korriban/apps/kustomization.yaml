@@ -11,9 +11,9 @@ resources:
   - loki
   - alertmanager
   - cloudflared
-  #  - nebula-sync-pihole1
-  #  - nebula-sync-pihole3
-  #  - nebula-sync-pihole5
+  - nebula-sync-pihole1
+  - nebula-sync-pihole3
+  - nebula-sync-pihole5
   - plex-monitoring
 #  - n8n
 #  - pyroscope
