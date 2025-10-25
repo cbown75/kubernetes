@@ -95,7 +95,7 @@ OUTPUT_FILE="apps/nebula-sync-pihole1/overlay/korriban/sealed-secrets.yaml"
 
 # Create sealed secret
 echo -e "${GREEN}Creating sealed secret...${NC}"
-kubeseal --format=yaml --cert=pub-sealed-secrets.pem <"$TEMP_SECRET" >"$OUTPUT_FILE"
+kubeseal --format=yaml --cert=public-cert.pem <"$TEMP_SECRET" >"$OUTPUT_FILE"
 
 # Clean up
 rm "$TEMP_SECRET"
