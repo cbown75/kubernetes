@@ -9,7 +9,7 @@ resources:
   - webhook-receiver
   - metrics-server
   - loki
-  #  - alertmanager
+  - alertmanager
   #  - cloudflared
   #  - nebula-sync-pihole1
   #  - nebula-sync-pihole3
