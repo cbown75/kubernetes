@@ -8,3 +8,4 @@ resources:
   - infrastructure/metallb-config.yaml
   - infrastructure/istio-base.yaml
   - infrastructure/istio-config.yaml
+  - infrastructure/prometheus-operator-crds-kustomization.yaml
