@@ -7,4 +7,4 @@ spec:
   values:
     server:
       persistentVolume:
-        storageClass: nfs-holocron-general
+        storageClass: synology-holocron-fast
