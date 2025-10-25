@@ -56,21 +56,26 @@ fi
 
 # Create temp files
 TEMP_DIR=$(mktemp -d)
+CREDENTIALS_FILE="$TEMP_DIR/credentials.json"
 SECRET_FILE="$TEMP_DIR/secret.yaml"
 SEALED_FILE="$TEMP_DIR/sealed.yaml"
 
 # Clean up on exit
 trap "rm -rf $TEMP_DIR" EXIT
 
-echo "✅ Creating secret with proper structure..."
+echo "✅ Creating credentials file..."
 
-# Create the JSON credentials (properly formatted, single line)
-CREDENTIALS_JSON="{\"AccountTag\":\"$ACCOUNT_ID\",\"TunnelID\":\"$TUNNEL_ID\",\"TunnelName\":\"$TUNNEL_NAME\",\"TunnelSecret\":\"$TUNNEL_SECRET\"}"
+# Create the JSON credentials file (properly formatted)
+cat >"$CREDENTIALS_FILE" <<EOF
+{"AccountTag":"$ACCOUNT_ID","TunnelID":"$TUNNEL_ID","TunnelName":"$TUNNEL_NAME","TunnelSecret":"$TUNNEL_SECRET"}
+EOF
 
-# Create the base secret using from-literal instead of stringData
+echo "✅ Creating Kubernetes secret from credentials file..."
+
+# Create the secret from the credentials file
 kubectl create secret generic "$SECRET_NAME" \
   --namespace="$NAMESPACE" \
-  --from-literal=credentials.json="$CREDENTIALS_JSON" \
+  --from-file=credentials.json="$CREDENTIALS_FILE" \
   --dry-run=client -o yaml >"$SECRET_FILE"
 
 # Add labels to the secret
@@ -101,9 +106,6 @@ echo
 
 echo "Next steps:"
 echo "  1. Review the generated file"
-echo "  2. Commit to git:"
-echo "     git add $OUTPUT_FILE"
-echo "     git commit -m 'Update Cloudflare tunnel sealed secret'"
-echo "     git push"
+echo "  2. Commit to git and push"
 echo "  3. FluxCD will deploy automatically"
 echo
