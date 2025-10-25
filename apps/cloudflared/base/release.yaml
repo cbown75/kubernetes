@@ -45,12 +45,11 @@ spec:
       tag: "2024.8.3"
       pullPolicy: IfNotPresent
     cloudflare:
-      tunnelId: "498c5bc5-3084-4539-9905-31b586deafba"
-      tunnelName: "korriban-k8s"
+      # These will be patched by overlay
+      tunnelId: "PLACEHOLDER"
+      tunnelName: "PLACEHOLDER"
       secretName: "cloudflare-tunnel-cloudflared"
-      ingress:
-        - hostname: n8n.home.cwbtech.net
-          service: http://n8n.n8n.svc.cluster.local:5678
+      ingress: []
     resources:
       limits:
         cpu: 200m

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Simple Cloudflared sealed secret creator - creates properly formatted sealed secrets
-# Run from the repository root: ./scripts/create-cloudflared-secrets.sh
+# Cloudflared Sealed Secret Creator
+# Creates sealed secrets for Cloudflare Tunnel deployment
 
 set -e
 
@@ -9,31 +9,33 @@ NAMESPACE="cloudflare-tunnel"
 SECRET_NAME="cloudflare-tunnel-cloudflared"
 OUTPUT_FILE="apps/cloudflared/overlay/korriban/sealed-secrets.yaml"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${GREEN}=== Cloudflared Sealed Secret Creator ===${NC}"
+echo "=== Cloudflared Sealed Secret Creator ==="
 echo
 
 # Check if we're in the right directory
 if [ ! -d "apps/cloudflared" ]; then
-  echo -e "${RED}❌ Error: Please run this script from the repository root${NC}"
-  echo -e "${RED}Expected to find: apps/cloudflared/${NC}"
+  echo "❌ Error: Please run this script from the repository root"
+  echo "❌ Expected to find: apps/cloudflared/"
   exit 1
 fi
 
-# Check prerequisites
+# Check if kubectl is available
 if ! command -v kubectl &>/dev/null; then
-  echo -e "${RED}❌ kubectl not found${NC}"
+  echo "❌ Error: kubectl is not installed or not in PATH"
   exit 1
 fi
 
+# Check if kubeseal is available
 if ! command -v kubeseal &>/dev/null; then
-  echo -e "${RED}❌ kubeseal not found${NC}"
-  echo -e "${YELLOW}Install with: brew install kubeseal${NC}"
+  echo "❌ Error: kubeseal is not installed or not in PATH"
+  echo "Install with: brew install kubeseal (macOS)"
+  exit 1
+fi
+
+# Check if we can connect to the cluster
+if ! kubectl cluster-info &>/dev/null; then
+  echo "❌ Error: Cannot connect to Kubernetes cluster"
+  echo "Make sure your kubeconfig is set up correctly"
   exit 1
 fi
 
@@ -44,10 +46,11 @@ read -p "Tunnel ID: " TUNNEL_ID
 read -p "Tunnel Name: " TUNNEL_NAME
 read -s -p "Tunnel Secret: " TUNNEL_SECRET
 echo
+echo
 
 # Validate inputs
 if [[ -z "$ACCOUNT_ID" || -z "$TUNNEL_ID" || -z "$TUNNEL_NAME" || -z "$TUNNEL_SECRET" ]]; then
-  echo -e "${RED}❌ Error: All fields are required${NC}"
+  echo "❌ Error: All fields are required"
   exit 1
 fi
 
@@ -59,37 +62,25 @@ SEALED_FILE="$TEMP_DIR/sealed.yaml"
 # Clean up on exit
 trap "rm -rf $TEMP_DIR" EXIT
 
-echo -e "${GREEN}✅ Creating secret with proper structure...${NC}"
+echo "✅ Creating secret with proper structure..."
 
-# Create the JSON credentials
-CREDENTIALS_JSON=$(
-  cat <<EOF
-{
-  "AccountTag": "$ACCOUNT_ID",
-  "TunnelID": "$TUNNEL_ID",
-  "TunnelName": "$TUNNEL_NAME",
-  "TunnelSecret": "$TUNNEL_SECRET"
-}
-EOF
-)
+# Create the JSON credentials (properly formatted, single line)
+CREDENTIALS_JSON="{\"AccountTag\":\"$ACCOUNT_ID\",\"TunnelID\":\"$TUNNEL_ID\",\"TunnelName\":\"$TUNNEL_NAME\",\"TunnelSecret\":\"$TUNNEL_SECRET\"}"
 
-# Create the base secret
-cat >"$SECRET_FILE" <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: $SECRET_NAME
-  namespace: $NAMESPACE
+# Create the base secret using from-literal instead of stringData
+kubectl create secret generic "$SECRET_NAME" \
+  --namespace="$NAMESPACE" \
+  --from-literal=credentials.json="$CREDENTIALS_JSON" \
+  --dry-run=client -o yaml >"$SECRET_FILE"
+
+# Add labels to the secret
+cat >>"$SECRET_FILE" <<EOF
   labels:
     app.kubernetes.io/name: cloudflared
     app.kubernetes.io/part-of: cloudflare-tunnel
-type: Opaque
-stringData:
-  credentials.json: |
-$CREDENTIALS_JSON
 EOF
 
-echo -e "${GREEN}✅ Sealing secret...${NC}"
+echo "✅ Sealing secret..."
 
 # Seal the secret
 kubeseal -f "$SECRET_FILE" -w "$SEALED_FILE" \
@@ -97,69 +88,22 @@ kubeseal -f "$SECRET_FILE" -w "$SEALED_FILE" \
   --controller-namespace=kube-system \
   --format yaml
 
-# Verify and fix template if needed
-if ! grep -q "type: Opaque" "$SEALED_FILE"; then
-  echo -e "${YELLOW}⚠️  Adding missing type: Opaque to template...${NC}"
-
-  # Create a fixed version with proper template
-  cat >"$TEMP_DIR/fixed.yaml" <<EOF
----
-apiVersion: bitnami.com/v1alpha1
-kind: SealedSecret
-metadata:
-  name: $SECRET_NAME
-  namespace: $NAMESPACE
-  labels:
-    app.kubernetes.io/name: cloudflared
-    app.kubernetes.io/part-of: cloudflare-tunnel
-EOF
-
-  # Add the encrypted data section
-  sed -n '/^spec:/,/^  template:/p' "$SEALED_FILE" | sed '/^  template:/d' >>"$TEMP_DIR/fixed.yaml"
-
-  # Add proper template
-  cat >>"$TEMP_DIR/fixed.yaml" <<EOF
-  template:
-    type: Opaque
-    metadata:
-      name: $SECRET_NAME
-      namespace: $NAMESPACE
-      labels:
-        app.kubernetes.io/name: cloudflared
-        app.kubernetes.io/part-of: cloudflare-tunnel
-EOF
-
-  mv "$TEMP_DIR/fixed.yaml" "$SEALED_FILE"
-fi
-
 # Ensure output directory exists
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
 # Copy to final location
 cp "$SEALED_FILE" "$OUTPUT_FILE"
 
-echo -e "${GREEN}✅ SUCCESS! Sealed secret created: $OUTPUT_FILE${NC}"
+echo "✅ SUCCESS!"
+echo
+echo "Sealed secret created: $OUTPUT_FILE"
 echo
 
-# Verify the fix
-if grep -q "type: Opaque" "$OUTPUT_FILE"; then
-  echo -e "${GREEN}✅ Verified: Template includes 'type: Opaque'${NC}"
-else
-  echo -e "${YELLOW}⚠️  Warning: Template may still be missing 'type: Opaque'${NC}"
-fi
-
+echo "Next steps:"
+echo "  1. Review the generated file"
+echo "  2. Commit to git:"
+echo "     git add $OUTPUT_FILE"
+echo "     git commit -m 'Update Cloudflare tunnel sealed secret'"
+echo "     git push"
+echo "  3. FluxCD will deploy automatically"
 echo
-echo -e "${YELLOW}📋 Summary:${NC}"
-echo "   • File created: $OUTPUT_FILE"
-echo "   • Account ID: $ACCOUNT_ID"
-echo "   • Tunnel ID: $TUNNEL_ID"
-echo "   • Tunnel Name: $TUNNEL_NAME"
-echo "   • Tunnel Secret: [hidden]"
-echo
-echo -e "${YELLOW}🚀 Next steps:${NC}"
-echo "   1. Review: cat $OUTPUT_FILE"
-echo "   2. Commit: git add $OUTPUT_FILE"
-echo "   3. Push: git commit -m 'Add Cloudflared sealed secret' && git push"
-echo "   4. Monitor: kubectl logs -n cloudflare-tunnel -l app=cloudflared"
-echo
-echo -e "${GREEN}✅ Done!${NC}"
