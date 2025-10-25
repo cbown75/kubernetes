@@ -16,5 +16,5 @@ resources:
   - nebula-sync-pihole5
   - plex-monitoring
   - n8n
-#  - pyroscope
-#  - tempo
+  - pyroscope
+  - tempo
