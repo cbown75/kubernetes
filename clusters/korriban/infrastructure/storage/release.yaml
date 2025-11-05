@@ -47,10 +47,6 @@ spec:
         host: holocron.home.cwbtech.net
         port: 5000
         https: false
-      sith:
-        host: sith.home.cwbtech.net
-        port: 5000
-        https: false
 
     # CSI Driver Configuration - Updated for Talos with cbown75 custom image
     csiDriver:
@@ -93,17 +89,6 @@ spec:
           allowVolumeExpansion: true
         general:
           enabled: true
-          reclaimPolicy: Retain
-          allowVolumeExpansion: true
-
-      # Future Sith configuration
-      sith:
-        fast:
-          enabled: false
-          reclaimPolicy: Delete
-          allowVolumeExpansion: true
-        general:
-          enabled: false
           reclaimPolicy: Retain
           allowVolumeExpansion: true
 

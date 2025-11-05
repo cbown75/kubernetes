@@ -3,10 +3,6 @@ synology:
     host: holocron.home.cwbtech.net
     port: 443
     https: true
-  sith:
-    host: sith.home.cwbtech.net
-    port: 443
-    https: true
 
 # CSI Driver Configuration - Updated for Talos
 csiDriver:
@@ -49,16 +45,6 @@ storageClasses:
       allowVolumeExpansion: true
     general:
       enabled: true
-      reclaimPolicy: Retain
-      allowVolumeExpansion: true
-
-  sith:
-    fast:
-      enabled: false
-      reclaimPolicy: Delete
-      allowVolumeExpansion: true
-    general:
-      enabled: false
       reclaimPolicy: Retain
       allowVolumeExpansion: true
 
