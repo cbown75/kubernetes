@@ -62,7 +62,7 @@ mkdir -p apps/n8n/overlay/korriban
 
 # Create temporary secret
 kubectl create secret generic n8n-secrets \
-  --from-literal=postgres-user=n8n \
+  --from-literal=postgres-user=n8n_user \
   --from-literal=postgres-password="$POSTGRES_PASSWORD" \
   --from-literal=redis-password="$REDIS_PASSWORD" \
   --from-literal=encryption-key="$ENCRYPTION_KEY" \
