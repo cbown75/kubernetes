@@ -80,7 +80,7 @@ spec:
 
     # Storage Classes
     storageClasses:
-      defaultClass: synology-holocron-fast
+      defaultClass: ""  # No default - nfs-holocron-general is now the cluster default
 
       holocron:
         fast:
