@@ -5,11 +5,3 @@ metadata:
   namespace: n8n
 spec:
   storageClassName: nfs-holocron-general
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-pvc
-  namespace: n8n
-spec:
-  storageClassName: synology-holocron-fast
