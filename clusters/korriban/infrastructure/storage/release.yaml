@@ -44,9 +44,9 @@ spec:
     # Synology NAS Configuration
     synology:
       holocron:
-        host: holocron.home.cwbtech.net
-        port: 5000
-        https: false
+        host: 10.10.0.248
+        port: 443
+        https: true
 
     # CSI Driver Configuration - Updated for Talos with cbown75 custom image
     csiDriver:
