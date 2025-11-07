@@ -24,7 +24,7 @@ metadata:
   namespace: monitoring
 subsets:
   - addresses:
-      - ip: 10.10.0.200
+      - ip: 10.10.4.200
     ports:
       - name: metrics
         port: 9594
