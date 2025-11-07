@@ -8,14 +8,3 @@ spec:
     metadata:
       annotations:
         sidecar.istio.io/inject: "false"
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: postgres
-  namespace: n8n
-spec:
-  template:
-    metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
