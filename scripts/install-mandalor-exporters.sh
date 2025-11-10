@@ -2,8 +2,19 @@
 
 # Installation script for mandalor plex monitoring
 # Installs timothystewart6/prometheus-plex-exporter and intel_gpu_top exporter
+#
+# Usage: PLEX_TOKEN=your_token_here ./install-mandalor-exporters.sh
+#
+# SECURITY NOTE: Plex token must be provided via environment variable
 
 set -e
+
+# Validate required environment variables
+if [ -z "$PLEX_TOKEN" ]; then
+    echo "ERROR: PLEX_TOKEN environment variable not set"
+    echo "Usage: PLEX_TOKEN=your_token_here $0"
+    exit 1
+fi
 
 echo "======================================"
 echo "Installing Exporters for Plex Dashboard"
@@ -67,7 +78,7 @@ Type=simple
 User=cbown75
 Group=cbown75
 Environment="PLEX_SERVER=http://localhost:32400"
-Environment="PLEX_TOKEN=rpJMidmyH-xCJWH4Rdgh"
+Environment="PLEX_TOKEN=${PLEX_TOKEN}"
 Environment="PORT=9000"
 ExecStart=/opt/prometheus-plex-exporter/plex-exporter
 Restart=on-failure
