@@ -7,14 +7,14 @@ metadata:
     app: plex-exporter
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/port: "9594"
+    prometheus.io/port: "9000"
     prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
   ports:
     - name: metrics
-      port: 9594
-      targetPort: 9594
+      port: 9000
+      targetPort: 9000
       protocol: TCP
 ---
 apiVersion: v1
@@ -27,5 +27,42 @@ subsets:
       - ip: 10.10.4.200
     ports:
       - name: metrics
-        port: 9594
+        port: 9000
+        protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: intel-gpu-exporter
+  namespace: monitoring
+  labels:
+    app: intel-gpu-exporter
+    instance: mandalor
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: intel-gpu-exporter
+  namespace: monitoring
+  labels:
+    app: intel-gpu-exporter
+    instance: mandalor
+subsets:
+  - addresses:
+      - ip: 10.10.4.200
+    ports:
+      - name: metrics
+        port: 8080
         protocol: TCP

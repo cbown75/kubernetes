@@ -3,5 +3,3 @@ kind: Kustomization
 namespace: monitoring
 resources:
   - service.yaml
-  - node-exporter-service.yaml
-  - gpu-exporter-service.yaml
