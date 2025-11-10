@@ -65,3 +65,39 @@ subsets:
       - name: metrics
         port: 8080
         protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter-mandalor
+  namespace: monitoring
+  labels:
+    app: node-exporter
+    instance: mandalor
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: node-exporter-mandalor
+  namespace: monitoring
+  labels:
+    app: node-exporter
+    instance: mandalor
+subsets:
+  - addresses:
+      - ip: 10.10.4.200
+    ports:
+      - name: metrics
+        port: 9100
+        protocol: TCP
