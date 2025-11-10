@@ -44,7 +44,6 @@ metadata:
     prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
-  clusterIP: None
   ports:
     - name: metrics
       port: 8080
