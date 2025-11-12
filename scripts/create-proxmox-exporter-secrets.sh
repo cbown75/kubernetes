@@ -57,7 +57,7 @@ fi
 
 # Create sealed secret
 echo -e "${YELLOW}Creating sealed secret...${NC}"
-kubeseal --format=yaml --cert="${HOME}/.sealed-secrets/pub-sealed-secrets.pem" \
+kubeseal --format=yaml --cert="${REPO_ROOT}/public-cert.pem" \
     < "${TMP_SECRET}" > "${OUTPUT_FILE}"
 
 # Clean up
