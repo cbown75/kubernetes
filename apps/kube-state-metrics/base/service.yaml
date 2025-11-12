@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: kube-state-metrics
   namespace: monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
 spec:
   type: ClusterIP
   selector:
