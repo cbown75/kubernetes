@@ -7,6 +7,7 @@ resources:
   - pvc.yaml
   - configmap-datasources.yaml
   - configmap-grafana-ini.yaml
+  - configmap-dashboard-provider.yaml
   - deployment.yaml
   - service.yaml
   - dashboards/flux-gitops-monitoring-configmap.yaml
