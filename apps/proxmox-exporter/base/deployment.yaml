@@ -37,6 +37,9 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
@@ -45,3 +48,6 @@ spec:
             capabilities:
               drop:
                 - ALL
+      volumes:
+        - name: tmp
+          emptyDir: {}
