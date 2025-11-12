@@ -67,6 +67,8 @@ spec:
                 secretKeyRef:
                   name: n8n-secrets
                   key: encryption-key
+            - name: N8N_PORT
+              value: "5678"
             # Security Configuration
             - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
               value: "false"
