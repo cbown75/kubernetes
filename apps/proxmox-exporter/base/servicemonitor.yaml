@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: proxmox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: proxmox-exporter
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: proxmox-exporter
+  endpoints:
+    - port: metrics
+      path: /pve
+      interval: 30s
+      scrapeTimeout: 10s
+      params:
+        target:
+          - korriban.home.cwbtech.net:8006

@@ -6,10 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: proxmox-exporter
     app.kubernetes.io/part-of: monitoring-stack
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "9221"
-    prometheus.io/path: "/pve"
 spec:
   type: ClusterIP
   ports:
