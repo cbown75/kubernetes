@@ -109,6 +109,14 @@ spec:
             # Runner Configuration
             - name: N8N_RUNNERS_ENABLED
               value: "true"
+            # Execution Configuration
+            - name: OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS
+              value: "true"
+            # Security Configuration
+            - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
+              value: "false"
+            - name: N8N_GIT_NODE_DISABLE_BARE_REPOS
+              value: "true"
             # Timezone
             - name: TZ
               value: America/Phoenix

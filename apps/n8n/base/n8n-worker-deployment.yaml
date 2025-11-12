@@ -62,13 +62,16 @@ spec:
             # Worker Configuration
             - name: EXECUTIONS_MODE
               value: queue
-            - name: EXECUTIONS_PROCESS
-              value: main
             - name: N8N_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
                   name: n8n-secrets
                   key: encryption-key
+            # Security Configuration
+            - name: N8N_BLOCK_ENV_ACCESS_IN_NODE
+              value: "false"
+            - name: N8N_GIT_NODE_DISABLE_BARE_REPOS
+              value: "true"
             # Timezone
             - name: TZ
               value: America/Phoenix

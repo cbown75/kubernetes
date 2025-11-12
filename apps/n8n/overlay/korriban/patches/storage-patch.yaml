@@ -5,3 +5,11 @@ metadata:
   namespace: n8n
 spec:
   storageClassName: nfs-holocron-general
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: n8n
+spec:
+  storageClassName: nfs-holocron-fast
