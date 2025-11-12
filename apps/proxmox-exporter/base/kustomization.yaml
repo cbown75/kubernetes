@@ -8,7 +8,6 @@ commonLabels:
   app.kubernetes.io/part-of: monitoring-stack
 
 resources:
-  - namespace.yaml
   - deployment.yaml
   - service.yaml
   - servicemonitor.yaml
