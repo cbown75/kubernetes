@@ -1002,7 +1002,8 @@ data:
                   "kustomize_toolkit_fluxcd_io_namespace": true,
                   "namespace": true,
                   "service": true,
-                  "template": true
+                  "template": true,
+                  "Value #D": true
                 },
                 "indexByName": {
                   "id": 0,
