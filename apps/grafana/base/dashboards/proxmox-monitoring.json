@@ -82,7 +82,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "pve_up",
+          "expr": "pve_up{id=\"node/korriban\"}",
           "refId": "A"
         }
       ],
@@ -493,7 +493,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "pve_cpu_usage_ratio{type=\"node\"} * 100",
+          "expr": "pve_cpu_usage_ratio{id=\"node/korriban\"} * 100",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
@@ -675,7 +675,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "rate(pve_network_receive_bytes{type=\"node\"}[5m])",
+          "expr": "sum(rate(pve_network_receive_bytes{id=~\"qemu/.*\"}[5m]))",
           "legendFormat": "{{id}} - RX",
           "refId": "A"
         },
@@ -684,12 +684,12 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "rate(pve_network_transmit_bytes{type=\"node\"}[5m])",
+          "expr": "sum(rate(pve_network_transmit_bytes{id=~\"qemu/.*\"}[5m]))",
           "legendFormat": "{{id}} - TX",
           "refId": "B"
         }
       ],
-      "title": "Node Network Traffic",
+      "title": "VM Network Traffic (Total)",
       "type": "timeseries"
     },
     {
@@ -774,7 +774,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "rate(pve_disk_read_bytes{type=\"node\"}[5m])",
+          "expr": "sum(rate(pve_disk_read_bytes{id=~\"qemu/.*\"}[5m]))",
           "legendFormat": "{{id}} - Read",
           "refId": "A"
         },
@@ -783,12 +783,12 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "rate(pve_disk_write_bytes{type=\"node\"}[5m])",
+          "expr": "sum(rate(pve_disk_write_bytes{id=~\"qemu/.*\"}[5m]))",
           "legendFormat": "{{id}} - Write",
           "refId": "B"
         }
       ],
-      "title": "Node Disk I/O",
+      "title": "VM Disk I/O (Total)",
       "type": "timeseries"
     },
     {
