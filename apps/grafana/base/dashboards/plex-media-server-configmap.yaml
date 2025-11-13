@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-media-server
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/part-of: monitoring-stack
+data:
+  plex-media-server.json: |
+    null
