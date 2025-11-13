@@ -1130,7 +1130,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "pve_storage_size_bytes",
+          "expr": "pve_disk_size_bytes{id=~\"storage/.*\"}",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1140,7 +1140,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "pve_storage_usage_bytes",
+          "expr": "pve_disk_usage_bytes{id=~\"storage/.*\"}",
           "format": "table",
           "instant": true,
           "refId": "B"
