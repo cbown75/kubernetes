@@ -1035,8 +1035,8 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "rate(node_disk_written_bytes_total{job=\"kubernetes-pods\"}[5m])",
-              "legendFormat": "{{instance}} - {{device}}",
+              "expr": "rate(node_network_receive_bytes_total{device!=\"lo\",app_kubernetes_io_name=\"prometheus-node-exporter\"}[5m]) * 8",
+              "legendFormat": "{{instance}}",
               "refId": "A"
             }
           ],
@@ -1084,8 +1084,8 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "rate(node_network_transmit_bytes_total{device!=\"lo\"}[5m]) * 8",
-              "legendFormat": "{{instance}} - {{device}}",
+              "expr": "rate(node_network_transmit_bytes_total{device!=\"lo\",app_kubernetes_io_name=\"prometheus-node-exporter\"}[5m]) * 8",
+              "legendFormat": "{{instance}}",
               "refId": "A"
             }
           ],
