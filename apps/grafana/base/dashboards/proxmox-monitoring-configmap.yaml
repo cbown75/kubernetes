@@ -957,7 +957,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "pve_cpu_usage_ratio{id=~\"qemu/.*\"} * 100",
+              "expr": "(pve_cpu_usage_ratio{id=~\"qemu/.*\"} * on (id) group_left(name, type, node) pve_guest_info{id=~\"qemu/.*\"}) * 100",
               "format": "table",
               "instant": true,
               "refId": "B"
@@ -967,7 +967,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "(pve_memory_usage_bytes{id=~\"qemu/.*\"} / on (id) pve_memory_size_bytes{id=~\"qemu/.*\"}) * 100",
+              "expr": "((pve_memory_usage_bytes{id=~\"qemu/.*\"} / on (id) pve_memory_size_bytes{id=~\"qemu/.*\"}) * on (id) group_left(name, type, node) pve_guest_info{id=~\"qemu/.*\"}) * 100",
               "format": "table",
               "instant": true,
               "refId": "C"
