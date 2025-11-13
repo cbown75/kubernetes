@@ -402,7 +402,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "avg(pve_memory_usage_ratio * 100)",
+          "expr": "avg((pve_memory_usage_bytes / pve_memory_size_bytes) * 100)",
           "refId": "A"
         }
       ],
@@ -585,7 +585,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "pve_memory_usage_ratio{type=\"node\"} * 100",
+          "expr": "(pve_memory_usage_bytes{id=\"node/korriban\"} / pve_memory_size_bytes{id=\"node/korriban\"}) * 100",
           "legendFormat": "{{id}}",
           "refId": "A"
         }
@@ -956,7 +956,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "expr": "pve_memory_usage_ratio{type=~\"qemu|lxc\"} * 100",
+          "expr": "(pve_memory_usage_bytes{type=~\"qemu|lxc\"} / pve_memory_size_bytes{type=~\"qemu|lxc\"}) * 100",
           "format": "table",
           "instant": true,
           "refId": "C"
