@@ -996,7 +996,13 @@ data:
                   "Time": true,
                   "__name__": true,
                   "instance": true,
-                  "job": true
+                  "job": true,
+                  "app": true,
+                  "kustomize_toolkit_fluxcd_io_name": true,
+                  "kustomize_toolkit_fluxcd_io_namespace": true,
+                  "namespace": true,
+                  "service": true,
+                  "template": true
                 },
                 "indexByName": {
                   "id": 0,
