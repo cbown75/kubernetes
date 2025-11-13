@@ -650,7 +650,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "rate(node_network_receive_bytes_total{device!=\"lo\",app_kubernetes_io_name=\"prometheus-node-exporter\"}[5m]) * 8",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\",app_kubernetes_io_name=\"prometheus-node-exporter\"}[5m])) * 100)",
               "legendFormat": "{{instance}}",
               "refId": "A"
             }
@@ -701,7 +701,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "rate(node_network_transmit_bytes_total{device!=\"lo\",app_kubernetes_io_name=\"prometheus-node-exporter\"}[5m]) * 8",
+              "expr": "100 * (1 - (node_memory_MemAvailable_bytes{app_kubernetes_io_name=\"prometheus-node-exporter\"} / node_memory_MemTotal_bytes{app_kubernetes_io_name=\"prometheus-node-exporter\"}))",
               "legendFormat": "{{instance}}",
               "refId": "A"
             }
