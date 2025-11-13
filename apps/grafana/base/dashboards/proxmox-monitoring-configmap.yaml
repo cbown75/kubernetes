@@ -947,7 +947,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "pve_guest_info",
+              "expr": "pve_guest_info{id=~\"qemu/.*\"}",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -977,7 +977,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "pve_onboot_status",
+              "expr": "pve_onboot_status{id=~\"qemu/.*\"}",
               "format": "table",
               "instant": true,
               "refId": "D"
