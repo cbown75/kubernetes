@@ -15,7 +15,6 @@ resources:
   - nebula-sync-pihole3
   - nebula-sync-pihole5
   - plex-monitoring
-  - proxmox-exporter
   - n8n
   - pyroscope
   - tempo
