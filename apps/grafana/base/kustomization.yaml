@@ -12,7 +12,6 @@ resources:
   - service.yaml
   - dashboards/flux-gitops-monitoring-configmap.yaml
   - dashboards/proxmox-monitoring-configmap.yaml
-  - dashboards/proxmox-dashboard-configmap.yaml
 commonLabels:
   app.kubernetes.io/name: grafana
   app.kubernetes.io/part-of: monitoring-stack
