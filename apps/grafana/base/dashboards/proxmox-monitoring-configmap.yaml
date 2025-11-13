@@ -986,8 +986,11 @@ data:
           "title": "VMs and Containers",
           "transformations": [
             {
-              "id": "merge",
-              "options": {}
+              "id": "joinByField",
+              "options": {
+                "byField": "id",
+                "mode": "outer"
+              }
             },
             {
               "id": "organize",
