@@ -952,7 +952,7 @@ data:
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "rate(node_disk_read_bytes_total{job=\"kubernetes-pods\"}[5m])",
+              "expr": "sum(kube_pod_status_phase) by (namespace, phase)",
               "format": "table",
               "instant": true,
               "refId": "A"
