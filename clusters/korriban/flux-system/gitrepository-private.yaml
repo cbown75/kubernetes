@@ -6,7 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  url: https://github.com/cbown75/kubernetes-private.git
+  url: ssh://git@github.com/cbown75/kubernetes-private.git
   ref:
     branch: main
   secretRef:
