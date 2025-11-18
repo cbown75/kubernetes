@@ -1,0 +1,18 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: media-apps
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infrastructure
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: kubernetes-private
+  path: ./clusters/korriban/apps
+  prune: true
+  wait: true
+  timeout: 5m0s
+  retryInterval: 2m0s

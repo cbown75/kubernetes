@@ -1,0 +1,13 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: kubernetes-private
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  url: ssh://git@github.com/cbown75/kubernetes-private.git
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
