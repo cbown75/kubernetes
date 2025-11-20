@@ -62,3 +62,45 @@ mountOptions:
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
 reclaimPolicy: Retain
+
+---
+# Config Storage - Media Apps
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-config
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: holocron.home.cwbtech.net
+  share: /volume1/kubernetes-config
+mountOptions:
+  - hard
+  - nfsvers=4.1
+  - rsize=131072
+  - wsize=131072
+  - timeo=600
+  - retrans=2
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+
+---
+# Arr Downloads/Complete - Shared with Docker
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-arr
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: holocron.home.cwbtech.net
+  share: /volume1/arr
+mountOptions:
+  - hard
+  - nfsvers=4.1
+  - rsize=131072
+  - wsize=131072
+  - timeo=600
+  - retrans=2
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Retain
