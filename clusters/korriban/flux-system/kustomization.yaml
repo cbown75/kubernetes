@@ -6,4 +6,5 @@ resources:
   - kustomization-infrastructure.yaml
   - kustomization-apps.yaml
   - gitrepository-private.yaml
+  - kustomization-media-storage.yaml
   - kustomization-media-apps.yaml
