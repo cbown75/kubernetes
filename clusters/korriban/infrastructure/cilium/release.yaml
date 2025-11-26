@@ -85,7 +85,7 @@ spec:
       operator:
         clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]
         clusterPoolIPv4MaskSize: 20
-    devices: "eth+ ens+ enp+"
+    devices: "eth+ ens+ enp+ bond+"
     autoDirectNodeRoutes: false
     excludeLocalAddress:
       - "10.244.0.0/16"
