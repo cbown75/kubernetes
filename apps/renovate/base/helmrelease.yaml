@@ -51,7 +51,7 @@ spec:
           "platform": "github",
           "username": "cbown75",
           "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
-          "repositories": ["cbown75/kubernetes"],
+          "repositories": ["cbown75/kubernetes", "cbown75/kubernetes-private"],
           "onboarding": true,
           "requireConfig": "optional",
           "enabledManagers": ["flux", "kubernetes", "helm-values", "regex"],
