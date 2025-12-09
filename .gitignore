@@ -5,3 +5,4 @@ dhcp-routes-patch.yaml
 talos-routing-fix.yaml
 scripts/apply-routing-fix.sh
 clusters/korriban/infrastructure/storage/client-info.yaml
+prompts/completed
