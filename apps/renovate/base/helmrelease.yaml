@@ -1,0 +1,135 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: renovate
+  namespace: renovate
+  labels:
+    app.kubernetes.io/name: renovate
+    app.kubernetes.io/part-of: automation
+spec:
+  interval: 10m
+  timeout: 10m
+  chart:
+    spec:
+      chart: renovate
+      version: ">=38.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: renovate
+        namespace: flux-system
+      interval: 5m
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  rollback:
+    cleanupOnFail: true
+    force: true
+    recreate: true
+  values:
+    cronjob:
+      enabled: true
+      schedule: "0 1 * * *"  # Daily at 1:00 AM
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 3
+      jobRestartPolicy: Never
+      timeZone: America/Phoenix
+
+    pod:
+      annotations:
+        renovate.kubernetes.io/renovate-bot: "true"
+
+    renovate:
+      config: |
+        {
+          "platform": "github",
+          "username": "cbown75",
+          "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
+          "repositories": ["cbown75/kubernetes"],
+          "onboarding": true,
+          "requireConfig": "optional",
+          "enabledManagers": ["flux", "kubernetes", "helm-values", "regex"],
+          "kubernetes": {
+            "fileMatch": ["\\.yaml$", "\\.yml$"]
+          },
+          "flux": {
+            "fileMatch": ["(^|/)kustomization\\.yaml$", "(^|/)helmrelease\\.yaml$"]
+          },
+          "helm-values": {
+            "fileMatch": ["(^|/)values\\.yaml$", "(^|/)values\\.ya?ml$"]
+          },
+          "packageRules": [
+            {
+              "description": "Automerge patch updates",
+              "matchUpdateTypes": ["patch"],
+              "automerge": false
+            }
+          ],
+          "prConcurrentLimit": 5,
+          "prHourlyLimit": 0,
+          "semanticCommits": "enabled",
+          "commitMessagePrefix": "chore(deps):",
+          "commitMessageAction": "Update",
+          "commitMessageTopic": "{{depName}}",
+          "commitMessageExtra": "to {{newVersion}}",
+          "dependencyDashboard": true,
+          "dependencyDashboardTitle": "Dependency Dashboard",
+          "platformAutomerge": false
+        }
+
+    redis:
+      enabled: false
+
+    # Environment variables (token will be from sealed secret)
+    env:
+      - name: RENOVATE_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: renovate-token
+            key: token
+      - name: LOG_LEVEL
+        value: "info"
+      - name: RENOVATE_BASE_DIR
+        value: "/tmp/renovate"
+      - name: RENOVATE_REQUIRE_CONFIG
+        value: "optional"
+
+    # Resource requests and limits
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+    # Security context
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: false
+      capabilities:
+        drop:
+          - ALL
+
+    # Persistence for Renovate cache
+    persistence:
+      enabled: true
+      storageClass: PLACEHOLDER
+      size: 50Gi
+      accessModes:
+        - ReadWriteOnce
+
+    # Service account
+    serviceAccount:
+      create: true
+      name: renovate
