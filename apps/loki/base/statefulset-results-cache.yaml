@@ -55,7 +55,7 @@ spec:
               cpu: 500m
               memory: 614Mi
         - name: exporter
-          image: prom/memcached-exporter:v0.15.2
+          image: prom/memcached-exporter:v0.15.4
           imagePullPolicy: IfNotPresent
           ports:
             - name: http-metrics
