@@ -24,7 +24,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: n8n-worker
-          image: n8nio/n8n:1.123.4
+          image: n8nio/n8n:1.123.5
           imagePullPolicy: Always
           command:
             - n8n
