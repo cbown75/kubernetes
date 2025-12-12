@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: memcached
-          image: memcached:1.6.38-alpine
+          image: memcached:1.6.39-alpine
           imagePullPolicy: IfNotPresent
           ports:
             - name: client
