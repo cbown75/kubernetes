@@ -33,7 +33,7 @@ spec:
     replicaCount: 2
     image:
       repository: cloudflare/cloudflared
-      tag: "2024.8.3"
+      tag: "2024.12.2"
       pullPolicy: IfNotPresent
     cloudflare:
       # These will be patched by overlay
