@@ -26,3 +26,27 @@ spec:
       retries: 3
   values:
     installCRDs: true
+    # Resource limits to prevent runaway processes
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
+    webhook:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+    cainjector:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 256Mi

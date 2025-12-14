@@ -113,6 +113,14 @@ spec:
       cni:
         enabled: true
       autoscaleEnabled: true
+      # Resource limits to prevent runaway processes
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
     meshConfig:
       accessLogFile: /dev/stdout
       defaultConfig:
