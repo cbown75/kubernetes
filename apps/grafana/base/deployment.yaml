@@ -27,7 +27,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: grafana
-          image: grafana/grafana:11.6.8
+          image: grafana/grafana:11.6.9
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
