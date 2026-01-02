@@ -140,7 +140,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: registry.k8s.io/sig-storage/nfsplugin:v4.5.0
+          image: registry.k8s.io/sig-storage/nfsplugin:v4.12.1
           securityContext:
             privileged: true
             capabilities:
@@ -258,7 +258,7 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: nfs
-          image: registry.k8s.io/sig-storage/nfsplugin:v4.5.0
+          image: registry.k8s.io/sig-storage/nfsplugin:v4.12.1
           securityContext:
             privileged: true
             capabilities:
