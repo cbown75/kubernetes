@@ -9,7 +9,7 @@ csiDriver:
   name: synology-csi-driver
   image:
     repository: ghcr.io/cbown75/synology-csi
-    tag: 20250814
+    tag: 20250817
     pullPolicy: Always
 
 # Kubelet configuration
