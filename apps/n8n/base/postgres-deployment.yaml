@@ -50,7 +50,7 @@ spec:
         fsGroup: 999
       containers:
         - name: postgres
-          image: postgres:15-alpine
+          image: postgres:18-alpine
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
