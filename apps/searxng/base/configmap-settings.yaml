@@ -212,7 +212,7 @@ data:
 
       - name: crossref
         engine: crossref
-        shortcut: cr
+        shortcut: cref
         disabled: false
 
       # Media and images
