@@ -195,7 +195,8 @@ jobs:
         shell: bash
         run: |
           set -e
-          kube-score score "${{ steps.collect.outputs.stage }}" --exit-one-on-warning
+          find "${{ steps.collect.outputs.stage }}" -type f \( -name '*.yaml' -o -name '*.yml' \) \
+            | xargs -r kube-score score --exit-one-on-warning
       - name: Conftest policy check (if policies present)
         shell: bash
         run: |
