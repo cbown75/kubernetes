@@ -21,11 +21,13 @@ spec:
           operator: Exists
           effect: NoSchedule
       priorityClassName: system-node-critical
+      # NOTE: nodeSelector uses version-specific Talos extension label.
+      # Update this value when upgrading the NVIDIA driver extension.
       nodeSelector:
         extensions.talos.dev/nonfree-kmod-nvidia-lts: "580.105.08-v1.12.0"
       containers:
         - name: nvidia-device-plugin
-          image: nvcr.io/nvidia/k8s-device-plugin:v0.17.0
+          image: nvcr.io/nvidia/k8s-device-plugin
           env:
             - name: FAIL_ON_INIT_ERROR
               value: "false"

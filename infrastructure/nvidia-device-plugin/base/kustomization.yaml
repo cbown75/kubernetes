@@ -7,3 +7,6 @@ resources:
 commonLabels:
   app.kubernetes.io/name: nvidia-device-plugin
   app.kubernetes.io/part-of: gpu-infrastructure
+images:
+  - name: nvcr.io/nvidia/k8s-device-plugin
+    newTag: v0.17.0
