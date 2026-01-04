@@ -12,12 +12,12 @@ data:
       privacypolicy_url: false
       donation_url: false
       contact_url: false
-      enable_metrics: false
+      enable_metrics: true
       debug: false
 
     search:
       safe_search: 0
-      autocomplete: "google"
+      autocomplete: "duckduckgo"
       default_lang: "en"
       formats:
         - html
@@ -29,7 +29,7 @@ data:
       port: 8080
       limiter: true
       image_proxy: true
-      method: "GET"
+      method: "POST"
 
     redis:
       url: "redis://:${SEARXNG_REDIS_PASSWORD}@redis:6379/0"
@@ -38,7 +38,7 @@ data:
       static_use_hash: true
       default_theme: simple
       theme_args:
-        simple_style: dark
+        simple_style: auto
       results_on_new_tab: false
       infinite_scroll: true
 
