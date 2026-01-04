@@ -43,7 +43,7 @@ spec:
     server:
       image:
         repository: prom/prometheus
-        tag: "v2.55.1"
+        tag: "v3.8.1"
         pullPolicy: IfNotPresent
       extraArgs:
         web.enable-remote-write-receiver: ""
