@@ -11,3 +11,9 @@ spec:
       ingress:
         - hostname: n8n.home.cwbtech.net
           service: http://n8n.n8n.svc.cluster.local:5678
+    livenessProbe:
+      enabled: true
+      failureThreshold: 3
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
