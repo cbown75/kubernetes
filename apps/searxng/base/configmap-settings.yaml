@@ -1,0 +1,394 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  namespace: searxng
+data:
+  settings.yml: |
+    # SearXNG settings
+    # See https://docs.searxng.org/admin/settings/index.html
+
+    use_default_settings: true
+
+    general:
+      debug: false
+      instance_name: "SearXNG"
+      privacypolicy_url: false
+      donation_url: false
+      contact_url: false
+      enable_metrics: true
+
+    search:
+      safe_search: 0
+      autocomplete: "duckduckgo"
+      default_lang: "en"
+      formats:
+        - html
+        - json
+
+    server:
+      # secret_key is set via SEARXNG_SECRET environment variable
+      limiter: true
+      image_proxy: true
+      method: "POST"
+      default_http_headers:
+        X-Content-Type-Options: nosniff
+        X-Download-Options: noopen
+        X-Robots-Tag: noindex, nofollow
+        Referrer-Policy: no-referrer
+
+    redis:
+      url: redis://:${SEARXNG_REDIS_PASSWORD}@redis:6379/0
+
+    ui:
+      static_use_hash: true
+      default_locale: "en"
+      query_in_title: true
+      infinite_scroll: true
+      center_alignment: true
+      results_on_new_tab: false
+      theme_args:
+        simple_style: auto
+
+    outgoing:
+      request_timeout: 6.0
+      max_request_timeout: 15.0
+      useragent_suffix: ""
+      pool_connections: 100
+      pool_maxsize: 20
+      enable_http2: true
+
+    # Engine configurations - enable all major engines
+    engines:
+      # General search engines
+      - name: google
+        engine: google
+        shortcut: g
+        disabled: false
+
+      - name: bing
+        engine: bing
+        shortcut: bi
+        disabled: false
+
+      - name: duckduckgo
+        engine: duckduckgo
+        shortcut: ddg
+        disabled: false
+
+      - name: brave
+        engine: brave
+        shortcut: br
+        disabled: false
+
+      - name: startpage
+        engine: startpage
+        shortcut: sp
+        disabled: false
+
+      - name: qwant
+        engine: qwant
+        shortcut: qw
+        disabled: false
+
+      - name: mojeek
+        engine: mojeek
+        shortcut: mj
+        disabled: false
+
+      # Knowledge and reference
+      - name: wikipedia
+        engine: wikipedia
+        shortcut: wp
+        disabled: false
+
+      - name: wikidata
+        engine: wikidata
+        shortcut: wd
+        disabled: false
+
+      - name: wikimedia commons
+        engine: wikimedia_commons
+        shortcut: wc
+        disabled: false
+
+      - name: wolframalpha
+        engine: wolframalpha_api
+        shortcut: wa
+        disabled: false
+
+      - name: dictzone
+        engine: dictzone
+        shortcut: dz
+        disabled: false
+
+      # Developer resources
+      - name: github
+        engine: github
+        shortcut: gh
+        disabled: false
+
+      - name: gitlab
+        engine: gitlab
+        shortcut: gl
+        disabled: false
+
+      - name: stackoverflow
+        engine: stackoverflow
+        shortcut: so
+        disabled: false
+
+      - name: dockerhub
+        engine: docker_hub
+        shortcut: dh
+        disabled: false
+
+      - name: npm
+        engine: npm
+        shortcut: npm
+        disabled: false
+
+      - name: pypi
+        engine: pypi
+        shortcut: pypi
+        disabled: false
+
+      - name: crates.io
+        engine: crates
+        shortcut: cr
+        disabled: false
+
+      - name: packagist
+        engine: packagist
+        shortcut: pk
+        disabled: false
+
+      - name: rubygems
+        engine: rubygems
+        shortcut: rb
+        disabled: false
+
+      - name: hoogle
+        engine: hoogle
+        shortcut: ho
+        disabled: false
+
+      # Documentation and manuals
+      - name: archwiki
+        engine: archlinux
+        shortcut: aw
+        disabled: false
+
+      - name: gentoo wiki
+        engine: gentoo
+        shortcut: gw
+        disabled: false
+
+      - name: mdn
+        engine: mdn
+        shortcut: mdn
+        disabled: false
+
+      # Scientific and academic
+      - name: arxiv
+        engine: arxiv
+        shortcut: arx
+        disabled: false
+
+      - name: google scholar
+        engine: google_scholar
+        shortcut: gs
+        disabled: false
+
+      - name: pubmed
+        engine: pubmed
+        shortcut: pm
+        disabled: false
+
+      - name: semantic scholar
+        engine: semantic_scholar
+        shortcut: ss
+        disabled: false
+
+      - name: crossref
+        engine: crossref
+        shortcut: cref
+        disabled: false
+
+      # Media and images
+      - name: google images
+        engine: google_images
+        shortcut: goi
+        disabled: false
+
+      - name: bing images
+        engine: bing_images
+        shortcut: bii
+        disabled: false
+
+      - name: duckduckgo images
+        engine: duckduckgo_images
+        shortcut: ddi
+        disabled: false
+
+      - name: flickr
+        engine: flickr
+        shortcut: fl
+        disabled: false
+
+      - name: unsplash
+        engine: unsplash
+        shortcut: us
+        disabled: false
+
+      - name: deviantart
+        engine: deviantart
+        shortcut: da
+        disabled: false
+
+      # Video
+      - name: youtube
+        engine: youtube_noapi
+        shortcut: yt
+        disabled: false
+
+      - name: dailymotion
+        engine: dailymotion
+        shortcut: dm
+        disabled: false
+
+      - name: vimeo
+        engine: vimeo
+        shortcut: vm
+        disabled: false
+
+      - name: peertube
+        engine: peertube
+        shortcut: pt
+        disabled: false
+
+      # News
+      - name: google news
+        engine: google_news
+        shortcut: gon
+        disabled: false
+
+      - name: bing news
+        engine: bing_news
+        shortcut: bin
+        disabled: false
+
+      - name: duckduckgo news
+        engine: duckduckgo_extra
+        shortcut: ddn
+        categories: news
+        disabled: false
+
+      - name: reddit
+        engine: reddit
+        shortcut: re
+        disabled: false
+
+      - name: hackernews
+        engine: hackernews
+        shortcut: hn
+        disabled: false
+
+      - name: wikinews
+        engine: wikinews
+        shortcut: wn
+        disabled: false
+
+      # Maps and locations
+      - name: openstreetmap
+        engine: openstreetmap
+        shortcut: osm
+        disabled: false
+
+      - name: photon
+        engine: photon
+        shortcut: ph
+        disabled: false
+
+      # Files and torrents
+      - name: internet archive
+        engine: internet_archive
+        shortcut: ia
+        disabled: false
+
+      - name: anna's archive
+        engine: annas_archive
+        shortcut: aa
+        disabled: false
+
+      # Music
+      - name: bandcamp
+        engine: bandcamp
+        shortcut: bc
+        disabled: false
+
+      - name: soundcloud
+        engine: soundcloud
+        shortcut: sc
+        disabled: false
+
+      # Social
+      - name: lemmy communities
+        engine: lemmy_communities
+        shortcut: lc
+        disabled: false
+
+      - name: lemmy posts
+        engine: lemmy_posts
+        shortcut: lp
+        disabled: false
+
+      - name: lemmy comments
+        engine: lemmy_comments
+        shortcut: lco
+        disabled: false
+
+      - name: mastodon users
+        engine: mastodon
+        shortcut: mau
+        categories: social media
+        disabled: false
+
+      - name: mastodon hashtags
+        engine: mastodon
+        shortcut: mah
+        categories: social media
+        disabled: false
+
+      # Shopping
+      - name: ebay
+        engine: ebay
+        shortcut: eb
+        disabled: false
+
+      # IT and security
+      - name: cve
+        engine: cvedetails
+        shortcut: cve
+        disabled: false
+
+      - name: exploit-db
+        engine: exploitdb
+        shortcut: edb
+        disabled: false
+
+      - name: pkg.go.dev
+        engine: pkg_go_dev
+        shortcut: pgo
+        disabled: false
+
+      # Misc
+      - name: currency
+        engine: currency_convert
+        shortcut: cc
+        disabled: false
+
+      - name: wordnik
+        engine: wordnik
+        shortcut: wk
+        disabled: false
