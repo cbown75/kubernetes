@@ -18,10 +18,21 @@ kubectl apply --dry-run=client -f <file>
 # Validate entire kustomization
 kubectl kustomize clusters/korriban/ --enable-helm
 
+# Validate with kubeconform (schema validation)
+kubeconform -strict -ignore-missing-schemas -kubernetes-version 1.29.0 <file>
+
 # Check FluxCD reconciliation status
 flux get all
 kubectl get kustomizations -A
 ```
+
+### CI Validation (runs on PRs)
+The GitHub Actions workflow runs on all PRs affecting YAML files:
+- **commitlint** - Validates commit messages
+- **kubeconform** - Schema validation against Kubernetes 1.29.0
+- **kube-score** - Best practices analysis (fails on warnings)
+- **Polaris** - Security and reliability audit (fails on danger)
+- **Conftest** - Custom OPA policies (if `policy/` directory exists)
 
 ### Monitoring FluxCD
 ```bash
@@ -77,30 +88,33 @@ kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets
 kubernetes/
 ├── clusters/korriban/                    # Cluster-specific entry point
 │   ├── flux-system/                      # FluxCD controllers & sync config
-│   │   ├── gotk-components.yaml          # FluxCD installation
-│   │   ├── gotk-sync.yaml                # Git sync configuration
-│   │   ├── kustomization-infrastructure.yaml  # Infrastructure reconciliation
-│   │   └── kustomization-apps.yaml       # Apps reconciliation (depends on infra)
-│   ├── infrastructure/                   # Infrastructure layer
-│   │   └── kustomization.yaml            # Declares dependency order
+│   ├── infrastructure/                   # Infrastructure layer (dependency order)
 │   └── kustomization.yaml                # Root cluster manifest
 │
-├── infrastructure/                       # Shared infrastructure Helm charts
+├── infrastructure/                       # Shared infrastructure components
 │   ├── storage/                          # NFS & Synology CSI Helm charts
 │   ├── cert-manager/                     # TLS cert automation (base/overlay)
 │   ├── metallb/                          # LoadBalancer (base/overlay)
 │   ├── istio/                            # Service mesh (base/overlay)
-│   └── cilium/                           # CNI networking (base/overlay)
+│   └── prometheus-operator-crds/         # CRDs for monitoring stack
 │
-├── apps/                                 # Application deployments
-│   ├── grafana/                          # Monitoring dashboard
-│   ├── prometheus/                       # Metrics collection
-│   ├── loki/                             # Log aggregation
-│   ├── alertmanager/                     # Alert routing
-│   └── alloy/                            # Telemetry collector
+├── apps/                                 # Application deployments (~19 apps)
+│   ├── grafana/, prometheus/, loki/      # Observability stack
+│   ├── alertmanager/, alloy/, tempo/     # Alerting, telemetry, tracing
+│   ├── pyroscope/                        # Continuous profiling
+│   ├── kube-state-metrics/, prometheus-node-exporter/  # Metrics exporters
+│   ├── metrics-server/                   # Resource metrics API
+│   ├── n8n/                              # Workflow automation
+│   ├── cloudflared/                      # Cloudflare Tunnel
+│   ├── nebula-sync-pihole{1,3,5}/        # PiHole sync
+│   ├── renovate/                         # Dependency updates
+│   └── webhook-receiver/                 # Flux webhook receiver
 │
-└── scripts/                              # Sealed secret generation scripts
-    └── create-*-secrets.sh               # Generate sealed secrets for apps
+├── scripts/                              # Sealed secret generation scripts
+│   └── create-*-secrets.sh               # Generate sealed secrets for apps
+│
+├── .github/workflows/pullrequest.yaml    # CI validation pipeline
+└── renovate.json                         # Renovate bot configuration
 ```
 
 ### FluxCD Reconciliation Flow
@@ -140,7 +154,14 @@ Infrastructure components have strict ordering defined in `clusters/korriban/inf
 3. Cilium (CNI networking)
 4. DNS
 
-Other infrastructure (cert-manager, metallb, istio) is declared in `clusters/korriban/kustomization.yaml` and deploys after infrastructure is ready.
+Other infrastructure (cert-manager, metallb, istio, prometheus-operator-crds) is declared in `clusters/korriban/kustomization.yaml` and deploys after infrastructure is ready.
+
+### Renovate Bot
+
+Renovate automatically updates Helm chart versions and container images:
+- Scans `apps/**/*.yaml` and `infrastructure/**/*.yaml`
+- Creates PRs for version updates
+- CI validates all changes before merge
 
 ### Network Architecture
 
@@ -228,10 +249,19 @@ Other infrastructure (cert-manager, metallb, istio) is declared in `clusters/kor
 
 4. **Commit encrypted file** (safe to commit)
 
-**Creating new secret script:**
-- See `scripts/README.md` for script patterns
-- Use `kubeseal` to encrypt secrets
-- Output to `apps/<app>/overlay/korriban/sealed-secrets.yaml`
+**Available secret scripts:**
+- `create-grafana-secrets.sh` - Grafana admin + basic auth
+- `create-alertmanager-secrets.sh` - Slack, SMTP, PagerDuty
+- `create-prometheus-secrets.sh` - Prometheus (placeholder)
+- `create-cloudflared-secrets.sh` - Cloudflare Tunnel credentials
+- `generate-n8n-sealed-secrets.sh` - PostgreSQL, Redis, encryption key
+- `create-cert-manager-secret.sh` - Cloudflare API token
+- `create-synology-csi-secret.sh` - Synology NAS credentials
+- `create-renovate-secrets.sh` - GitHub token for Renovate
+- `create-proxmox-exporter-secrets.sh` - Proxmox API credentials
+- `create-nebula-sync-pihole*.sh` - PiHole sync credentials
+
+**Creating new secret scripts:** See `scripts/README.md` for patterns and prerequisites.
 
 ### Emergency Procedures
 
@@ -432,8 +462,10 @@ kubectl get secret <secret-name> -n <namespace>
 ## Cluster Context
 
 - **Cluster Name:** korriban
+- **Kubernetes Version:** 1.29.0 (used for CI schema validation)
 - **Primary Domain:** `*.home.cwbtech.net`
 - **Certificate Issuer:** Let's Encrypt (Cloudflare DNS-01 challenge)
 - **Ingress:** Istio (10.10.7.210)
 - **Monitoring:** Prometheus, Grafana, Loki, Alloy, Tempo, Pyroscope
 - **Storage:** NFS CSI + Synology CSI drivers
+- **Automation:** Renovate for dependency updates, FluxCD for GitOps
