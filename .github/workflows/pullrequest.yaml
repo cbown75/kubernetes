@@ -115,7 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "${{ needs.changes.outputs.manifest_files }}" \
-          | grep -E '\.ya?ml$' \
+          | { grep -E '\.ya?ml$' || true; } \
           | xargs -r -n 100 kubeconform -strict -ignore-missing-schemas -kubernetes-version "${KUBE_VERSION}" -summary
   policy_checks:
     needs: changes
@@ -159,7 +159,7 @@ jobs:
           mkdir -p "$STAGE/rendered" "$STAGE/raw"
           # Raw manifests from PR
           printf '%s\n' "${{ needs.changes.outputs.manifest_files }}" \
-          | grep -E '\.ya?ml$' \
+          | { grep -E '\.ya?ml$' || true; } \
           | while read -r f; do
               [[ -f "$f" ]] && cp "$f" "$STAGE/raw/$(echo "$f" | tr '/' '_')"
             done
