@@ -6,3 +6,4 @@ resources:
   - sealed-secrets
   - cilium
   - dns
+  - nvidia-device-plugin
