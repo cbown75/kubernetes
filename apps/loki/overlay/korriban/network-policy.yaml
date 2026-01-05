@@ -23,7 +23,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              name: istio-system
+              kubernetes.io/metadata.name: istio-system
       ports:
         - protocol: TCP
           port: 80
