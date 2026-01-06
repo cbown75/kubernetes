@@ -5,11 +5,3 @@ metadata:
   namespace: immich
 spec:
   storageClassName: nfs-holocron-general
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redis-pvc
-  namespace: immich
-spec:
-  storageClassName: nfs-holocron-general
