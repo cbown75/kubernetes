@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: immich-config
+  namespace: immich
+data:
+  IMMICH_HOST: "0.0.0.0"
+  DB_HOSTNAME: "10.10.7.200"
+  DB_PORT: "5432"
+  DB_DATABASE_NAME: "immich"
+  REDIS_HOSTNAME: "redis"
+  REDIS_PORT: "6379"
+  TZ: "America/Phoenix"
+  IMMICH_MACHINE_LEARNING_URL: "http://immich-ml:3003"
