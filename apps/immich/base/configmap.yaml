@@ -12,3 +12,4 @@ data:
   REDIS_PORT: "6379"
   TZ: "America/Phoenix"
   IMMICH_MACHINE_LEARNING_URL: "http://immich-ml:3003"
+  IMMICH_FFMPEG_HWACCEL: "nvenc"
