@@ -1,0 +1,59 @@
+# Static PV for Immich uploads (read-write)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-photos-pv
+spec:
+  capacity:
+    storage: 5Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 10.10.7.200
+    path: /volume1/immich
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-photos-pvc
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  volumeName: immich-photos-pv
+  resources:
+    requests:
+      storage: 5Ti
+---
+# Static PV for external library (read-only)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-external-pv
+spec:
+  capacity:
+    storage: 10Ti
+  accessModes:
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 10.10.7.200
+    path: /volume1/pictures
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-external-pvc
+  namespace: immich
+spec:
+  accessModes:
+    - ReadOnlyMany
+  storageClassName: ""
+  volumeName: immich-external-pv
+  resources:
+    requests:
+      storage: 10Ti
