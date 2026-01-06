@@ -4,6 +4,7 @@ namespace: immich
 resources:
   - ../../base
   - sealed-secrets.yaml
+  - istio-routing.yaml
 commonAnnotations:
   app.kubernetes.io/instance: korriban
 patches:

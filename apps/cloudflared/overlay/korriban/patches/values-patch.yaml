@@ -13,6 +13,8 @@ spec:
           service: http://n8n.n8n.svc.cluster.local:5678
         - hostname: search.home.cwbtech.net
           service: http://searxng.searxng.svc.cluster.local:8080
+        - hostname: immich.home.cwbtech.net
+          service: http://immich-server.immich.svc.cluster.local:2283
     livenessProbe:
       enabled: true
       failureThreshold: 3
