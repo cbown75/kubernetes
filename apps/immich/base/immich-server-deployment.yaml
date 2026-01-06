@@ -30,6 +30,9 @@ spec:
       labels:
         app: immich-server
     spec:
+      runtimeClassName: nvidia
+      nodeSelector:
+        nvidia.com/gpu: "true"
       containers:
         - name: immich-server
           image: ghcr.io/immich-app/immich-server
@@ -57,10 +60,12 @@ spec:
           resources:
             requests:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
+              nvidia.com/gpu: "1"
             limits:
               cpu: "4"
-              memory: 2Gi
+              memory: 4Gi
+              nvidia.com/gpu: "1"
           livenessProbe:
             httpGet:
               path: /api/server/ping
