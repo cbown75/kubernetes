@@ -1,0 +1,51 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: immich
+  namespace: immich
+spec:
+  hosts:
+    - "immich.home.cwbtech.net"
+  gateways:
+    - istio-system/public-gw
+  http:
+    # Handle large file uploads with extended timeouts
+    - match:
+        - uri:
+            prefix: /api/assets
+        - uri:
+            prefix: /api/asset/upload
+        - uri:
+            prefix: /api/library
+      route:
+        - destination:
+            host: immich-server.immich.svc.cluster.local
+            port:
+              number: 2283
+      timeout: 600s
+      retries:
+        attempts: 2
+        perTryTimeout: 300s
+      headers:
+        request:
+          set:
+            X-Forwarded-Proto: "https"
+            X-Forwarded-Host: "immich.home.cwbtech.net"
+    # Handle all other requests with standard timeouts
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: immich-server.immich.svc.cluster.local
+            port:
+              number: 2283
+      timeout: 30s
+      retries:
+        attempts: 2
+        perTryTimeout: 10s
+      headers:
+        request:
+          set:
+            X-Forwarded-Proto: "https"
+            X-Forwarded-Host: "immich.home.cwbtech.net"
