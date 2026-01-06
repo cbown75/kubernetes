@@ -11,7 +11,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
-    server: 10.10.7.200
+    server: holocron.home.cwbtech.net
     path: /volume1/immich
 ---
 apiVersion: v1
@@ -41,7 +41,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
-    server: 10.10.7.200
+    server: holocron.home.cwbtech.net
     path: /volume1/pictures
 ---
 apiVersion: v1
