@@ -28,7 +28,7 @@ spec:
     requests:
       storage: 5Ti
 ---
-# Static PV for external library (read-only)
+# Static PV for external library (read-write for sidecar files)
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -37,7 +37,7 @@ spec:
   capacity:
     storage: 10Ti
   accessModes:
-    - ReadOnlyMany
+    - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
@@ -51,7 +51,7 @@ metadata:
   namespace: immich
 spec:
   accessModes:
-    - ReadOnlyMany
+    - ReadWriteMany
   storageClassName: ""
   volumeName: immich-external-pv
   resources:

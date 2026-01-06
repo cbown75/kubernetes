@@ -54,7 +54,6 @@ spec:
               mountPath: /usr/src/app/upload
             - name: external-library
               mountPath: /usr/src/app/external
-              readOnly: true
           resources:
             requests:
               cpu: 500m
