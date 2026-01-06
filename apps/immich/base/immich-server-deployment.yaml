@@ -1,17 +1,4 @@
 apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: immich-photos-pvc
-  namespace: immich
-spec:
-  accessModes:
-    - ReadWriteMany
-  storageClassName: default-storage-class
-  resources:
-    requests:
-      storage: 1Ti
----
-apiVersion: v1
 kind: Service
 metadata:
   name: immich-server
@@ -65,6 +52,9 @@ spec:
           volumeMounts:
             - name: photos
               mountPath: /usr/src/app/upload
+            - name: external-library
+              mountPath: /usr/src/app/external
+              readOnly: true
           resources:
             requests:
               cpu: 500m
@@ -88,3 +78,6 @@ spec:
         - name: photos
           persistentVolumeClaim:
             claimName: immich-photos-pvc
+        - name: external-library
+          persistentVolumeClaim:
+            claimName: immich-external-pvc
