@@ -6,5 +6,6 @@ resources:
   - sealed-secrets.yaml
   - istio-routing.yaml
   - storage.yaml
+  - envoy-filter.yaml
 commonAnnotations:
   app.kubernetes.io/instance: korriban
