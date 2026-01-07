@@ -9,6 +9,21 @@ spec:
   gateways:
     - istio-system/public-gw
   http:
+    # WebSocket for mobile app real-time sync
+    - match:
+        - uri:
+            prefix: /api/socket.io
+      route:
+        - destination:
+            host: immich-server.immich.svc.cluster.local
+            port:
+              number: 2283
+      timeout: 0s
+      headers:
+        request:
+          set:
+            X-Forwarded-Proto: "https"
+            X-Forwarded-Host: "immich.home.cwbtech.net"
     # Handle large file uploads with extended timeouts
     - match:
         - uri:
