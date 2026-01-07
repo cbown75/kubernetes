@@ -18,7 +18,7 @@ spec:
             host: immich-server.immich.svc.cluster.local
             port:
               number: 2283
-      timeout: 0s
+      timeout: 14400s
       headers:
         request:
           set:
