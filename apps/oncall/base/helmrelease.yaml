@@ -40,6 +40,10 @@ spec:
     ingress:
       enabled: false
 
+    # Disable built-in nginx ingress controller
+    ingress-nginx:
+      enabled: false
+
     # Disable built-in cert-manager
     cert-manager:
       enabled: false
@@ -76,6 +80,10 @@ spec:
     # MariaDB for database
     mariadb:
       enabled: true
+      image:
+        registry: docker.io
+        repository: bitnami/mariadb
+        tag: "11.4"
       auth:
         database: oncall
         username: oncall
@@ -96,6 +104,10 @@ spec:
     # RabbitMQ for message broker
     rabbitmq:
       enabled: true
+      image:
+        registry: docker.io
+        repository: bitnami/rabbitmq
+        tag: "4.0"
       auth:
         username: oncall
         # Password will be auto-generated
@@ -114,9 +126,14 @@ spec:
     # Redis for caching
     redis:
       enabled: true
+      image:
+        registry: docker.io
+        repository: bitnami/redis
+        tag: "7.4"
       architecture: standalone
       auth:
-        enabled: false
+        enabled: true
+        password: "oncall-redis-password"
       master:
         persistence:
           enabled: true
