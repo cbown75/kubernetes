@@ -87,7 +87,7 @@ spec:
       auth:
         database: oncall
         username: oncall
-        # Password will be auto-generated
+        existingSecret: oncall-mariadb
       primary:
         persistence:
           enabled: true
@@ -110,7 +110,8 @@ spec:
         tag: "4.0"
       auth:
         username: oncall
-        # Password will be auto-generated
+        existingPasswordSecret: oncall-rabbitmq
+        existingErlangSecret: oncall-rabbitmq
       persistence:
         enabled: true
         size: 2Gi
@@ -133,7 +134,8 @@ spec:
       architecture: standalone
       auth:
         enabled: true
-        password: "oncall-redis-password"
+        existingSecret: oncall-redis
+        existingSecretPasswordKey: redis-password
       master:
         persistence:
           enabled: true

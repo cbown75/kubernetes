@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../../base
   - istio-routing.yaml
+  - sealed-secrets.yaml
 commonAnnotations:
   app.kubernetes.io/instance: korriban
 patches:
