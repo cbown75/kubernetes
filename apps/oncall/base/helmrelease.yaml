@@ -80,10 +80,6 @@ spec:
     # MariaDB for database
     mariadb:
       enabled: true
-      image:
-        registry: docker.io
-        repository: bitnami/mariadb
-        tag: "11.4"
       auth:
         database: oncall
         username: oncall
@@ -104,10 +100,6 @@ spec:
     # RabbitMQ for message broker
     rabbitmq:
       enabled: true
-      image:
-        registry: docker.io
-        repository: bitnami/rabbitmq
-        tag: "4.0"
       auth:
         username: oncall
         existingPasswordSecret: oncall-rabbitmq
@@ -127,10 +119,6 @@ spec:
     # Redis for caching
     redis:
       enabled: true
-      image:
-        registry: docker.io
-        repository: bitnami/redis
-        tag: "7.4"
       architecture: standalone
       auth:
         enabled: true
