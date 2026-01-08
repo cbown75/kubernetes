@@ -1,0 +1,18 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: oncall
+  namespace: oncall
+spec:
+  values:
+    mariadb:
+      primary:
+        persistence:
+          storageClass: nfs-holocron-general
+    rabbitmq:
+      persistence:
+        storageClass: nfs-holocron-general
+    redis:
+      master:
+        persistence:
+          storageClass: nfs-holocron-general
