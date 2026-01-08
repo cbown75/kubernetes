@@ -1,0 +1,131 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: oncall
+  namespace: oncall
+  labels:
+    app.kubernetes.io/name: oncall
+    app.kubernetes.io/part-of: monitoring-stack
+spec:
+  interval: 10m
+  timeout: 15m
+  chart:
+    spec:
+      chart: oncall
+      version: ">=1.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+      interval: 5m
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  rollback:
+    cleanupOnFail: true
+    force: true
+    recreate: true
+  values:
+    # Base URL configuration - will be patched by overlay
+    base_url: oncall.home.cwbtech.net
+    base_url_protocol: https
+
+    # Disable built-in ingress - using Istio
+    ingress:
+      enabled: false
+
+    # Disable built-in cert-manager
+    cert-manager:
+      enabled: false
+
+    # Use external Grafana
+    grafana:
+      enabled: false
+
+    externalGrafana:
+      url: http://grafana.monitoring.svc.cluster.local:80
+
+    # OnCall engine configuration
+    oncall:
+      replicaCount: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    # Celery workers for async tasks
+    celery:
+      replicaCount: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    # MariaDB for database
+    mariadb:
+      enabled: true
+      auth:
+        database: oncall
+        username: oncall
+        # Password will be auto-generated
+      primary:
+        persistence:
+          enabled: true
+          size: 5Gi
+          storageClass: PLACEHOLDER
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+    # RabbitMQ for message broker
+    rabbitmq:
+      enabled: true
+      auth:
+        username: oncall
+        # Password will be auto-generated
+      persistence:
+        enabled: true
+        size: 2Gi
+        storageClass: PLACEHOLDER
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    # Redis for caching
+    redis:
+      enabled: true
+      architecture: standalone
+      auth:
+        enabled: false
+      master:
+        persistence:
+          enabled: true
+          size: 2Gi
+          storageClass: PLACEHOLDER
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
