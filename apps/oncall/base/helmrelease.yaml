@@ -117,13 +117,14 @@ spec:
           cpu: 500m
           memory: 512Mi
 
-    # Redis for caching - using official Docker Hub image (matches other apps)
+    # Redis for caching - using official Docker Hub image
+    # Note: non-alpine because Bitnami chart scripts require /bin/bash
     redis:
       enabled: true
       image:
         registry: docker.io
         repository: redis
-        tag: "8-alpine"
+        tag: "8"
       architecture: standalone
       auth:
         enabled: true
