@@ -77,9 +77,13 @@ spec:
           cpu: 500m
           memory: 512Mi
 
-    # MariaDB for database
+    # MariaDB for database - using official Docker Hub image
     mariadb:
       enabled: true
+      image:
+        registry: docker.io
+        repository: mariadb
+        tag: "11.8"
       auth:
         database: oncall
         username: oncall
@@ -97,9 +101,13 @@ spec:
             cpu: 500m
             memory: 512Mi
 
-    # RabbitMQ for message broker
+    # RabbitMQ for message broker - using official Docker Hub image
     rabbitmq:
       enabled: true
+      image:
+        registry: docker.io
+        repository: rabbitmq
+        tag: "4.2-management"
       auth:
         username: oncall
         existingPasswordSecret: oncall-rabbitmq
@@ -116,9 +124,13 @@ spec:
           cpu: 500m
           memory: 512Mi
 
-    # Redis for caching
+    # Redis for caching - using official Docker Hub image (matches other apps)
     redis:
       enabled: true
+      image:
+        registry: docker.io
+        repository: redis
+        tag: "8-alpine"
       architecture: standalone
       auth:
         enabled: true
