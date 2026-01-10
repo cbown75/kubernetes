@@ -55,6 +55,19 @@ spec:
     externalGrafana:
       url: http://grafana.monitoring.svc.cluster.local:80
 
+    # Database configuration - use external PostgreSQL
+    database:
+      type: postgresql
+
+    # External PostgreSQL connection
+    externalPostgresql:
+      host: postgres.home.cwbtech.net
+      port: 5432
+      db: oncall
+      user: oncall
+      existingSecret: oncall-postgresql
+      passwordKey: password
+
     # OnCall engine configuration
     oncall:
       replicaCount: 1
@@ -77,29 +90,9 @@ spec:
           cpu: 500m
           memory: 512Mi
 
-    # MariaDB for database - using official Docker Hub image
+    # MariaDB disabled - using external PostgreSQL instead
     mariadb:
-      enabled: true
-      image:
-        registry: docker.io
-        repository: mariadb
-        tag: "11.8"
-      auth:
-        database: oncall
-        username: oncall
-        existingSecret: oncall-mariadb
-      primary:
-        persistence:
-          enabled: true
-          size: 5Gi
-          storageClass: PLACEHOLDER
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
+      enabled: false
 
     # RabbitMQ for message broker - using official Docker Hub image
     rabbitmq:
