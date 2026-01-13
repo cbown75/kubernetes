@@ -95,6 +95,7 @@ spec:
       enabled: false
 
     # RabbitMQ for message broker - using official Docker Hub image
+    # Note: Custom probes required because official image lacks curl
     rabbitmq:
       enabled: true
       image:
@@ -116,6 +117,31 @@ spec:
         limits:
           cpu: 500m
           memory: 512Mi
+      # Override probes to use rabbitmq-diagnostics instead of curl
+      livenessProbe:
+        enabled: false
+      readinessProbe:
+        enabled: false
+      customLivenessProbe:
+        exec:
+          command:
+            - rabbitmq-diagnostics
+            - -q
+            - check_running
+        initialDelaySeconds: 120
+        periodSeconds: 30
+        timeoutSeconds: 20
+        failureThreshold: 6
+      customReadinessProbe:
+        exec:
+          command:
+            - rabbitmq-diagnostics
+            - -q
+            - ping
+        initialDelaySeconds: 10
+        periodSeconds: 30
+        timeoutSeconds: 20
+        failureThreshold: 3
 
     # Redis for caching - using official Docker Hub image
     # Note: non-alpine because Bitnami chart scripts require /bin/bash
