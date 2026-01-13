@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: webhook-receiver
-          image: prom/alertmanager:v0.30.0
+          image: prom/alertmanager:v0.30.1
           command:
             - /bin/sh
             - -c
