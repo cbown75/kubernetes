@@ -103,7 +103,8 @@ spec:
         repository: rabbitmq
         tag: "4.2-management"
       auth:
-        username: oncall
+        # Username must be "user" - OnCall chart hardcodes RABBITMQ_USERNAME=user
+        username: user
         existingPasswordSecret: oncall-rabbitmq
         existingErlangSecret: oncall-rabbitmq
       persistence:
