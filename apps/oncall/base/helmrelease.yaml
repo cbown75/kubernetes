@@ -95,7 +95,8 @@ spec:
       enabled: false
 
     # RabbitMQ for message broker - using official Docker Hub image
-    # Note: Custom probes required because official image lacks curl
+    # Note: Official image ignores Bitnami's RABBITMQ_USERNAME/PASSWORD env vars
+    # Must use RABBITMQ_DEFAULT_USER/PASS via extraEnvVars instead
     rabbitmq:
       enabled: true
       image:
@@ -103,10 +104,18 @@ spec:
         repository: rabbitmq
         tag: "4.2-management"
       auth:
-        # Username must be "user" - OnCall chart hardcodes RABBITMQ_USERNAME=user
         username: user
         existingPasswordSecret: oncall-rabbitmq
         existingErlangSecret: oncall-rabbitmq
+      # Official RabbitMQ image needs RABBITMQ_DEFAULT_USER/PASS (not RABBITMQ_USERNAME)
+      extraEnvVars:
+        - name: RABBITMQ_DEFAULT_USER
+          value: "user"
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: oncall-rabbitmq
+              key: rabbitmq-password
       persistence:
         enabled: true
         size: 2Gi
