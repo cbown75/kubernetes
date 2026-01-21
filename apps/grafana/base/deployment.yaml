@@ -87,7 +87,7 @@ spec:
             timeoutSeconds: 5
         # Sidecar for dashboard discovery
         - name: grafana-sc-dashboard
-          image: quay.io/kiwigrid/k8s-sidecar:2.3.0
+          image: quay.io/kiwigrid/k8s-sidecar:2.5.0
           imagePullPolicy: IfNotPresent
           env:
             - name: METHOD
