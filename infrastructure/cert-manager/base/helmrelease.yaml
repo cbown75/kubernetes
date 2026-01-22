@@ -26,6 +26,9 @@ spec:
       retries: 3
   values:
     installCRDs: true
+    extraArgs:
+      - --dns01-recursive-nameservers-only
+      - --dns01-recursive-nameservers=10.10.4.4:53,10.10.4.5:53
     # Resource limits to prevent runaway processes
     resources:
       requests:
