@@ -47,6 +47,7 @@ spec:
       labels:
         app: n8n
     spec:
+      serviceAccountName: n8n
       securityContext:
         fsGroup: 1000
       containers:
