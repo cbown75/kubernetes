@@ -28,8 +28,12 @@ spec:
           image: n8nio/n8n:2.5.1
           imagePullPolicy: Always
           command:
-            - n8n
-            - worker
+            - /bin/sh
+            - -c
+            - |
+              export K8S_SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              export K8S_API_SERVER="https://kubernetes.default.svc"
+              exec n8n worker
           env:
             # Database Configuration
             - name: DB_TYPE
