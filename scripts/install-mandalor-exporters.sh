@@ -202,11 +202,15 @@ echo "[6/6] Updating Alloy config..."
 ALLOY_CONFIG="/etc/alloy/config.alloy"
 if [ -f "$ALLOY_CONFIG" ]; then
     if grep -q "localhost:9594" "$ALLOY_CONFIG"; then
-        sudo sed -i 's/localhost:9594/localhost:9000/g' "$ALLOY_CONFIG"
+        # Only replace on lines containing "plex" to avoid affecting other services
+        sudo sed -i '/plex/s/localhost:9594/localhost:9000/' "$ALLOY_CONFIG"
         sudo systemctl restart alloy
         echo "  ✓ Alloy config updated (9594 → 9000) and restarted"
+    elif grep -q "localhost:9000" "$ALLOY_CONFIG"; then
+        echo "  ✓ Alloy config already using correct port (localhost:9000)"
     else
-        echo "  ✓ Alloy config already using correct port"
+        echo "  ⚠ Alloy config does not reference localhost:9000 or legacy localhost:9594"
+        echo "    Please verify Plex exporter configuration in $ALLOY_CONFIG manually."
     fi
 else
     echo "  ⚠ Alloy config not found at $ALLOY_CONFIG - skipping"
