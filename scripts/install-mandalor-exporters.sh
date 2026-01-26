@@ -2,6 +2,7 @@
 
 # Installation script for mandalor plex monitoring
 # Installs timothystewart6/prometheus-plex-exporter and intel_gpu_top exporter
+# Also updates Alloy config if present to use new port
 #
 # Usage: PLEX_TOKEN=your_token_here ./install-mandalor-exporters.sh
 #
@@ -26,7 +27,7 @@ echo "  2. intel_gpu_top exporter for GPU metrics"
 echo ""
 
 # Step 1: Stop and remove old exporter
-echo "[1/5] Removing old sfragata plex-exporter..."
+echo "[1/6] Removing old sfragata plex-exporter..."
 sudo systemctl stop plex-exporter 2>/dev/null || true
 sudo systemctl disable plex-exporter 2>/dev/null || true
 sudo rm -f /usr/local/bin/plex_exporter
@@ -36,14 +37,14 @@ echo "  ✓ Old exporter removed"
 
 # Step 2: Install dependencies
 echo ""
-echo "[2/5] Installing dependencies..."
+echo "[2/6] Installing dependencies..."
 sudo apt update
 sudo apt install -y golang-go git intel-gpu-tools
 echo "  ✓ Dependencies installed"
 
 # Step 3: Build timothystewart6 plex exporter
 echo ""
-echo "[3/5] Building timothystewart6/prometheus-plex-exporter..."
+echo "[3/6] Building timothystewart6/prometheus-plex-exporter..."
 cd /opt
 sudo rm -rf prometheus-plex-exporter 2>/dev/null || true
 sudo git clone https://github.com/timothystewart6/prometheus-plex-exporter.git
@@ -66,7 +67,7 @@ echo "  ✓ Plex exporter built at /opt/prometheus-plex-exporter/plex-exporter"
 
 # Step 4: Create systemd service for plex exporter
 echo ""
-echo "[4/5] Creating systemd service for plex-exporter..."
+echo "[4/6] Creating systemd service for plex-exporter..."
 sudo tee /etc/systemd/system/plex-exporter.service > /dev/null <<'EOF'
 [Unit]
 Description=Plex Exporter for Prometheus (TechnoTim)
@@ -95,7 +96,7 @@ echo "  ✓ Plex exporter service running on port 9000"
 
 # Step 5: Install intel_gpu_top exporter
 echo ""
-echo "[5/5] Installing intel_gpu_top exporter..."
+echo "[5/6] Installing intel_gpu_top exporter..."
 
 # Create Python virtual environment
 cd /opt
@@ -194,6 +195,22 @@ sudo systemctl daemon-reload
 sudo systemctl enable intel-gpu-exporter
 sudo systemctl start intel-gpu-exporter
 echo "  ✓ Intel GPU exporter service running on port 8080"
+
+# Step 6: Update Alloy config if present
+echo ""
+echo "[6/6] Updating Alloy config..."
+ALLOY_CONFIG="/etc/alloy/config.alloy"
+if [ -f "$ALLOY_CONFIG" ]; then
+    if grep -q "localhost:9594" "$ALLOY_CONFIG"; then
+        sudo sed -i 's/localhost:9594/localhost:9000/g' "$ALLOY_CONFIG"
+        sudo systemctl restart alloy
+        echo "  ✓ Alloy config updated (9594 → 9000) and restarted"
+    else
+        echo "  ✓ Alloy config already using correct port"
+    fi
+else
+    echo "  ⚠ Alloy config not found at $ALLOY_CONFIG - skipping"
+fi
 
 # Verify services
 echo ""
