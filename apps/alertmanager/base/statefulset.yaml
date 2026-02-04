@@ -43,7 +43,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: alertmanager
-          image: quay.io/prometheus/alertmanager:v0.30.1
+          image: quay.io/prometheus/alertmanager:v0.31.0
           imagePullPolicy: IfNotPresent
           args:
             - --config.file=/etc/alertmanager/alertmanager.yml
