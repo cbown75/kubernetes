@@ -28,7 +28,7 @@ spec:
         runAsUser: 10001
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.12.2
+          image: docker.io/grafana/alloy:v1.13.0
           imagePullPolicy: IfNotPresent
           args:
             - run
