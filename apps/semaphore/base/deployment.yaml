@@ -94,6 +94,10 @@ spec:
                   key: admin-password
             - name: SEMAPHORE_ADMIN
               value: admin
+            # Port - must be explicit to override K8s service env injection
+            # (K8s injects SEMAPHORE_PORT=tcp://clusterip:3000 which breaks Semaphore)
+            - name: SEMAPHORE_PORT
+              value: "3000"
             # Web config - will be patched by overlay
             - name: SEMAPHORE_WEB_ROOT
               value: https://semaphore.example.com
