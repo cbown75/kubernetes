@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: semaphore
+spec:
+  template:
+    spec:
+      containers:
+        - name: semaphore
+          env:
+            - name: SEMAPHORE_WEB_ROOT
+              value: "https://semaphore.home.cwbtech.net"

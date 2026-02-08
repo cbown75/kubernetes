@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: semaphore-pvc
+  namespace: semaphore
+spec:
+  storageClassName: nfs-holocron-general

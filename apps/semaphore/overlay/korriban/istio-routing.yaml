@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: semaphore
+  namespace: semaphore
+spec:
+  hosts:
+    - "semaphore.home.cwbtech.net"
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: semaphore.semaphore.svc.cluster.local
+            port:
+              number: 3000
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
