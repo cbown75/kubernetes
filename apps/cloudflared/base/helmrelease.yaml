@@ -33,7 +33,7 @@ spec:
     replicaCount: 2
     image:
       repository: cloudflare/cloudflared
-      tag: "2026.1.2"
+      tag: "2026.2.0"
       pullPolicy: IfNotPresent
     cloudflare:
       # These will be patched by overlay
