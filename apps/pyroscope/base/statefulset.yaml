@@ -26,7 +26,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: pyroscope
-          image: grafana/pyroscope:1.18.0
+          image: grafana/pyroscope:1.18.1
           imagePullPolicy: IfNotPresent
           args:
             - -config.file=/etc/pyroscope/config.yaml
