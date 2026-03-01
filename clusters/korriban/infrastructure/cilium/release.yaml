@@ -87,8 +87,6 @@ spec:
         clusterPoolIPv4MaskSize: 20
     devices: "eth+ ens+ enp+ eno+ bond+"
     autoDirectNodeRoutes: false
-    excludeLocalAddress:
-      - "10.244.0.0/16"
     routingMode: tunnel
     tunnelProtocol: geneve
     tunnelPort: 6081
