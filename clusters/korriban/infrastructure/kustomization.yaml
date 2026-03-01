@@ -7,3 +7,4 @@ resources:
   - cilium
   - dns
   - nvidia-device-plugin
+  - intel-gpu-plugin
