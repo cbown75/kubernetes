@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: nginx
-          image: nginxinc/nginx-unprivileged:1.29-alpine
+          image: nginxinc/nginx-unprivileged:1.30-alpine
           imagePullPolicy: IfNotPresent
           ports:
             - name: http-metrics
