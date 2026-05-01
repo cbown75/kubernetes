@@ -102,7 +102,7 @@ spec:
       image:
         registry: docker.io
         repository: rabbitmq
-        tag: "4.2-management"
+        tag: "4.3-management"
       auth:
         username: user
         existingPasswordSecret: oncall-rabbitmq
