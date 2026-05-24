@@ -26,9 +26,6 @@ spec:
           set:
             X-Forwarded-Proto: "https"
             X-Forwarded-Host: "grafana.home.cwbtech.net"
-        response:
-          remove:
-            - "content-encoding" # Prevent double compression
     # Handle all other requests
     - match:
         - uri:
