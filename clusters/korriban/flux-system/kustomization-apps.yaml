@@ -6,8 +6,7 @@ metadata:
 spec:
   dependsOn:
     - name: infrastructure
-    # Ensures the CloudNativePG operator + CRDs exist before any app applies
-    # (Phase 2 adds CNPG Cluster resources under the databases app).
+    # CNPG operator/CRDs before Phase 2 Cluster CRs
     - name: cloudnative-pg-base
   interval: 10m
   sourceRef:

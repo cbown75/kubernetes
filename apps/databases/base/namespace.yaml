@@ -5,9 +5,5 @@ metadata:
   labels:
     name: databases
     app.kubernetes.io/name: databases
-    # Istio sidecar injection disabled: the CNPG Postgres wire protocol and
-    # streaming replication do not tolerate Istio mTLS interception well, and
-    # all consumers reach the DB via plain cluster DNS. (n8n takes the
-    # equivalent step at the workload level via its disable-istio-database
-    # patch rather than at the namespace.)
+    # Postgres wire protocol doesn't tolerate Istio mTLS; consumers use cluster DNS
     istio-injection: disabled
