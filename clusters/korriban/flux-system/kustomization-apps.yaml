@@ -6,6 +6,8 @@ metadata:
 spec:
   dependsOn:
     - name: infrastructure
+    # CNPG operator/CRDs before Phase 2 Cluster CRs
+    - name: cloudnative-pg-base
   interval: 10m
   sourceRef:
     kind: GitRepository
