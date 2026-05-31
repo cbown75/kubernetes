@@ -1,0 +1,46 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cloudnative-pg
+  namespace: flux-system
+spec:
+  interval: 30m
+  targetNamespace: cnpg-system
+  chart:
+    spec:
+      chart: cloudnative-pg
+      version: "0.28.2"
+      sourceRef:
+        kind: HelmRepository
+        name: cloudnative-pg
+        namespace: flux-system
+      interval: 12h
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # CNPG ships its CRDs in the chart's templates/crds (annotated
+    # helm.sh/resource-policy: keep), installed via this value — NOT via Flux's
+    # install/upgrade `crds:` policy, which only governs a top-level crds/ dir
+    # this chart doesn't use. Consequence: CRDs install on first deploy but are
+    # NOT auto-upgraded; a major CNPG bump may need a manual CRD apply.
+    crds:
+      create: true
+    # Single operator replica is plenty for this homelab; the operator is not
+    # in the data path — Postgres availability comes from the Cluster replicas.
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    monitoring:
+      # PodMonitor for the operator; per-Cluster PodMonitors are enabled on the
+      # Cluster resources themselves in later phases.
+      podMonitorEnabled: false
