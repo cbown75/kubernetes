@@ -42,10 +42,27 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  # Fail loudly if the NFS volume isn't writable by this uid, rather
+                  # than silently producing no backups (this is the first consumer of
+                  # nfs-holocron-backup, so the export's squash mapping is unproven).
+                  probe="/backups/.write-probe-$$"
+                  if ! touch "${probe}" 2>/dev/null; then
+                    echo "FATAL: /backups not writable by uid $(id -u) — check nfs-holocron-backup export squash" >&2
+                    exit 1
+                  fi
+                  rm -f "${probe}"
+
                   ts=$(date +%Y%m%d-%H%M%S)
                   out="/backups/apps-postgres-${ts}.sql.gz"
+                  tmp="${out}.tmp"
+                  # Write to a temp file and only promote it after the gzip stream
+                  # verifies, so a failed dump can't masquerade as a valid backup.
+                  trap 'rm -f "${tmp}"' EXIT
                   echo "Dumping all databases from ${PGHOST} to ${out}"
-                  pg_dumpall --clean --if-exists | gzip > "${out}"
+                  pg_dumpall --clean --if-exists | gzip > "${tmp}"
+                  gzip -t "${tmp}"
+                  mv "${tmp}" "${out}"
+                  trap - EXIT
                   echo "Backup complete: $(du -h "${out}" | cut -f1)"
                   echo "Pruning dumps older than ${RETENTION_DAYS} days"
                   find /backups -maxdepth 1 -name 'apps-postgres-*.sql.gz' -mtime "+${RETENTION_DAYS}" -print -delete

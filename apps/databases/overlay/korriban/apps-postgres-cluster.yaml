@@ -56,7 +56,9 @@ spec:
         host: "10.10.7.200"
         user: postgres
         dbname: postgres
-        sslmode: prefer
+        # require (not prefer): force TLS, no silent cleartext fallback. The VM
+        # serves TLS 1.3; verify-full is skipped (no published CA for the VM cert).
+        sslmode: require
       password:
         name: apps-postgres-vm-source
         key: password
