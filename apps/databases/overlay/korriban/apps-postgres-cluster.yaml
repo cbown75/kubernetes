@@ -1,0 +1,62 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: apps-postgres
+  namespace: databases
+spec:
+  instances: 2
+  # Pinned to match the source VM (PostgreSQL 16.14). Stock CNPG image — no extensions.
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.14
+  primaryUpdateStrategy: unsupervised
+
+  # CNPG manages the postgres superuser password in secret apps-postgres-superuser,
+  # consumed by the backup CronJob (pg_dumpall needs superuser to dump globals/roles).
+  enableSuperuserAccess: true
+
+  storage:
+    storageClass: nfs-holocron-general
+    size: 8Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+  # One-shot migration from the VM. CNPG runs pg_dump per listed database + pg_dumpall
+  # --roles-only for the listed roles, then restores into the fresh cluster.
+  bootstrap:
+    initdb:
+      import:
+        type: monolith
+        databases:
+          - sonarr_main
+          - sonarr_log
+          - radarr_main
+          - radarr_log
+          - lidarr_main
+          - lidarr_log
+          - prowlarr_main
+          - prowlarr_log
+          - n8n
+          - oncall
+          - semaphore
+        roles:
+          - arr_apps
+          - n8n_user
+          - oncall
+          - semaphore
+        source:
+          externalCluster: vm-postgres
+
+  externalClusters:
+    - name: vm-postgres
+      connectionParameters:
+        host: "10.10.7.200"
+        user: postgres
+        dbname: postgres
+        sslmode: prefer
+      password:
+        name: apps-postgres-vm-source
+        key: password
