@@ -13,6 +13,14 @@ spec:
     shared_preload_libraries:
       - vchord.so
 
+  managed:
+    roles:
+      - name: immich
+        ensure: present
+        login: true
+        passwordSecret:
+          name: immich-db-managed-cred
+
   storage:
     storageClass: nfs-holocron-databases
     size: 15Gi
