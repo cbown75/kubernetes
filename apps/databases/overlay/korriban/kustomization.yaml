@@ -8,6 +8,7 @@ resources:
   - backup-pvc.yaml
   - backup-cronjob.yaml
   - immich-postgres-cluster.yaml
+  - immich-db-managed-cred-sealed.yaml
   - immich-backup-pvc.yaml
   - immich-backup-cronjob.yaml
 commonAnnotations:
