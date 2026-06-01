@@ -15,7 +15,7 @@ spec:
 
   storage:
     storageClass: nfs-holocron-databases
-    size: 10Gi
+    size: 15Gi
 
   resources:
     requests:
