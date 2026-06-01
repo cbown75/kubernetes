@@ -6,7 +6,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: nfs-holocron-backup
+  storageClassName: nfs-holocron-databases
   resources:
     requests:
       storage: 10Gi
