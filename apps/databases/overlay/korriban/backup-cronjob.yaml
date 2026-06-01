@@ -20,11 +20,17 @@ spec:
             runAsUser: 26
             runAsGroup: 26
             fsGroup: 26
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: pgdump
-              # Same image as the cluster so pg_dumpall matches the server version.
               image: ghcr.io/cloudnative-pg/postgresql:16.14
               imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
               env:
                 - name: PGHOST
                   value: apps-postgres-rw
