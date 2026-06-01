@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-postgres-backup
+  namespace: databases
+spec:
+  schedule: "0 3 * * *"
+  timeZone: America/Denver
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 26
+            runAsGroup: 26
+            fsGroup: 26
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: pgdump
+              image: ghcr.io/tensorchord/cloudnative-vectorchord:16.9-0.4.3
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              env:
+                - name: PGHOST
+                  value: immich-postgres-rw
+                - name: PGUSER
+                  value: postgres
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-postgres-superuser
+                      key: password
+                - name: RETENTION_DAYS
+                  value: "14"
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  probe="/backups/.write-probe-$$"
+                  if ! touch "${probe}" 2>/dev/null; then
+                    echo "FATAL: /backups not writable by uid $(id -u) — check nfs-holocron-databases export squash" >&2
+                    exit 1
+                  fi
+                  rm -f "${probe}"
+
+                  ts=$(date +%Y%m%d-%H%M%S)
+                  out="/backups/immich-postgres-${ts}.sql.gz"
+                  tmp="${out}.tmp"
+                  trap 'rm -f "${tmp}"' EXIT
+                  echo "Dumping all databases from ${PGHOST} to ${out}"
+                  pg_dumpall --clean --if-exists | gzip > "${tmp}"
+                  gzip -t "${tmp}"
+                  mv "${tmp}" "${out}"
+                  trap - EXIT
+                  echo "Backup complete: $(du -h "${out}" | cut -f1)"
+                  echo "Pruning dumps older than ${RETENTION_DAYS} days"
+                  find /backups -maxdepth 1 -name 'immich-postgres-*.sql.gz' -mtime "+${RETENTION_DAYS}" -print -delete
+                  echo "Current backups:"
+                  ls -lh /backups
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: immich-postgres-backups
