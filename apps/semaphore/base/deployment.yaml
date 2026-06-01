@@ -58,7 +58,7 @@ spec:
             - name: SEMAPHORE_DB_DIALECT
               value: postgres
             - name: SEMAPHORE_DB_HOST
-              value: 10.10.7.200
+              value: apps-postgres-rw.databases.svc.cluster.local
             - name: SEMAPHORE_DB_PORT
               value: "5432"
             - name: SEMAPHORE_DB_NAME
