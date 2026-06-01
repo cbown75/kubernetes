@@ -14,7 +14,7 @@ spec:
   enableSuperuserAccess: true
 
   storage:
-    storageClass: nfs-holocron-general
+    storageClass: nfs-holocron-databases
     size: 8Gi
 
   resources:

@@ -42,12 +42,9 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  # Fail loudly if the NFS volume isn't writable by this uid, rather
-                  # than silently producing no backups (this is the first consumer of
-                  # nfs-holocron-backup, so the export's squash mapping is unproven).
                   probe="/backups/.write-probe-$$"
                   if ! touch "${probe}" 2>/dev/null; then
-                    echo "FATAL: /backups not writable by uid $(id -u) — check nfs-holocron-backup export squash" >&2
+                    echo "FATAL: /backups not writable by uid $(id -u) — check nfs-holocron-databases export squash" >&2
                     exit 1
                   fi
                   rm -f "${probe}"
