@@ -61,7 +61,7 @@ spec:
 
     # External PostgreSQL connection
     externalPostgresql:
-      host: postgres.home.cwbtech.net
+      host: apps-postgres-rw.databases.svc.cluster.local
       port: 5432
       db: oncall
       user: oncall

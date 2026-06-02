@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: databases
+  labels:
+    name: databases
+    app.kubernetes.io/name: databases
+    # Postgres wire protocol doesn't tolerate Istio mTLS; consumers use cluster DNS
+    istio-injection: disabled

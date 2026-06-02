@@ -43,6 +43,27 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain
 
 ---
+# Database Storage - dedicated no_root_squash export for CNPG (PGDATA uid 26)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-holocron-databases
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: holocron.home.cwbtech.net
+  share: /volume1/k8s-postgres
+mountOptions:
+  - hard
+  - nfsvers=4.1
+  - rsize=131072
+  - wsize=131072
+  - timeo=600
+  - retrans=2
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+
+---
 # Backup Storage
 apiVersion: storage.k8s.io/v1
 kind: StorageClass

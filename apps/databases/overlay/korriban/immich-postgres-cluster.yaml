@@ -1,0 +1,57 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-postgres
+  namespace: databases
+spec:
+  instances: 2
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:16.9-0.4.3
+  primaryUpdateStrategy: unsupervised
+  enableSuperuserAccess: true
+
+  postgresql:
+    shared_preload_libraries:
+      - vchord.so
+
+  managed:
+    roles:
+      - name: immich
+        ensure: present
+        login: true
+        passwordSecret:
+          name: immich-db-managed-cred
+
+  storage:
+    storageClass: nfs-holocron-databases
+    size: 15Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+  bootstrap:
+    initdb:
+      database: immich
+      owner: immich
+      import:
+        type: microservice
+        databases:
+          - immich
+        source:
+          externalCluster: vm-postgres
+        postImportApplicationSQL:
+          - CREATE EXTENSION IF NOT EXISTS vchord CASCADE
+
+  externalClusters:
+    - name: vm-postgres
+      connectionParameters:
+        host: "10.10.7.200"
+        user: postgres
+        dbname: postgres
+        sslmode: require
+      password:
+        name: apps-postgres-vm-source
+        key: password
