@@ -37,7 +37,7 @@ Each major system has detailed documentation:
 - **[Infrastructure Overview](clusters/korriban/infrastructure/README.md)** - All infrastructure components
 - **[Storage Systems](infrastructure/storage/README.md)** - NFS & Synology CSI drivers
 - **[Sealed Secrets](clusters/korriban/infrastructure/sealed-secrets/README.md)** - Secret encryption management
-- **[Cert Manager](clusters/korriban/infrastructure/cert-manager/README.md)** - TLS certificate automation
+- **[Cert Manager](infrastructure/cert-manager)** - TLS certificate automation
 - **[MetalLB](clusters/korriban/infrastructure/metallb/README.md)** - Load balancer for bare metal
 - **[Istio](clusters/korriban/infrastructure/istio/README.md)** - Service mesh and ingress controller
 - **[Prometheus Stack](clusters/korriban/apps/prometheus/README.md)** - Monitoring and alerting
