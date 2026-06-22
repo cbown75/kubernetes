@@ -171,3 +171,23 @@ spec:
           annotations:
             summary: "FluxCD resource {{ $labels.kind }}/{{ $labels.name }} is suspended"
             description: "FluxCD {{ $labels.kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} is suspended."
+    - name: certmanager.rules
+      rules:
+        # Certificate stuck renewing — scheduled renewal overdue >7d (silent until expiry)
+        - alert: CertManagerCertStuckRenewing
+          expr: (time() - certmanager_certificate_renewal_timestamp_seconds) > (7 * 24 * 3600)
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "cert {{ $labels.namespace }}/{{ $labels.name }} stuck renewing >7d"
+            description: "Scheduled renewal for {{ $labels.namespace }}/{{ $labels.name }} (issuer {{ $labels.issuer_name }}) has been overdue more than 7 days — ACME/DNS-01 is likely failing. Check: kubectl describe challenge -n {{ $labels.namespace }}"
+        # Backstop — certificate expires within 7d regardless of cause
+        - alert: CertManagerCertExpiringSoon
+          expr: (certmanager_certificate_expiration_timestamp_seconds - time()) < (7 * 24 * 3600)
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "cert {{ $labels.namespace }}/{{ $labels.name }} expires in <7d"
+            description: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires soon and has not renewed."
