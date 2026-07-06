@@ -34,7 +34,7 @@ spec:
         nvidia.com/gpu: "true"
       containers:
         - name: immich-ml
-          image: ghcr.io/immich-app/immich-machine-learning
+          image: ghcr.io/immich-app/immich-machine-learning:v2.4.1-cuda
           ports:
             - containerPort: 3003
           env:
