@@ -6,7 +6,3 @@ resources:
 commonLabels:
   app.kubernetes.io/name: intel-gpu-plugin
   app.kubernetes.io/part-of: gpu-infrastructure
-images:
-  - name: intel/intel-gpu-plugin
-    newName: intel/intel-gpu-plugin
-    newTag: "0.31.0"
