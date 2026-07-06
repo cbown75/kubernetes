@@ -3,5 +3,18 @@
   "commitMessageAction": "update",
   "kubernetes": {
     "managerFilePatterns": ["apps/.+\\.yaml$", "infrastructure/.+\\.yaml$"]
-  }
+  },
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "ghcr.io/immich-app/immich-server",
+        "ghcr.io/immich-app/immich-machine-learning"
+      ],
+      "groupName": "immich"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/immich-app/immich-machine-learning"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-cuda$"
+    }
+  ]
 }

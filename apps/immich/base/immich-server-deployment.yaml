@@ -35,7 +35,7 @@ spec:
         nvidia.com/gpu: "true"
       containers:
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server
+          image: ghcr.io/immich-app/immich-server:v2.4.1
           ports:
             - containerPort: 2283
           envFrom:

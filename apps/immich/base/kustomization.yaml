@@ -9,10 +9,3 @@ resources:
 commonLabels:
   app.kubernetes.io/name: immich
   app.kubernetes.io/part-of: photo-management
-images:
-  - name: ghcr.io/immich-app/immich-server
-    newTag: v2.4.1
-  - name: ghcr.io/immich-app/immich-machine-learning
-    newTag: v2.4.1-cuda
-  - name: redis
-    newTag: 7-alpine

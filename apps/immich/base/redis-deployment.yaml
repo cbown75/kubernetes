@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis
+          image: redis:7-alpine
           args: ["--save", ""]
           ports:
             - containerPort: 6379
