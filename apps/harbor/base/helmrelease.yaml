@@ -79,6 +79,13 @@ spec:
 
     # External Redis — in-cluster Valkey. Password from harbor-valkey-auth (key
     # REDIS_PASSWORD), the same secret Valkey enforces via requirepass.
+    # NOTE: the chart resolves this secret via a render-time Helm `lookup` and bakes the
+    # password into Harbor's ConfigMaps (not a runtime secretKeyRef). Two implications:
+    #  - Cold bootstrap: harbor-valkey-auth must be decrypted before helm renders; if it
+    #    isn't, the first render inlines an empty password and Harbor fails Valkey auth.
+    #    Self-heals on the next remediation re-render once the SealedSecret exists.
+    #  - Rotation: reseal + restart Valkey AND force `flux reconcile hr harbor -n harbor`
+    #    (a secret-only change does NOT trigger a re-render) or Harbor keeps the old URL.
     redis:
       type: external
       external:
