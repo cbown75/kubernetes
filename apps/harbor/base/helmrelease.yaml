@@ -85,7 +85,8 @@ spec:
     #    isn't, the first render inlines an empty password and Harbor fails Valkey auth.
     #    Self-heals on the next remediation re-render once the SealedSecret exists.
     #  - Rotation: reseal + restart Valkey AND force `flux reconcile hr harbor -n harbor`
-    #    (a secret-only change does NOT trigger a re-render) or Harbor keeps the old URL.
+    #    (a secret-only change does NOT trigger a re-render) or Harbor keeps the old
+    #    password baked into its rendered ConfigMaps.
     redis:
       type: external
       external:
