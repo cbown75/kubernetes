@@ -37,6 +37,10 @@ spec:
                   value: infra-postgres-rw
                 - name: PGUSER
                   value: postgres
+                # require TLS: this hop carries the superuser credential; libpq's default
+                # (prefer) allows a silent cleartext downgrade. CNPG serves TLS by default.
+                - name: PGSSLMODE
+                  value: require
                 - name: PGPASSWORD
                   valueFrom:
                     secretKeyRef:
