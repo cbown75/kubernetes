@@ -3,6 +3,10 @@ kind: NetworkPolicy
 metadata:
   name: harbor-valkey
   namespace: harbor
+  labels:
+    app.kubernetes.io/name: harbor-valkey
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: harbor
 spec:
   # Defense in depth alongside requirepass: only pods in the harbor namespace
   # (Harbor's own components) may reach Valkey on 6379. Blocks the rest of the cluster.

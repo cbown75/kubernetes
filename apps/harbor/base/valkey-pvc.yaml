@@ -3,6 +3,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: harbor-valkey
   namespace: harbor
+  labels:
+    app.kubernetes.io/name: harbor-valkey
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: harbor
 spec:
   accessModes:
     - ReadWriteOnce

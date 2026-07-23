@@ -6,6 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: harbor-valkey
     app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: harbor
 spec:
   type: ClusterIP
   selector:

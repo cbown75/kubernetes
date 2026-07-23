@@ -5,4 +5,5 @@ metadata:
   labels:
     name: harbor
     app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
     istio-injection: enabled
