@@ -18,6 +18,10 @@ spec:
         name: harbor
         namespace: flux-system
       interval: 5m
+  # infra-postgres (apps/databases) reconciles in the same Flux `apps` Kustomization as
+  # Harbor, with no explicit readiness gate. On a cold bootstrap the first install can race
+  # the CNPG cluster coming up; the install/upgrade remediation retries absorb that (CNPG
+  # bootstraps in ~1-2m, well inside the 15m timeout), so the release self-heals.
   install:
     createNamespace: false
     remediation:
@@ -33,6 +37,13 @@ spec:
     recreate: true
   values:
     externalURL: https://registry.home.cwbtech.net
+
+    # Recreate (not the chart default RollingUpdate): the registry PVC is RWO on iSCSI
+    # (synology-holocron-general), so a rolling upgrade would deadlock the new pod on a
+    # Multi-Attach error while the old pod holds the volume. Single-replica Harbor
+    # tolerates the brief restart.
+    updateStrategy:
+      type: Recreate
 
     # TLS terminates at the shared Istio gateway (VirtualService in the overlay);
     # Harbor itself serves plain HTTP over a ClusterIP service named "harbor".
@@ -51,7 +62,6 @@ spec:
     existingSecretSecretKey: harbor-secrets
 
     # External PostgreSQL — dedicated CNPG infra-postgres cluster (databases ns).
-    # Password read from the harbor-database-cred SealedSecret (key: password).
     database:
       type: external
       external:
@@ -59,14 +69,21 @@ spec:
         port: "5432"
         username: registry
         coreDatabase: registry
+        # INVARIANT: harbor-database-cred (key: password) must hold the SAME plaintext as
+        # the CNPG managed-role secret infra-postgres-registry-cred (databases ns). Both
+        # are sealed from one generated value; rotate them together or auth breaks.
         existingSecret: harbor-database-cred
-        sslmode: disable
+        # require (not disable): the databases ns is out-of-mesh (no sidecar), so TLS is
+        # the only thing preventing cleartext DB creds/traffic. Matches apps-postgres/immich.
+        sslmode: require
 
-    # External Redis — in-cluster Valkey (no auth). DB indexes per chart defaults.
+    # External Redis — in-cluster Valkey. Password from harbor-valkey-auth (key
+    # REDIS_PASSWORD), the same secret Valkey enforces via requirepass.
     redis:
       type: external
       external:
         addr: harbor-valkey.harbor.svc.cluster.local:6379
+        existingSecret: harbor-valkey-auth
         coreDatabaseIndex: "0"
         jobserviceDatabaseIndex: "1"
         registryDatabaseIndex: "2"

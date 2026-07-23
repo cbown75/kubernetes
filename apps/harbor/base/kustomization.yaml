@@ -7,3 +7,4 @@ resources:
   - valkey-pvc.yaml
   - valkey-deployment.yaml
   - valkey-service.yaml
+  - valkey-networkpolicy.yaml

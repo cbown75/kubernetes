@@ -21,7 +21,9 @@ spec:
         app.kubernetes.io/component: redis
       annotations:
         # In-cluster datastore — kept out of the mesh (matches the repo's convention
-        # for in-pod postgres/redis). Harbor reaches it over PERMISSIVE mTLS.
+        # for in-pod postgres/redis). Access is gated by requirepass auth (the
+        # harbor-valkey-auth SealedSecret) and a NetworkPolicy restricting :6379 to
+        # the harbor namespace; there is no sidecar, so no mTLS on this hop.
         sidecar.istio.io/inject: "false"
     spec:
       securityContext:
@@ -35,18 +37,26 @@ spec:
         - name: valkey
           image: valkey/valkey:8.1-alpine
           imagePullPolicy: IfNotPresent
-          # appendonly for durability of the job queue; noeviction so queued jobs are
-          # never dropped under memory pressure.
-          args:
-            - --appendonly
-            - "yes"
-            - --maxmemory-policy
-            - noeviction
+          # appendonly for durability of the job queue; maxmemory sits below the cgroup
+          # limit so noeviction actually engages (reject writes) rather than the kernel
+          # OOM-killing the process; requirepass gates access (Harbor authenticates with
+          # the same secret via redis.external.existingSecret).
+          command:
+            - /bin/sh
+            - -c
+            - exec valkey-server --appendonly yes --maxmemory 200mb --maxmemory-policy noeviction --requirepass "$REDIS_PASSWORD"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: harbor-valkey-auth
+                  key: REDIS_PASSWORD
           ports:
             - name: valkey
               containerPort: 6379
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -63,7 +73,7 @@ spec:
             periodSeconds: 15
           readinessProbe:
             exec:
-              command: ["valkey-cli", "ping"]
+              command: ["/bin/sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
             initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:

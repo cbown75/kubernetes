@@ -15,6 +15,8 @@ spec:
 
   # Greenfield DB for Harbor's registry component. The `registry` login role is
   # managed here; its password comes from the infra-postgres-registry-cred SealedSecret.
+  # INVARIANT: that secret's `password` must equal harbor-database-cred (harbor ns) which
+  # Harbor connects with — both are sealed from one generated value. Rotate them together.
   managed:
     roles:
       - name: registry
