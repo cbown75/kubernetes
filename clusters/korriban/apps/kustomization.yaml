@@ -25,3 +25,4 @@ resources:
   - oncall
   - semaphore
   - databases
+  - harbor

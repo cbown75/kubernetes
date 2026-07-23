@@ -1,0 +1,95 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: harbor
+  namespace: harbor
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+spec:
+  interval: 10m
+  timeout: 15m
+  chart:
+    spec:
+      chart: harbor
+      version: "1.19.1"
+      sourceRef:
+        kind: HelmRepository
+        name: harbor
+        namespace: flux-system
+      interval: 5m
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  rollback:
+    cleanupOnFail: true
+    force: true
+    recreate: true
+  values:
+    externalURL: https://registry.home.cwbtech.net
+
+    # TLS terminates at the shared Istio gateway (VirtualService in the overlay);
+    # Harbor itself serves plain HTTP over a ClusterIP service named "harbor".
+    expose:
+      type: clusterIP
+      tls:
+        enabled: false
+      clusterIP:
+        name: harbor
+        ports:
+          httpPort: 80
+
+    # Admin password + 16-char secretKey come from the harbor-secrets SealedSecret.
+    existingSecretAdminPassword: harbor-secrets
+    existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+    existingSecretSecretKey: harbor-secrets
+
+    # External PostgreSQL — dedicated CNPG infra-postgres cluster (databases ns).
+    # Password read from the harbor-database-cred SealedSecret (key: password).
+    database:
+      type: external
+      external:
+        host: infra-postgres-rw.databases.svc.cluster.local
+        port: "5432"
+        username: registry
+        coreDatabase: registry
+        existingSecret: harbor-database-cred
+        sslmode: disable
+
+    # External Redis — in-cluster Valkey (no auth). DB indexes per chart defaults.
+    redis:
+      type: external
+      external:
+        addr: harbor-valkey.harbor.svc.cluster.local:6379
+        coreDatabaseIndex: "0"
+        jobserviceDatabaseIndex: "1"
+        registryDatabaseIndex: "2"
+        trivyAdapterIndex: "5"
+
+    # Supply-chain scanning gate (block-on-Critical is configured post-deploy per project).
+    trivy:
+      enabled: true
+
+    persistence:
+      enabled: true
+      resourcePolicy: keep
+      persistentVolumeClaim:
+        registry:
+          storageClass: synology-holocron-general
+          accessMode: ReadWriteOnce
+          size: 100Gi
+        jobservice:
+          jobLog:
+            storageClass: nfs-holocron-general
+            accessMode: ReadWriteOnce
+            size: 1Gi
+        trivy:
+          storageClass: nfs-holocron-general
+          accessMode: ReadWriteOnce
+          size: 5Gi

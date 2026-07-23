@@ -1,0 +1,26 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: harbor
+  namespace: harbor
+spec:
+  hosts:
+    - registry.home.cwbtech.net
+  gateways:
+    - istio-system/public-gw
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: harbor.harbor.svc.cluster.local
+            port:
+              number: 80
+      # Container image layers can be large; allow long-running push/pull.
+      timeout: 600s
+      headers:
+        request:
+          set:
+            X-Forwarded-Proto: "https"
+            X-Forwarded-Host: "registry.home.cwbtech.net"
