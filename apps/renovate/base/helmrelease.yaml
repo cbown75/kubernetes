@@ -99,6 +99,9 @@ spec:
           secretKeyRef:
             name: renovate-secrets
             key: RENOVATE_TOKEN
+      # Auth ghcr lookups (anon 429s block immich detection); ghcr needs Basic, not Bearer.
+      - name: RENOVATE_HOST_RULES
+        value: '[{"matchHost":"ghcr.io","hostType":"docker","username":"cbown75","password":"$(RENOVATE_TOKEN)"}]'
 
     # Resource requests and limits
     resources:

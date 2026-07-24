@@ -34,7 +34,7 @@ spec:
         nvidia.com/gpu: "true"
       containers:
         - name: immich-ml
-          image: ghcr.io/immich-app/immich-machine-learning:v2.4.1-cuda
+          image: ghcr.io/immich-app/immich-machine-learning:v3.0.3-cuda
           ports:
             - containerPort: 3003
           env:
@@ -52,6 +52,12 @@ spec:
               cpu: "4"
               memory: 8Gi
               nvidia.com/gpu: "1"
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: 3003
+            periodSeconds: 10
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /ping
