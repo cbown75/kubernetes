@@ -50,6 +50,8 @@ spec:
           # umask 0077 because `command:` bypasses the entrypoint that sets it.
           # --save '' keeps RDB off: save points enable stop-writes-on-bgsave-error,
           # which freezes all writes after one failed BGSAVE.
+          # maxmemory 256mb = half the 512Mi limit, leaving room for the AOF-rewrite
+          # fork; noeviction rejects writes rather than silently dropping queued jobs.
           command:
             - /bin/sh
             - -c
