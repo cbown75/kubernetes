@@ -57,3 +57,18 @@ spec:
   resources:
     requests:
       storage: 10Ti
+---
+# Redis AOF persistence for the immich BullMQ job queue.
+# Matches the n8n/redis and harbor/valkey convention (nfs-holocron-fast, 2Gi, RWO).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-holocron-fast
+  resources:
+    requests:
+      storage: 2Gi

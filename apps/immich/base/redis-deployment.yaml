@@ -18,6 +18,10 @@ metadata:
   namespace: immich
 spec:
   replicas: 1
+  # Recreate: redis-pvc is ReadWriteOnce, so the old pod must release the
+  # volume before the new one can attach.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: redis
@@ -26,10 +30,22 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        fsGroup: 999
       containers:
         - name: redis
           image: redis:7-alpine
-          args: ["--save", ""]
+          # AOF persistence: the BullMQ job queue (immich_bull:*) lives only in
+          # redis. Without this, a restart silently drops every queued job while
+          # Postgres still marks the assets incomplete, and nothing re-queues them.
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --dir
+            - /data
           ports:
             - containerPort: 6379
           volumeMounts:
@@ -42,6 +58,19 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
       volumes:
         - name: redis-data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: redis-pvc
