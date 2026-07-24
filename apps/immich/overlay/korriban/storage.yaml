@@ -65,6 +65,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: redis-pvc
   namespace: immich
+  # Overlay-only resources don't inherit base/kustomization.yaml commonLabels,
+  # so set them explicitly.
+  labels:
+    app.kubernetes.io/name: immich
+    app.kubernetes.io/part-of: photo-management
 spec:
   accessModes:
     - ReadWriteOnce
