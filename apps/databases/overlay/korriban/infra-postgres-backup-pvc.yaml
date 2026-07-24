@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: infra-postgres-backups
+  namespace: databases
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-holocron-databases
+  resources:
+    requests:
+      storage: 10Gi

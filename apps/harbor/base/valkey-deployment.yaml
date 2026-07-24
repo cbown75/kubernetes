@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: harbor-valkey
+  namespace: harbor
+  labels:
+    app.kubernetes.io/name: harbor-valkey
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: harbor
+spec:
+  replicas: 1
+  # Redis/Valkey holds Harbor's jobservice queue; a single writer, recreate on update.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: harbor-valkey
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: harbor-valkey
+        app.kubernetes.io/component: redis
+        app.kubernetes.io/part-of: harbor
+      annotations:
+        # In-cluster datastore — kept out of the mesh (matches the repo's convention
+        # for in-pod postgres/redis). Access is gated by requirepass auth (the
+        # harbor-valkey-auth SealedSecret) and a NetworkPolicy restricting :6379 to
+        # the harbor namespace; there is no sidecar, so no mTLS on this hop.
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: valkey
+          image: valkey/valkey:8.1-alpine
+          imagePullPolicy: IfNotPresent
+          # appendonly for durability of the job queue; --dir pins persistence to the
+          # writable PVC (required under readOnlyRootFilesystem, independent of the image
+          # WORKDIR); maxmemory sits well under the 256Mi cgroup limit so noeviction
+          # engages (reject writes) with headroom for the AOF-rewrite fork COW spike
+          # instead of the kernel OOM-killing the process; requirepass gates access.
+          command:
+            - /bin/sh
+            - -c
+            - exec valkey-server --appendonly yes --dir /data --maxmemory 128mb --maxmemory-policy noeviction --requirepass "$REDIS_PASSWORD"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: harbor-valkey-auth
+                  key: REDIS_PASSWORD
+          ports:
+            - name: valkey
+              containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            tcpSocket:
+              port: valkey
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "valkey-cli -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: harbor-valkey

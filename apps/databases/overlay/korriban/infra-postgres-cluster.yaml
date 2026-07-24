@@ -1,0 +1,43 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: infra-postgres
+  namespace: databases
+spec:
+  instances: 2
+  # Stock CNPG image — Harbor's registry DB needs no extensions. Matches apps-postgres.
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.14
+  primaryUpdateStrategy: unsupervised
+
+  # CNPG manages the postgres superuser password in secret infra-postgres-superuser,
+  # consumed by the backup CronJob (pg_dumpall needs superuser to dump globals/roles).
+  enableSuperuserAccess: true
+
+  # Greenfield DB for Harbor's registry component. The `registry` login role is
+  # managed here; its password comes from the infra-postgres-registry-cred SealedSecret.
+  # INVARIANT: that secret's `password` must equal harbor-database-cred (harbor ns) which
+  # Harbor connects with — both are sealed from one generated value. Rotate them together.
+  managed:
+    roles:
+      - name: registry
+        ensure: present
+        login: true
+        passwordSecret:
+          name: infra-postgres-registry-cred
+
+  storage:
+    storageClass: nfs-holocron-databases
+    size: 8Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+  # Fresh cluster — the `registry` database is owned by the `registry` role.
+  bootstrap:
+    initdb:
+      database: registry
+      owner: registry

@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# No namespace transformer: the HelmRepository must stay in flux-system while every
+# other resource declares namespace: harbor explicitly.
+resources:
+  - ../../base
+  - sealed-secrets.yaml
+  - istio-routing.yaml
+commonAnnotations:
+  app.kubernetes.io/instance: korriban

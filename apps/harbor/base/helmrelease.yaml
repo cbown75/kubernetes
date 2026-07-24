@@ -1,0 +1,120 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: harbor
+  namespace: harbor
+  labels:
+    app.kubernetes.io/name: harbor
+    app.kubernetes.io/part-of: harbor
+spec:
+  interval: 10m
+  timeout: 15m
+  chart:
+    spec:
+      chart: harbor
+      version: "1.19.1"
+      sourceRef:
+        kind: HelmRepository
+        name: harbor
+        namespace: flux-system
+      interval: 5m
+  # infra-postgres (apps/databases) reconciles in the same Flux `apps` Kustomization as
+  # Harbor, with no explicit readiness gate. On a cold bootstrap the first install can race
+  # the CNPG cluster coming up; the install/upgrade remediation retries absorb that (CNPG
+  # bootstraps in ~1-2m, well inside the 15m timeout), so the release self-heals.
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  rollback:
+    cleanupOnFail: true
+    force: true
+    recreate: true
+  values:
+    externalURL: https://registry.home.cwbtech.net
+
+    # Recreate (not the chart default RollingUpdate): the registry PVC is RWO on iSCSI
+    # (synology-holocron-general), so a rolling upgrade would deadlock the new pod on a
+    # Multi-Attach error while the old pod holds the volume. Single-replica Harbor
+    # tolerates the brief restart.
+    updateStrategy:
+      type: Recreate
+
+    # TLS terminates at the shared Istio gateway (VirtualService in the overlay);
+    # Harbor itself serves plain HTTP over a ClusterIP service named "harbor".
+    expose:
+      type: clusterIP
+      tls:
+        enabled: false
+      clusterIP:
+        name: harbor
+        ports:
+          httpPort: 80
+
+    # Admin password + 16-char secretKey come from the harbor-secrets SealedSecret.
+    existingSecretAdminPassword: harbor-secrets
+    existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+    existingSecretSecretKey: harbor-secrets
+
+    # External PostgreSQL — dedicated CNPG infra-postgres cluster (databases ns).
+    database:
+      type: external
+      external:
+        host: infra-postgres-rw.databases.svc.cluster.local
+        port: "5432"
+        username: registry
+        coreDatabase: registry
+        # INVARIANT: harbor-database-cred (key: password) must hold the SAME plaintext as
+        # the CNPG managed-role secret infra-postgres-registry-cred (databases ns). Both
+        # are sealed from one generated value; rotate them together or auth breaks.
+        existingSecret: harbor-database-cred
+        # require (not disable): the databases ns is out-of-mesh (no sidecar), so TLS is
+        # the only thing preventing cleartext DB creds/traffic. Matches apps-postgres/immich.
+        sslmode: require
+
+    # External Redis — in-cluster Valkey. Password from harbor-valkey-auth (key
+    # REDIS_PASSWORD), the same secret Valkey enforces via requirepass.
+    # NOTE: the chart resolves this secret via a render-time Helm `lookup` and bakes the
+    # password into Harbor's ConfigMaps (not a runtime secretKeyRef). Two implications:
+    #  - Cold bootstrap: harbor-valkey-auth must be decrypted before helm renders; if it
+    #    isn't, the first render inlines an empty password and Harbor fails Valkey auth.
+    #    Self-heals on the next remediation re-render once the SealedSecret exists.
+    #  - Rotation: reseal + restart Valkey AND force `flux reconcile hr harbor -n harbor`
+    #    (a secret-only change does NOT trigger a re-render) or Harbor keeps the old
+    #    password baked into its rendered ConfigMaps.
+    redis:
+      type: external
+      external:
+        addr: harbor-valkey.harbor.svc.cluster.local:6379
+        existingSecret: harbor-valkey-auth
+        coreDatabaseIndex: "0"
+        jobserviceDatabaseIndex: "1"
+        registryDatabaseIndex: "2"
+        trivyAdapterIndex: "5"
+
+    # Supply-chain scanning gate (block-on-Critical is configured post-deploy per project).
+    trivy:
+      enabled: true
+
+    persistence:
+      enabled: true
+      resourcePolicy: keep
+      persistentVolumeClaim:
+        registry:
+          storageClass: synology-holocron-general
+          accessMode: ReadWriteOnce
+          size: 100Gi
+        jobservice:
+          jobLog:
+            storageClass: nfs-holocron-general
+            accessMode: ReadWriteOnce
+            size: 1Gi
+        trivy:
+          storageClass: nfs-holocron-general
+          accessMode: ReadWriteOnce
+          size: 5Gi

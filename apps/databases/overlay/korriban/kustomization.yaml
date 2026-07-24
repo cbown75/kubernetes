@@ -11,5 +11,9 @@ resources:
   - immich-db-managed-cred-sealed.yaml
   - immich-backup-pvc.yaml
   - immich-backup-cronjob.yaml
+  - infra-postgres-cluster.yaml
+  - infra-postgres-registry-cred-sealed.yaml
+  - infra-postgres-backup-pvc.yaml
+  - infra-postgres-backup-cronjob.yaml
 commonAnnotations:
   app.kubernetes.io/instance: korriban
