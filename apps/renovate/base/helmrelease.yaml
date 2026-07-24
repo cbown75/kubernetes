@@ -99,12 +99,9 @@ spec:
           secretKeyRef:
             name: renovate-secrets
             key: RENOVATE_TOKEN
-      # Authenticate ghcr container-tag lookups with the same token.
-      # Anonymous ghcr requests are rate-limited (429), which silently blocked
-      # immich update detection. $(RENOVATE_TOKEN) is expanded by the kubelet at
-      # runtime from the secret above, so the token never lands in git.
+      # Auth ghcr lookups (anon 429s block immich detection); ghcr needs Basic, not Bearer.
       - name: RENOVATE_HOST_RULES
-        value: '[{"matchHost":"ghcr.io","hostType":"docker","token":"$(RENOVATE_TOKEN)"}]'
+        value: '[{"matchHost":"ghcr.io","hostType":"docker","username":"cbown75","password":"$(RENOVATE_TOKEN)"}]'
 
     # Resource requests and limits
     resources:
