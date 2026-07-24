@@ -30,10 +30,7 @@ spec:
       labels:
         app: redis
     spec:
-      # Run as the redis uid explicitly. `command:` below bypasses the image
-      # entrypoint (which would normally drop root -> redis), so without this the
-      # network-facing redis process would run as root. The export squashes to
-      # 1024:users with mode 0777, so uid 999 writes fine — same as harbor/valkey.
+      # `command:` bypasses the entrypoint's root -> redis drop, so set the uid here.
       securityContext:
         fsGroup: 999
         runAsUser: 999
@@ -49,17 +46,22 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          # AOF persistence: the BullMQ job queue (immich_bull:*) lives only in
-          # redis. Without this, a restart silently drops every queued job while
-          # Postgres still marks the assets incomplete, and nothing re-queues them.
+          # AOF persists the BullMQ queue; nothing re-queues jobs if it's lost.
+          # umask 0077 because `command:` bypasses the entrypoint that sets it.
+          # --save '' keeps RDB off: save points enable stop-writes-on-bgsave-error,
+          # which freezes all writes after one failed BGSAVE.
           command:
-            - redis-server
-            - --appendonly
-            - "yes"
-            - --appendfsync
-            - everysec
-            - --dir
-            - /data
+            - /bin/sh
+            - -c
+            - >-
+              umask 0077;
+              exec redis-server
+              --appendonly yes
+              --appendfsync everysec
+              --save ''
+              --maxmemory 256mb
+              --maxmemory-policy noeviction
+              --dir /data
           ports:
             - containerPort: 6379
           volumeMounts:
@@ -72,11 +74,8 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          # Redis answers PING with a -LOADING error until the AOF is fully
-          # replayed, so a bare liveness probe would kill it mid-recovery and
-          # crash-loop forever once the AOF outgrows ~50s of load time. The
-          # startupProbe gates liveness/readiness until recovery completes,
-          # allowing up to 10 minutes.
+          # -e makes redis-cli exit non-zero on the -LOADING error during AOF
+          # replay; without it these probes pass instantly and gate nothing.
           startupProbe:
             exec:
               command: ["redis-cli", "-e", "ping"]
