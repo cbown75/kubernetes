@@ -52,6 +52,12 @@ spec:
               cpu: "4"
               memory: 8Gi
               nvidia.com/gpu: "1"
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: 3003
+            periodSeconds: 10
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /ping

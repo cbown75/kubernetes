@@ -66,6 +66,13 @@ spec:
               cpu: "8"
               memory: 8Gi
               nvidia.com/gpu: "1"
+          # Gate liveness until first-boot DB migration completes (v3 migrates before binding :2283).
+          startupProbe:
+            httpGet:
+              path: /api/server/ping
+              port: 2283
+            periodSeconds: 10
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /api/server/ping
