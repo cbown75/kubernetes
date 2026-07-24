@@ -30,22 +30,40 @@ spec:
       labels:
         app: redis
     spec:
+      # `command:` bypasses the entrypoint's root -> redis drop, so set the uid here.
       securityContext:
         fsGroup: 999
+        runAsUser: 999
+        runAsGroup: 999
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: redis:7-alpine
-          # AOF persistence: the BullMQ job queue (immich_bull:*) lives only in
-          # redis. Without this, a restart silently drops every queued job while
-          # Postgres still marks the assets incomplete, and nothing re-queues them.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # AOF persists the BullMQ queue; nothing re-queues jobs if it's lost.
+          # umask 0077 because `command:` bypasses the entrypoint that sets it.
+          # --save '' keeps RDB off: save points enable stop-writes-on-bgsave-error,
+          # which freezes all writes after one failed BGSAVE.
+          # maxmemory 256mb = half the 512Mi limit, leaving room for the AOF-rewrite
+          # fork; noeviction rejects writes rather than silently dropping queued jobs.
           command:
-            - redis-server
-            - --appendonly
-            - "yes"
-            - --appendfsync
-            - everysec
-            - --dir
-            - /data
+            - /bin/sh
+            - -c
+            - >-
+              umask 0077;
+              exec redis-server
+              --appendonly yes
+              --appendfsync everysec
+              --save ''
+              --maxmemory 256mb
+              --maxmemory-policy noeviction
+              --dir /data
           ports:
             - containerPort: 6379
           volumeMounts:
@@ -58,16 +76,22 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          # -e makes redis-cli exit non-zero on the -LOADING error during AOF
+          # replay; without it these probes pass instantly and gate nothing.
+          startupProbe:
+            exec:
+              command: ["redis-cli", "-e", "ping"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
           livenessProbe:
             exec:
-              command: ["redis-cli", "ping"]
-            initialDelaySeconds: 30
+              command: ["redis-cli", "-e", "ping"]
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             exec:
-              command: ["redis-cli", "ping"]
-            initialDelaySeconds: 5
+              command: ["redis-cli", "-e", "ping"]
             periodSeconds: 5
             timeoutSeconds: 3
       volumes:
