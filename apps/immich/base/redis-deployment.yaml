@@ -79,18 +79,18 @@ spec:
           # allowing up to 10 minutes.
           startupProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["redis-cli", "-e", "ping"]
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 60
           livenessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["redis-cli", "-e", "ping"]
             periodSeconds: 10
             timeoutSeconds: 5
           readinessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["redis-cli", "-e", "ping"]
             periodSeconds: 5
             timeoutSeconds: 3
       volumes:
