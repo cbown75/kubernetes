@@ -14,5 +14,5 @@ spec:
   path: ./clusters/korriban/apps
   prune: true
   wait: true
-  timeout: 5m0s
+  timeout: 12m0s
   retryInterval: 2m0s
