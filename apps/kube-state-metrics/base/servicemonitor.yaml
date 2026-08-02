@@ -11,3 +11,4 @@ spec:
     - port: http-metrics
       interval: 30s
       path: /metrics
+      honorLabels: true

@@ -49,7 +49,7 @@ spec:
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /
+              path: /readyz
               port: 8080
             initialDelaySeconds: 5
             timeoutSeconds: 5
@@ -59,7 +59,7 @@ spec:
               memory: 64Mi
             limits:
               cpu: 200m
-              memory: 128Mi
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
