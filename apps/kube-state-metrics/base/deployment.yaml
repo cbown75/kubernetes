@@ -43,20 +43,20 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /livez
               port: 8080
             initialDelaySeconds: 5
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /readyz
-              port: 8080
+              port: 8081
             initialDelaySeconds: 5
             timeoutSeconds: 5
           resources:
             requests:
               cpu: 50m
-              memory: 64Mi
+              memory: 128Mi
             limits:
               cpu: 200m
               memory: 256Mi
