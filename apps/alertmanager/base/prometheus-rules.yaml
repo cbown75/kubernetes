@@ -178,7 +178,7 @@ spec:
             severity: critical
           annotations:
             summary: "Flux {{ $labels.customresource_kind }} metrics are missing"
-            description: "gotk_resource_info is absent for {{ $labels.customresource_kind }}, so the Flux alerts no longer cover it. Likely causes in order: the CRD version pinned in flux-resource-config.yaml is no longer served after a Flux upgrade; a second kind in the same group/version was added sharing the gotk_resource_info family name, which makes kube-state-metrics silently register only one of them; kube-state-metrics RBAC. Confirm with: curl kube-state-metrics:8080/metrics | grep gotk_resource_info"
+            description: "gotk_resource_info is absent for {{ $labels.customresource_kind }}, so the Flux alerts no longer cover it. Likely causes in order: the CRD version pinned in flux-resource-config.yaml is no longer served after a Flux upgrade; a second kind in the same group/version was added sharing the gotk_resource_info family name, which makes kube-state-metrics silently register only one of them; kube-state-metrics RBAC. Confirm with: curl kube-state-metrics.monitoring.svc:8080/metrics | grep gotk_resource_info"
     - name: certmanager.rules
       rules:
         # Certificate stuck renewing — scheduled renewal overdue >7d (silent until expiry)
