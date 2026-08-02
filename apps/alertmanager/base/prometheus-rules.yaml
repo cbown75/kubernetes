@@ -172,13 +172,13 @@ spec:
             summary: "FluxCD resource {{ $labels.customresource_kind }}/{{ $labels.name }} is suspended"
             description: "FluxCD {{ $labels.customresource_kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} has been suspended for over 6h."
         - alert: FluxMetricsMissing
-          expr: absent(gotk_resource_info{customresource_kind="Kustomization"}) or absent(gotk_resource_info{customresource_kind="HelmRelease"}) or absent(gotk_resource_info{customresource_kind="GitRepository"}) or absent(gotk_resource_info{customresource_kind="HelmRepository"}) or absent(gotk_resource_info{customresource_kind="HelmChart"})
+          expr: absent(gotk_resource_info{customresource_kind="Kustomization"}) or absent(gotk_resource_info{customresource_kind="HelmRelease"}) or absent(gotk_resource_info{customresource_kind="GitRepository"})
           for: 30m
           labels:
             severity: critical
           annotations:
             summary: "Flux {{ $labels.customresource_kind }} metrics are missing"
-            description: "gotk_resource_info is absent for {{ $labels.customresource_kind }}, so the Flux alerts no longer cover it. Check the kube-state-metrics custom-resource-state config and its RBAC — it needs list/watch on customresourcedefinitions.apiextensions.k8s.io as well as the Flux CRDs."
+            description: "gotk_resource_info is absent for {{ $labels.customresource_kind }}, so the Flux alerts no longer cover it. Likely causes in order: the CRD version pinned in flux-resource-config.yaml is no longer served after a Flux upgrade; a second kind in the same group/version was added sharing the gotk_resource_info family name, which makes kube-state-metrics silently register only one of them; kube-state-metrics RBAC. Confirm with: curl kube-state-metrics:8080/metrics | grep gotk_resource_info"
     - name: certmanager.rules
       rules:
         # Certificate stuck renewing — scheduled renewal overdue >7d (silent until expiry)
