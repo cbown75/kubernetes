@@ -43,7 +43,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /livez
+              path: /healthz
               port: 8080
             initialDelaySeconds: 5
             timeoutSeconds: 5
