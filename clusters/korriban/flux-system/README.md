@@ -362,7 +362,7 @@ curl http://localhost:8080/metrics
 
 # Key metrics to monitor:
 # - gotk_reconcile_duration_seconds
-# - gotk_reconcile_condition_info
+# - gotk_resource_info (from kube-state-metrics CRD exporter, not the controllers)
 # - controller_runtime_reconcile_total
 ```
 

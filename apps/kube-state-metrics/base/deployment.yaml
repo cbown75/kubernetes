@@ -29,6 +29,11 @@ spec:
           args:
             - --port=8080
             - --telemetry-port=8081
+            - --custom-resource-state-config-file=/etc/ksm/flux-resource-config.yaml
+          volumeMounts:
+            - name: flux-config
+              mountPath: /etc/ksm
+              readOnly: true
           ports:
             - name: http-metrics
               containerPort: 8080
@@ -61,3 +66,7 @@ spec:
               drop:
                 - ALL
             readOnlyRootFilesystem: true
+      volumes:
+        - name: flux-config
+          configMap:
+            name: kube-state-metrics-flux-config

@@ -119,7 +119,7 @@ rate(http_requests_total{status=~"5.."}[5m])
 
 ```promql
 # FluxCD reconciliation status
-gotk_reconcile_condition{type="Ready"}
+gotk_resource_info{ready!="True"}
 
 # Certificate expiration
 cert_manager_certificate_expiration_timestamp_seconds
