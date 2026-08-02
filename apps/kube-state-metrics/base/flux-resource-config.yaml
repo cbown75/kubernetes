@@ -7,7 +7,7 @@ spec:
       metricNamePrefix: gotk
       metrics:
         - name: "resource_info"
-          help: "The current state of a Flux Kustomization resource."
+          help: "The current state of a Flux resource."
           each:
             type: Info
             info:
@@ -25,7 +25,7 @@ spec:
       metricNamePrefix: gotk
       metrics:
         - name: "resource_info"
-          help: "The current state of a Flux HelmRelease resource."
+          help: "The current state of a Flux resource."
           each:
             type: Info
             info:
@@ -43,7 +43,7 @@ spec:
       metricNamePrefix: gotk
       metrics:
         - name: "resource_info"
-          help: "The current state of a Flux GitRepository resource."
+          help: "The current state of a Flux resource."
           each:
             type: Info
             info:
@@ -61,7 +61,7 @@ spec:
       metricNamePrefix: gotk
       metrics:
         - name: "resource_info"
-          help: "The current state of a Flux HelmRepository resource."
+          help: "The current state of a Flux resource."
           each:
             type: Info
             info:
@@ -79,7 +79,7 @@ spec:
       metricNamePrefix: gotk
       metrics:
         - name: "resource_info"
-          help: "The current state of a Flux HelmChart resource."
+          help: "The current state of a Flux resource."
           each:
             type: Info
             info:
@@ -97,7 +97,7 @@ spec:
       metricNamePrefix: gotk
       metrics:
         - name: "resource_info"
-          help: "The current state of a Flux OCIRepository resource."
+          help: "The current state of a Flux resource."
           each:
             type: Info
             info:

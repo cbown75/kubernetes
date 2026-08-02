@@ -30,6 +30,9 @@ spec:
             - --port=8080
             - --telemetry-port=8081
             - --custom-resource-state-config-file=/etc/ksm/flux-resource-config.yaml
+          env:
+            - name: GOMEMLIMIT
+              value: "400MiB"
           volumeMounts:
             - name: flux-config
               mountPath: /etc/ksm
@@ -59,7 +62,7 @@ spec:
               memory: 128Mi
             limits:
               cpu: 200m
-              memory: 256Mi
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

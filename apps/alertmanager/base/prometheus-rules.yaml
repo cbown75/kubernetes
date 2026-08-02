@@ -172,13 +172,13 @@ spec:
             summary: "FluxCD resource {{ $labels.customresource_kind }}/{{ $labels.name }} is suspended"
             description: "FluxCD {{ $labels.customresource_kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} has been suspended for over 6h."
         - alert: FluxMetricsMissing
-          expr: absent(gotk_resource_info{customresource_kind="Kustomization"}) or absent(gotk_resource_info{customresource_kind="HelmRelease"}) or absent(gotk_resource_info{customresource_kind="GitRepository"})
+          expr: absent(gotk_resource_info{customresource_kind="Kustomization"}) or absent(gotk_resource_info{customresource_kind="HelmRelease"}) or absent(gotk_resource_info{customresource_kind="GitRepository"}) or absent(gotk_resource_info{customresource_kind="HelmRepository"}) or absent(gotk_resource_info{customresource_kind="HelmChart"})
           for: 30m
           labels:
             severity: critical
           annotations:
-            summary: "Flux resource metrics are missing"
-            description: "gotk_resource_info is absent for Kustomization, HelmRelease or GitRepository, so the Flux alerts cannot fire. Check the kube-state-metrics custom-resource-state config and its RBAC — it needs list/watch on customresourcedefinitions.apiextensions.k8s.io as well as the Flux CRDs."
+            summary: "Flux {{ $labels.customresource_kind }} metrics are missing"
+            description: "gotk_resource_info is absent for {{ $labels.customresource_kind }}, so the Flux alerts no longer cover it. Check the kube-state-metrics custom-resource-state config and its RBAC — it needs list/watch on customresourcedefinitions.apiextensions.k8s.io as well as the Flux CRDs."
     - name: certmanager.rules
       rules:
         # Certificate stuck renewing — scheduled renewal overdue >7d (silent until expiry)
