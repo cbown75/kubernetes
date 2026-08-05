@@ -19,7 +19,6 @@ spec:
         app.kubernetes.io/name: alertmanager
         app.kubernetes.io/component: alertmanager
       annotations:
-        checksum/config: "placeholder"
     spec:
       serviceAccountName: alertmanager
       securityContext:
