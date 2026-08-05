@@ -119,9 +119,7 @@ rate(http_requests_total{status=~"5.."}[5m])
 ### Infrastructure Metrics
 
 ```promql
-# FluxCD reconciliation status. ready!="True" also matches series where
-# kube-state-metrics emitted no ready label at all — an intentional fault
-# signal. Suspended resources are excluded here and covered by FluxResourceSuspended.
+# FluxCD reconciliation status
 gotk_resource_info{customresource_kind="Kustomization", ready!="True", suspended!="true"}
 
 # Certificate expiration
