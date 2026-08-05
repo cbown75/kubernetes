@@ -8,7 +8,6 @@ resources:
   - service.yaml
   - service-headless.yaml
   - servicemonitor.yaml
-  - prometheus-rules.yaml
 commonLabels:
   app.kubernetes.io/name: alertmanager
   app.kubernetes.io/part-of: monitoring-stack

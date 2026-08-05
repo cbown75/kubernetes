@@ -12,7 +12,7 @@ spec:
   chart:
     spec:
       chart: prometheus
-      version: ">=25.0.0"
+      version: "~29.21.0"
       sourceRef:
         kind: HelmRepository
         name: prometheus-community
@@ -60,3 +60,246 @@ spec:
         size: 50Gi
         storageClass: PLACEHOLDER
       retention: 15d
+      alertmanagers:
+        - scheme: http
+          timeout: 10s
+          dns_sd_configs:
+            - names:
+                - alertmanager-headless.monitoring.svc.cluster.local
+              type: A
+              port: 9093
+    serverFiles:
+      alerting_rules.yml:
+        groups:
+          - name: alertmanager.rules
+            rules:
+              # AlertManager is down
+              - alert: AlertmanagerDown
+                expr: up{job="kubernetes-service-endpoints",service="alertmanager"} == 0
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "AlertManager instance is down"
+                  description: "AlertManager instance {{ $labels.instance }} has been down for more than 5 minutes."
+              # AlertManager configuration reload failed
+              - alert: AlertmanagerConfigurationReloadFailure
+                expr: alertmanager_config_last_reload_successful != 1
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "AlertManager configuration reload failure"
+                  description: "AlertManager {{ $labels.instance }} configuration reload error."
+              # AlertManager notification failures
+              - alert: AlertmanagerNotificationFailures
+                expr: rate(alertmanager_notifications_failed_total[5m]) > 0.01
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "AlertManager notification failures"
+                  description: "AlertManager {{ $labels.instance }} is failing to send notifications."
+              # AlertManager cluster not ready
+              - alert: AlertmanagerClusterDown
+                expr: alertmanager_cluster_members != 3
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "AlertManager cluster not ready"
+                  description: "AlertManager cluster has {{ $value }} members, expected 3."
+          - name: infrastructure.rules
+            rules:
+              # Node down
+              - alert: NodeDown
+                expr: up{job="kubernetes-pods",app_kubernetes_io_name="prometheus-node-exporter"} == 0
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Node {{ $labels.instance }} is down"
+                  description: "Node {{ $labels.instance }} has been down for more than 5 minutes."
+              # High CPU usage
+              - alert: HighCPUUsage
+                expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "High CPU usage on {{ $labels.instance }}"
+                  description: "CPU usage is above 80% on {{ $labels.instance }}"
+              # High memory usage
+              - alert: HighMemoryUsage
+                expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+                for: 10m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "High memory usage on {{ $labels.instance }}"
+                  description: "Memory usage is above 90% on {{ $labels.instance }}"
+              # Disk space low
+              - alert: DiskSpaceLow
+                expr: (node_filesystem_size_bytes{fstype!~"tmpfs|squashfs|iso9660|overlay|ramfs|nsfs|devtmpfs",mountpoint!~"/var/lib/kubelet/pods/.*"} - node_filesystem_avail_bytes{fstype!~"tmpfs|squashfs|iso9660|overlay|ramfs|nsfs|devtmpfs",mountpoint!~"/var/lib/kubelet/pods/.*"}) / node_filesystem_size_bytes{fstype!~"tmpfs|squashfs|iso9660|overlay|ramfs|nsfs|devtmpfs",mountpoint!~"/var/lib/kubelet/pods/.*"} * 100 > 85
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Disk space low on {{ $labels.instance }}"
+                  description: "Disk usage is above 85% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
+              # Disk space critical
+              - alert: DiskSpaceCritical
+                expr: (node_filesystem_size_bytes{fstype!~"tmpfs|squashfs|iso9660|overlay|ramfs|nsfs|devtmpfs",mountpoint!~"/var/lib/kubelet/pods/.*"} - node_filesystem_avail_bytes{fstype!~"tmpfs|squashfs|iso9660|overlay|ramfs|nsfs|devtmpfs",mountpoint!~"/var/lib/kubelet/pods/.*"}) / node_filesystem_size_bytes{fstype!~"tmpfs|squashfs|iso9660|overlay|ramfs|nsfs|devtmpfs",mountpoint!~"/var/lib/kubelet/pods/.*"} * 100 > 95
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Disk space critical on {{ $labels.instance }}"
+                  description: "Disk usage is above 95% on {{ $labels.instance }} mount {{ $labels.mountpoint }}"
+          - name: kubernetes.rules
+            rules:
+              # Pod crash looping
+              - alert: PodCrashLooping
+                expr: increase(kube_pod_container_status_restarts_total[1h]) > 3
+                for: 10m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+                  description: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) has restarted {{ $value }} times in the last hour.'
+              # Pod not ready
+              - alert: PodNotReady
+                expr: kube_pod_status_phase{phase=~"Pending|Unknown"} == 1
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} not ready"
+                  description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for longer than 15 minutes."
+              # Deployment replica mismatch
+              - alert: DeploymentReplicasMismatch
+                expr: kube_deployment_spec_replicas != kube_deployment_status_replicas_ready
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Deployment replica mismatch for {{ $labels.namespace }}/{{ $labels.deployment }}"
+                  description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has unready replicas (delta {{ $value }})."
+              # StatefulSet replica mismatch
+              - alert: StatefulSetReplicasMismatch
+                expr: kube_statefulset_status_replicas_ready != kube_statefulset_status_replicas
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "StatefulSet replica mismatch for {{ $labels.namespace }}/{{ $labels.statefulset }}"
+                  description: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has unready replicas (delta {{ $value }})."
+          - name: storage.rules
+            rules:
+              # PVC usage high
+              - alert: PersistentVolumeUsageHigh
+                expr: (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) * 100 > 85
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} usage high"
+                  description: 'PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ printf "%.2f" $value }}% full.'
+              # PVC usage critical
+              - alert: PersistentVolumeUsageCritical
+                expr: (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) * 100 > 95
+                for: 5m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} usage critical"
+                  description: 'PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ printf "%.2f" $value }}% full.'
+          - name: flux.rules
+            rules:
+              # FluxCD reconciliation failure
+              - alert: FluxReconciliationFailure
+                expr: max by (customresource_kind, namespace, name) (gotk_resource_info{ready!="True",suspended!="true"})
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "FluxCD reconciliation failed for {{ $labels.customresource_kind }}/{{ $labels.name }}"
+                  description: "FluxCD {{ $labels.customresource_kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} is not Ready."
+              # FluxCD suspended
+              - alert: FluxResourceSuspended
+                expr: max by (customresource_kind, namespace, name) (gotk_resource_info{suspended="true"})
+                for: 6h
+                labels:
+                  severity: info
+                annotations:
+                  summary: "FluxCD resource {{ $labels.customresource_kind }}/{{ $labels.name }} is suspended"
+                  description: "FluxCD {{ $labels.customresource_kind }}/{{ $labels.name }} in namespace {{ $labels.namespace }} has been suspended for over 6h."
+              - alert: FluxMetricsMissing
+                expr: absent(gotk_resource_info{customresource_kind="Kustomization"}) or absent(gotk_resource_info{customresource_kind="HelmRelease"}) or absent(gotk_resource_info{customresource_kind="GitRepository"})
+                for: 30m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Flux {{ $labels.customresource_kind }} metrics are missing"
+                  description: "gotk_resource_info is absent for {{ $labels.customresource_kind }}, so the Flux alerts no longer cover it. Likely causes in order: the CRD version pinned in flux-resource-config.yaml is no longer served after a Flux upgrade; a second kind in the same group/version was added sharing the gotk_resource_info family name, which makes kube-state-metrics silently register only one of them; kube-state-metrics RBAC. Confirm with: curl kube-state-metrics.monitoring.svc:8080/metrics | grep gotk_resource_info"
+          - name: certmanager.rules
+            rules:
+              # Certificate stuck renewing — scheduled renewal overdue >7d (silent until expiry)
+              - alert: CertManagerCertStuckRenewing
+                expr: (time() - certmanager_certificate_renewal_timestamp_seconds) > (7 * 24 * 3600)
+                for: 1h
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "cert {{ $labels.namespace }}/{{ $labels.name }} stuck renewing >7d"
+                  description: "Scheduled renewal for {{ $labels.namespace }}/{{ $labels.name }} (issuer {{ $labels.issuer_name }}) has been overdue more than 7 days — ACME/DNS-01 is likely failing. Check: kubectl describe challenge -n {{ $labels.namespace }}"
+              # Backstop — certificate expires within 7d regardless of cause
+              - alert: CertManagerCertExpiringSoon
+                expr: (certmanager_certificate_expiration_timestamp_seconds - time()) < (7 * 24 * 3600)
+                for: 1h
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "cert {{ $labels.namespace }}/{{ $labels.name }} expires in <7d"
+                  description: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires soon and has not renewed."
+          - name: monitoring.rules
+            rules:
+              - alert: Watchdog
+                expr: vector(1)
+                labels:
+                  severity: none
+                annotations:
+                  summary: "Alerting pipeline is alive"
+                  description: "Always firing. Absence of this alert means Prometheus rule evaluation or Alertmanager delivery is broken."
+              - alert: PrometheusNoAlertmanagers
+                expr: prometheus_notifications_alertmanagers_discovered < 1
+                for: 10m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Prometheus has no Alertmanager targets"
+                  description: "Prometheus has discovered no Alertmanagers, so no alert can be delivered."
+              - alert: PrometheusConfigReloadFailed
+                expr: prometheus_config_last_reload_successful == 0
+                for: 10m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Prometheus config reload failed"
+                  description: "Prometheus rejected its most recent config or rule files and is running the previous version."
+              - alert: PrometheusNotificationsDropped
+                expr: rate(prometheus_notifications_dropped_total[5m]) > 0
+                for: 10m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Prometheus is dropping alert notifications"
+                  description: "Prometheus failed to deliver notifications to Alertmanager."
+              - alert: PrometheusRulesMissing
+                expr: count(ALERTS) < 1 and absent(ALERTS)
+                for: 30m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "No alerting rules are loaded"
+                  description: "Prometheus has zero alert rules evaluating. This is the BOW-414 failure mode."
