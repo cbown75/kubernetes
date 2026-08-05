@@ -362,8 +362,16 @@ curl http://localhost:8080/metrics
 
 # Key metrics to monitor:
 # - gotk_reconcile_duration_seconds
-# - gotk_reconcile_condition_info
 # - controller_runtime_reconcile_total
+```
+
+Reconciliation *status* is not exported by the controllers. `gotk_resource_info`
+comes from the kube-state-metrics CRD exporter, so it is served on a different
+endpoint in a different namespace:
+
+```bash
+kubectl port-forward -n monitoring svc/kube-state-metrics 8080:8080
+curl -s http://localhost:8080/metrics | grep gotk_resource_info
 ```
 
 ## Best Practices

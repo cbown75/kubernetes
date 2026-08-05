@@ -1,0 +1,55 @@
+spec:
+  resources:
+    - groupVersionKind:
+        group: kustomize.toolkit.fluxcd.io
+        version: v1
+        kind: Kustomization
+      metricNamePrefix: gotk
+      metrics:
+        - name: "resource_info"
+          help: "The current state of a Flux resource."
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+
+    - groupVersionKind:
+        group: helm.toolkit.fluxcd.io
+        version: v2
+        kind: HelmRelease
+      metricNamePrefix: gotk
+      metrics:
+        - name: "resource_info"
+          help: "The current state of a Flux resource."
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]
+
+    - groupVersionKind:
+        group: source.toolkit.fluxcd.io
+        version: v1
+        kind: GitRepository
+      metricNamePrefix: gotk
+      metrics:
+        - name: "resource_info"
+          help: "The current state of a Flux resource."
+          each:
+            type: Info
+            info:
+              labelsFromPath:
+                name: [metadata, name]
+          labelsFromPath:
+            namespace: [metadata, namespace]
+            ready: [status, conditions, "[type=Ready]", status]
+            suspended: [spec, suspend]

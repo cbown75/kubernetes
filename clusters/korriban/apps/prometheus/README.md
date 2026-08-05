@@ -118,8 +118,8 @@ rate(http_requests_total{status=~"5.."}[5m])
 ### Infrastructure Metrics
 
 ```promql
-# FluxCD reconciliation status
-gotk_reconcile_condition{type="Ready"}
+# FluxCD reconciliation status (scoped to one kind for a readable result set)
+gotk_resource_info{customresource_kind="Kustomization", ready!="True"}
 
 # Certificate expiration
 cert_manager_certificate_expiration_timestamp_seconds

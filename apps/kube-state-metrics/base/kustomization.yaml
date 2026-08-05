@@ -7,6 +7,10 @@ resources:
   - deployment.yaml
   - service.yaml
   - servicemonitor.yaml
+configMapGenerator:
+  - name: kube-state-metrics-flux-config
+    files:
+      - flux-resource-config.yaml
 commonLabels:
   app.kubernetes.io/name: kube-state-metrics
   app.kubernetes.io/part-of: monitoring-stack
