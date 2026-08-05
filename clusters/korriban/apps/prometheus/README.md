@@ -76,7 +76,8 @@ Prometheus automatically discovers and monitors:
 - **Istio**: Service mesh metrics (control plane and data plane)
 - **MetalLB**: Load balancer controller metrics
 - **Cert Manager**: Certificate management metrics
-- **FluxCD**: GitOps controller metrics
+- **FluxCD**: GitOps controller runtime and reconcile-duration metrics
+- **kube-state-metrics**: Kubernetes object state, plus Flux CR state (`gotk_resource_info`) via the CustomResourceState exporter
 - **Sealed Secrets**: Secret management metrics
 
 ### Application Services
@@ -118,8 +119,10 @@ rate(http_requests_total{status=~"5.."}[5m])
 ### Infrastructure Metrics
 
 ```promql
-# FluxCD reconciliation status (scoped to one kind for a readable result set)
-gotk_resource_info{customresource_kind="Kustomization", ready!="True"}
+# FluxCD reconciliation status. ready!="True" also matches series where
+# kube-state-metrics emitted no ready label at all — an intentional fault
+# signal. Suspended resources are excluded here and covered by FluxResourceSuspended.
+gotk_resource_info{customresource_kind="Kustomization", ready!="True", suspended!="true"}
 
 # Certificate expiration
 cert_manager_certificate_expiration_timestamp_seconds
