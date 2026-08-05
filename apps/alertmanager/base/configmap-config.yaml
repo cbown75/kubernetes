@@ -28,14 +28,22 @@ data:
           receiver: "warning"
           group_wait: 2m
           repeat_interval: 12h
+          continue: true
+        # Informational alerts
+        - matchers:
+            - severity="info"
+          receiver: "warning"
+          group_wait: 5m
+          repeat_interval: 168h
+          continue: true
         # Infrastructure alerts
         - matchers:
-            - alertname=~"Node.*|Disk.*|Memory.*|CPU.*"
+            - alertname=~".*Node.*|.*Disk.*|.*Memory.*|.*CPU.*"
           receiver: "infrastructure"
           group_by: ["alertname", "instance"]
         # Application alerts
         - matchers:
-            - alertname=~"Pod.*|Container.*|Service.*"
+            - alertname=~".*Pod.*|.*Container.*|.*Service.*|.*Deployment.*|.*StatefulSet.*"
           receiver: "application"
           group_by: ["alertname", "namespace", "pod"]
 

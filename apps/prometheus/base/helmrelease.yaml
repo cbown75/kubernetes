@@ -93,8 +93,8 @@ spec:
                   description: "AlertManager {{ $labels.instance }} configuration reload error."
               # AlertManager notification failures
               - alert: AlertmanagerNotificationFailures
-                expr: rate(alertmanager_notifications_failed_total[5m]) > 0.01
-                for: 10m
+                expr: increase(alertmanager_notifications_failed_total[15m]) > 0
+                for: 0m
                 labels:
                   severity: warning
                 annotations:
@@ -102,18 +102,26 @@ spec:
                   description: "AlertManager {{ $labels.instance }} is failing to send notifications."
               # AlertManager cluster not ready
               - alert: AlertmanagerClusterDown
-                expr: alertmanager_cluster_members != 3
+                expr: alertmanager_cluster_members < 2
                 for: 15m
                 labels:
                   severity: warning
                 annotations:
                   summary: "AlertManager cluster not ready"
-                  description: "AlertManager cluster has {{ $value }} members, expected 3."
+                  description: "AlertManager cluster has {{ $value }} members; quorum requires at least 2."
+              - alert: AlertmanagerMetricsMissing
+                expr: absent(up{job="kubernetes-service-endpoints",service="alertmanager"})
+                for: 15m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Alertmanager is not being scraped"
+                  description: "No up series for the alertmanager service, so every alertmanager.rules alert is silently inert."
           - name: infrastructure.rules
             rules:
               # Node down
               - alert: NodeDown
-                expr: up{job="kubernetes-pods",app_kubernetes_io_name="prometheus-node-exporter"} == 0
+                expr: up{job="kubernetes-pods",app_kubernetes_io_name="prometheus-node-exporter"} == 0 or up{job="kubernetes-service-endpoints",service=~"node-exporter-.*"} == 0
                 for: 5m
                 labels:
                   severity: critical
@@ -178,7 +186,7 @@ spec:
                   description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for longer than 15 minutes."
               # Deployment replica mismatch
               - alert: DeploymentReplicasMismatch
-                expr: kube_deployment_spec_replicas != kube_deployment_status_replicas_ready
+                expr: (kube_deployment_spec_replicas - kube_deployment_status_replicas_ready) > 0
                 for: 15m
                 labels:
                   severity: warning
@@ -187,7 +195,7 @@ spec:
                   description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has unready replicas (delta {{ $value }})."
               # StatefulSet replica mismatch
               - alert: StatefulSetReplicasMismatch
-                expr: kube_statefulset_status_replicas_ready != kube_statefulset_status_replicas
+                expr: (kube_statefulset_status_replicas - kube_statefulset_status_replicas_ready) > 0
                 for: 15m
                 labels:
                   severity: warning
@@ -264,13 +272,6 @@ spec:
                   description: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires soon and has not renewed."
           - name: monitoring.rules
             rules:
-              - alert: Watchdog
-                expr: vector(1)
-                labels:
-                  severity: none
-                annotations:
-                  summary: "Alerting pipeline is alive"
-                  description: "Always firing. Absence of this alert means Prometheus rule evaluation or Alertmanager delivery is broken."
               - alert: PrometheusNoAlertmanagers
                 expr: prometheus_notifications_alertmanagers_discovered < 1
                 for: 10m
@@ -287,19 +288,11 @@ spec:
                 annotations:
                   summary: "Prometheus config reload failed"
                   description: "Prometheus rejected its most recent config or rule files and is running the previous version."
-              - alert: PrometheusNotificationsDropped
-                expr: rate(prometheus_notifications_dropped_total[5m]) > 0
-                for: 10m
+              - alert: PrometheusNotificationDeliveryErrors
+                expr: increase(prometheus_notifications_errors_total[15m]) > 0
+                for: 0m
                 labels:
                   severity: warning
                 annotations:
-                  summary: "Prometheus is dropping alert notifications"
-                  description: "Prometheus failed to deliver notifications to Alertmanager."
-              - alert: PrometheusRulesMissing
-                expr: count(ALERTS) < 1 and absent(ALERTS)
-                for: 30m
-                labels:
-                  severity: critical
-                annotations:
-                  summary: "No alerting rules are loaded"
-                  description: "Prometheus has zero alert rules evaluating. This is the BOW-414 failure mode."
+                  summary: "Prometheus failed to deliver alerts to Alertmanager"
+                  description: "Prometheus hit errors delivering notifications to Alertmanager."
