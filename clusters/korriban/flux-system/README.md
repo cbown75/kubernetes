@@ -353,11 +353,11 @@ flux check --pre
 
 ### Metrics and Observability
 
-FluxCD exposes Prometheus metrics on port 8080:
+FluxCD exposes Prometheus metrics on containerPort 8080. The Service does not
+publish that port, so port-forward the Deployment:
 
 ```bash
-# Check metrics endpoint
-kubectl port-forward -n flux-system svc/source-controller 8080:80
+kubectl port-forward -n flux-system deploy/source-controller 8080:8080
 curl http://localhost:8080/metrics
 
 # Key metrics to monitor:
@@ -365,13 +365,12 @@ curl http://localhost:8080/metrics
 # - controller_runtime_reconcile_total
 ```
 
-Reconciliation *status* is not exported by the controllers. `gotk_resource_info`
-comes from the kube-state-metrics CRD exporter, so it is served on a different
-endpoint in a different namespace:
+As of Flux v2.8 the controllers no longer export per-resource Ready status.
+`gotk_resource_info` comes from kube-state-metrics:
 
 ```bash
-kubectl port-forward -n monitoring svc/kube-state-metrics 8080:8080
-curl -s http://localhost:8080/metrics | grep gotk_resource_info
+kubectl port-forward -n monitoring svc/kube-state-metrics 8081:8080
+curl -s http://localhost:8081/metrics | grep gotk_resource_info
 ```
 
 ## Best Practices
