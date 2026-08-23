@@ -103,6 +103,11 @@ spec:
         registry: docker.io
         repository: rabbitmq
         tag: "4.3-management"
+      # RabbitMQ 4.x disables transient_nonexcl_queues by default. grafana-oncall's
+      # celery worker declares a transient non-exclusive queue, so without this the
+      # broker throws internal_error and closes every connection, crash-looping celery.
+      extraConfiguration: |
+        deprecated_features.permit.transient_nonexcl_queues = true
       auth:
         username: user
         existingPasswordSecret: oncall-rabbitmq
