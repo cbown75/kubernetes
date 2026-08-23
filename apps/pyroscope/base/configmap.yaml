@@ -18,6 +18,19 @@ data:
       filesystem:
         dir: /data
 
+    # Pyroscope v2 writable data paths. The v2 raft metastore and store-gateway
+    # default to relative ./data/... under the working dir, which is the read-only
+    # container rootfs (runAsNonRoot). Point them at the /data PVC or the metastore
+    # boltdb fails to open with "read-only file system".
+    metastore:
+      data_dir: /data/metastore/data
+      raft:
+        dir: /data/metastore/raft
+
+    store_gateway:
+      bucket_store:
+        sync_dir: /data/pyroscope-sync
+
     # Retention settings
     limits:
       max_query_lookback: 720h  # 30 days
