@@ -8,6 +8,11 @@ route:
   group_interval: 5m
   repeat_interval: 4h
   routes:
+    # Two-dimensional fan-out: the severity routes below (critical/warning/info) set
+    # `continue: true` on purpose so each alert ALSO falls through to the domain routes
+    # (infrastructure/application) — every alert reaches both its severity channel and
+    # its domain channel. Dropping `continue` would silence domain routing for any
+    # severity-labelled alert (which is all of them).
     # Critical alerts - immediate notification
     - matchers:
         - severity="critical"
