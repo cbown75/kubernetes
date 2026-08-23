@@ -3,7 +3,7 @@ global:
 
 route:
   receiver: "default"
-  group_by: ["alertname", "cluster", "service"]
+  group_by: ["alertname", "service"]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
@@ -100,7 +100,7 @@ inhibit_rules:
       - severity="critical"
     target_matchers:
       - severity="warning"
-    equal: ["alertname", "cluster", "service"]
+    equal: ["alertname", "service"]
   - source_matchers:
       - alertname="DiskSpaceCritical"
     target_matchers:

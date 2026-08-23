@@ -93,7 +93,7 @@ spec:
                   description: "AlertManager {{ $labels.instance }} configuration reload error."
               # AlertManager notification failures
               - alert: AlertmanagerNotificationFailures
-                expr: increase(alertmanager_notifications_failed_total{integration="slack"}[15m]) > 0
+                expr: increase(alertmanager_notifications_failed_total[15m]) > 0
                 for: 5m
                 labels:
                   severity: warning
@@ -121,7 +121,7 @@ spec:
             rules:
               # Node down
               - alert: NodeDown
-                expr: up{job="kubernetes-pods",app_kubernetes_io_name="prometheus-node-exporter"} == 0 or up{job="kubernetes-service-endpoints",service=~"node-exporter-.*"} == 0
+                expr: up{job="kubernetes-pods",app_kubernetes_io_name="prometheus-node-exporter"} == 0
                 for: 5m
                 labels:
                   severity: critical
