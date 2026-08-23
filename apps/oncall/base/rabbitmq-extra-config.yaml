@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oncall-rabbitmq-extra-config
+  namespace: oncall
+data:
+  # Mounted at /etc/rabbitmq/conf.d/20-deprecated-features.conf. The official
+  # rabbitmq image reads /etc/rabbitmq/conf.d/*.conf; it does NOT read Bitnami's
+  # extraConfiguration path, so the permit has to be delivered as a conf.d drop-in.
+  20-deprecated-features.conf: |
+    deprecated_features.permit.transient_nonexcl_queues = true

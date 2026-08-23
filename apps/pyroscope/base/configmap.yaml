@@ -12,24 +12,33 @@ data:
       http_listen_port: 4040
       log_level: info
 
-    # Storage configuration
+    # Storage configuration. /data is the mounted PVC; the filesystem object-store
+    # "bucket" gets its own subdir so it is not polluted by the node-local working
+    # dirs below (the objstore client enumerates its root as a flat bucket).
     storage:
       backend: filesystem
       filesystem:
-        dir: /data
+        dir: /data/blocks
 
-    # Pyroscope v2 writable data paths. The v2 raft metastore and store-gateway
-    # default to relative ./data/... under the working dir, which is the read-only
-    # container rootfs (runAsNonRoot). Point them at the /data PVC or the metastore
-    # boltdb fails to open with "read-only file system".
+    # All node-local writable paths must live on the /data PVC. Pyroscope's working
+    # directory is not writable to uid 10001, so any component defaulting to a
+    # relative ./data* path fails with "read-only file system". This covers the v2
+    # metastore + store-gateway and, under the default v1-v2-dual architecture, the
+    # v1 pyroscopedb + compactor dirs.
     metastore:
-      data_dir: /data/metastore/data
+      data_dir: /data/v2/metastore/data
       raft:
-        dir: /data/metastore/raft
+        dir: /data/v2/metastore/raft
 
     store_gateway:
       bucket_store:
         sync_dir: /data/pyroscope-sync
+
+    pyroscopedb:
+      data_path: /data/pyroscopedb
+
+    compactor:
+      data_dir: /data/compactor
 
     # Retention settings
     limits:
