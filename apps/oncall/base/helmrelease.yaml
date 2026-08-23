@@ -103,6 +103,21 @@ spec:
         registry: docker.io
         repository: rabbitmq
         tag: "4.3-management"
+      # RabbitMQ 4.x disables transient_nonexcl_queues by default. grafana-oncall's
+      # celery worker declares a transient non-exclusive queue, so without this the
+      # broker throws internal_error and closes every connection, crash-looping celery.
+      # This deployment runs the official rabbitmq image, which reads
+      # /etc/rabbitmq/conf.d/*.conf and ignores Bitnami's extraConfiguration path, so
+      # the permit is delivered as a conf.d drop-in via the ConfigMap below.
+      extraVolumes:
+        - name: extra-config
+          configMap:
+            name: oncall-rabbitmq-extra-config
+      extraVolumeMounts:
+        - name: extra-config
+          mountPath: /etc/rabbitmq/conf.d/20-deprecated-features.conf
+          subPath: 20-deprecated-features.conf
+          readOnly: true
       auth:
         username: user
         existingPasswordSecret: oncall-rabbitmq

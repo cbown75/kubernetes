@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - helmrepository.yaml
   - namespace.yaml
+  - rabbitmq-extra-config.yaml
   - helmrelease.yaml
 commonLabels:
   app.kubernetes.io/name: oncall
