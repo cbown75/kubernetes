@@ -57,8 +57,10 @@ spec:
           # (~300s, ~2x the observed cold start, under PodNotReadyProlonged's 15m so a
           # genuinely wedged pod still alerts). liveness is a TCP check on the http port
           # (process up), NOT /ready — /ready reflects raft election + ring membership,
-          # so a post-startup election or ring flap must not restart a live pod;
-          # readiness (/ready) pulls it from Service endpoints instead.
+          # so a post-startup election or ring flap fails readiness (not liveness),
+          # preventing a restart loop rather than preserving traffic (single replica).
+          # Tradeoff: a hung-but-listening process is not auto-restarted; readiness drops
+          # it and PodNotReadyProlonged (15m) pages for a manual restart.
           startupProbe:
             httpGet:
               path: /ready
