@@ -50,19 +50,22 @@ spec:
             limits:
               cpu: 2000m
               memory: 4Gi
-          # v2 (-target=all) startup is slow: the metastore must win a raft
-          # election and the segment-writer must join its ring and serve /ready
-          # for 30s before the pod is ready — well past a 45s liveness delay,
-          # which SIGTERM'd it mid-startup into a crash loop (BOW-570). startupProbe
-          # gates liveness/readiness until the first successful /ready, and liveness
-          # tolerates ~2m of unreadiness after startup so a slow election never kills it.
+          # v2 (-target=all) startup is slow: the metastore wins a raft election and
+          # the segment-writer joins its ring and serves /ready for 30s before the pod
+          # is ready — the old 45s liveness delay SIGTERM'd it mid-startup into a crash
+          # loop (BOW-570). startupProbe gates readiness/liveness until the first /ready
+          # (~300s, ~2x the observed cold start, under PodNotReadyProlonged's 15m so a
+          # genuinely wedged pod still alerts). liveness is a TCP check on the http port
+          # (process up), NOT /ready — /ready reflects raft election + ring membership,
+          # so a post-startup election or ring flap must not restart a live pod;
+          # readiness (/ready) pulls it from Service endpoints instead.
           startupProbe:
             httpGet:
               path: /ready
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 60
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /ready
@@ -70,12 +73,11 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
-            httpGet:
-              path: /ready
+            tcpSocket:
               port: http
             periodSeconds: 20
             timeoutSeconds: 5
-            failureThreshold: 6
+            failureThreshold: 3
       volumes:
         - name: pyroscope-config
           configMap:
