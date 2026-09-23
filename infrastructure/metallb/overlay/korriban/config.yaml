@@ -19,6 +19,25 @@ spec:
     - 10.10.7.100-10.10.7.150
   autoAssign: false
 ---
+# 10.10.4.200 is on-link in the nodes' 10.10.4.0/22, so MetalLB L2 can announce
+# it from bond0. Claimed by the plex-lb Service (kubernetes-private) via
+# metallb.universe.tf/loadBalancerIPs: 10.10.4.200.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: plex-mandalor
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.10.4.200/32
+  autoAssign: false
+  # Only the media namespace (plex-lb) may claim this main-LAN VIP, so no other
+  # namespace can bind 10.10.4.200 and have the speaker ARP-announce it.
+  serviceAllocation:
+    priority: 50
+    namespaces:
+      - media
+---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
 metadata:
@@ -28,6 +47,7 @@ spec:
   ipAddressPools:
     - default
     - internal
+    - plex-mandalor
 
 # Optional: Advertise from specific nodes only
 # Uncomment to limit which nodes can be leaders
