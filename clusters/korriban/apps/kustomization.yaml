@@ -14,7 +14,6 @@ resources:
   - nebula-sync-pihole1
   - nebula-sync-pihole3
   - nebula-sync-pihole5
-  - plex-monitoring
   - proxmox-monitoring
   - n8n
   - pyroscope
