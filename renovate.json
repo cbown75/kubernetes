@@ -13,6 +13,13 @@
       "groupName": "immich"
     },
     {
+      "description": "OnCall's celery needs RabbitMQ's transient_nonexcl_queues permit; a minor/major release can remove it (BOW-763)",
+      "matchPackageNames": ["docker.io/rabbitmq", "rabbitmq"],
+      "matchUpdateTypes": ["minor", "major"],
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["Before merging, run `rabbitmqctl list_deprecated_features` on the new version: `transient_nonexcl_queues` must not be `removed`, or oncall-celery crash-loops (BOW-763)."]
+    },
+    {
       "matchPackageNames": ["ghcr.io/immich-app/immich-machine-learning"],
       "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-cuda$"
     }
