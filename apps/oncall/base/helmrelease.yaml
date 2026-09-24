@@ -102,13 +102,21 @@ spec:
       image:
         registry: docker.io
         repository: rabbitmq
-        tag: "4.3-management"
+        # Pinned: in 4.3.5 transient_nonexcl_queues is "denied_by_default", so the permit
+        # below still works. A release that moves it to "removed" ignores the permit and
+        # crash-loops celery again; check `rabbitmqctl list_deprecated_features` on the
+        # new version before bumping.
+        tag: "4.3.5-management"
       # RabbitMQ 4.x disables transient_nonexcl_queues by default. grafana-oncall's
       # celery worker declares a transient non-exclusive queue, so without this the
       # broker throws internal_error and closes every connection, crash-looping celery.
       # This deployment runs the official rabbitmq image, which reads
       # /etc/rabbitmq/conf.d/*.conf and ignores Bitnami's extraConfiguration path, so
       # the permit is delivered as a conf.d drop-in via the ConfigMap below.
+      # The drop-in is a subPath mount, which a running pod never refreshes: bump
+      # config-rev whenever rabbitmq-extra-config.yaml changes so the broker restarts.
+      podAnnotations:
+        oncall.home.cwbtech.net/rabbitmq-config-rev: "2026-09-24-deprecated-features"
       extraVolumes:
         - name: extra-config
           configMap:
