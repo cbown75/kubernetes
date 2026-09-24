@@ -7,5 +7,7 @@ data:
   # Mounted at /etc/rabbitmq/conf.d/20-deprecated-features.conf. The official
   # rabbitmq image reads /etc/rabbitmq/conf.d/*.conf; it does NOT read Bitnami's
   # extraConfiguration path, so the permit has to be delivered as a conf.d drop-in.
+  # It is a subPath mount: after editing, bump oncall.home.cwbtech.net/rabbitmq-config-rev
+  # in helmrelease.yaml or the running broker keeps the old file.
   20-deprecated-features.conf: |
     deprecated_features.permit.transient_nonexcl_queues = true
