@@ -8,3 +8,16 @@ resources:
   - gitrepository-private.yaml
   - kustomization-media-storage.yaml
   - kustomization-media-apps.yaml
+patches:
+  # Flux v2.9 puts its CRDs in the `all` category, so `kubectl delete all --all -n flux-system`
+  # would also delete the flux-system Kustomization (prune: true) and everything it manages.
+  # The test op fails the build if upstream moves `all`, instead of removing the wrong entry.
+  - target:
+      kind: CustomResourceDefinition
+      name: ".*\\.toolkit\\.fluxcd\\.io"
+    patch: |-
+      - op: test
+        path: /spec/names/categories/0
+        value: all
+      - op: remove
+        path: /spec/names/categories/0
