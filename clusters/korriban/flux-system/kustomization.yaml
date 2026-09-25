@@ -14,20 +14,20 @@ patches:
       kind: CustomResourceDefinition
       name: ".*\\.source\\.toolkit\\.fluxcd\\.io"
     patch: |-
-      - op: replace
+      - op: add
         path: /spec/names/categories
         value: [fluxcd, fluxcd-sources]
   - target:
       kind: CustomResourceDefinition
       name: ".*\\.(kustomize|helm)\\.toolkit\\.fluxcd\\.io"
     patch: |-
-      - op: replace
+      - op: add
         path: /spec/names/categories
         value: [fluxcd, fluxcd-appliers]
   - target:
       kind: CustomResourceDefinition
       name: ".*\\.notification\\.toolkit\\.fluxcd\\.io"
     patch: |-
-      - op: replace
+      - op: add
         path: /spec/names/categories
         value: [fluxcd, fluxcd-notifications]
