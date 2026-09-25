@@ -192,8 +192,8 @@ flux install --export --version=<vX.Y.Z> \
   > clusters/korriban/flux-system/gotk-components.yaml
 kustomize build clusters/korriban > /dev/null
 
-# Reinstall: re-run the bootstrap above (restores the deploy key and flux-system Secret),
-# then reconcile so the flux-system patches apply
+# Reinstall: re-run the bootstrap above (restores the flux-system Secret), recreate the
+# kubernetes-private-ssh Secret, then reconcile so the flux-system patches apply
 flux reconcile kustomization flux-system --with-source
 
 # Uninstall FluxCD (danger!)
