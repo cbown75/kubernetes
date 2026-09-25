@@ -186,10 +186,24 @@ flux bootstrap github \
 # Check bootstrap status
 flux check
 
-# Reinstall FluxCD components. Build from git so the flux-system patches apply: a raw
-# `flux install --export` puts the Flux CRDs back in the `all` category. Upgrade Flux by
-# regenerating gotk-components.yaml and merging, never out of band.
-kustomize build clusters/korriban/flux-system | kubectl apply --server-side -f -
+# Upgrade Flux: regenerate gotk-components.yaml, check the build, open a PR, merge.
+flux install --export --version=<vX.Y.Z> \
+  --components=source-controller,kustomize-controller,helm-controller,notification-controller \
+  > clusters/korriban/flux-system/gotk-components.yaml
+kustomize build clusters/korriban > /dev/null   # must pass; the CRD category patch can fail it
+
+# Break-glass reinstall (Flux broken or uninstalled). Build from git so the flux-system
+# patches apply; a raw `flux install --export` puts the Flux CRDs back in the `all`
+# category. Run from the repo root on a clean checkout of origin/main.
+git fetch origin && git checkout --detach origin/main && test -z "$(git status --porcelain)"
+kustomize build clusters/korriban/flux-system > /tmp/flux-system.yaml
+# 1. CRDs first, and wait for them to register
+yq 'select(.kind == "CustomResourceDefinition")' /tmp/flux-system.yaml \
+  | kubectl apply --server-side --force-conflicts --field-manager=kustomize-controller -f -
+kubectl wait --for=condition=Established crd -l app.kubernetes.io/part-of=flux --timeout=120s
+# 2. Everything else
+yq 'select(.kind != "CustomResourceDefinition")' /tmp/flux-system.yaml \
+  | kubectl apply --server-side --force-conflicts --field-manager=kustomize-controller -f -
 
 # Uninstall FluxCD (danger!)
 flux uninstall --silent
