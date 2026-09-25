@@ -192,14 +192,9 @@ flux install --export --version=<vX.Y.Z> \
   > clusters/korriban/flux-system/gotk-components.yaml
 kustomize build clusters/korriban > /dev/null
 
-# Break-glass reinstall from origin/main (keeps the flux-system patches)
-git fetch origin && git checkout --detach origin/main && test -z "$(git status --porcelain)"
-kustomize build clusters/korriban/flux-system > /tmp/flux-system.yaml
-yq 'select(.kind == "CustomResourceDefinition")' /tmp/flux-system.yaml \
-  | kubectl apply --server-side --force-conflicts --field-manager=kustomize-controller -f -
-kubectl wait --for=condition=Established crd -l app.kubernetes.io/part-of=flux --timeout=120s
-yq 'select(.kind != "CustomResourceDefinition")' /tmp/flux-system.yaml \
-  | kubectl apply --server-side --force-conflicts --field-manager=kustomize-controller -f -
+# Reinstall: re-run the bootstrap above (restores the deploy key and flux-system Secret),
+# then reconcile so the flux-system patches apply
+flux reconcile kustomization flux-system --with-source
 
 # Uninstall FluxCD (danger!)
 flux uninstall --silent
