@@ -6,6 +6,18 @@
   },
   "packageRules": [
     {
+      "description": "Flux controllers are upgraded by regenerating gotk-components.yaml, never by tag bumps (BOW-772)",
+      "matchFileNames": ["**/flux-system/gotk-components.{yaml,yml}"],
+      "matchDatasources": ["docker"],
+      "enabled": false
+    },
+    {
+      "matchFileNames": ["**/flux-system/gotk-components.{yaml,yml}"],
+      "matchPackageNames": ["fluxcd/flux2"],
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["Do not merge: regenerate gotk-components.yaml with `flux install --export` (flux-system README, \"Upgrade Flux\")."]
+    },
+    {
       "matchPackageNames": [
         "ghcr.io/immich-app/immich-server",
         "ghcr.io/immich-app/immich-machine-learning"
