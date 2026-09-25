@@ -177,11 +177,13 @@ kubectl get kustomizations -A -o yaml | grep -A 5 -B 5 interval
 
 ```bash
 # Bootstrap FluxCD (initial setup)
-flux bootstrap github \
-  --owner=<github-user> \
-  --repository=<repo-name> \
+flux bootstrap github --personal \
+  --owner=cbown75 \
+  --repository=kubernetes \
   --branch=main \
-  --path=clusters/korriban
+  --path=clusters/korriban \
+  --version="$(sed -n 's/^# Flux Version: //p' clusters/korriban/flux-system/gotk-components.yaml)" \
+  --components=source-controller,kustomize-controller,helm-controller,notification-controller
 
 # Check bootstrap status
 flux check
