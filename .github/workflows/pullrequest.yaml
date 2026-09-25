@@ -15,9 +15,6 @@ env:
   KUBE_VERSION: "1.29.0"
 jobs:
   kustomize_build:
-    # Flux reconciles ./clusters/korriban as one build, so a broken patch (e.g. the CRD
-    # category test op in flux-system/kustomization.yaml after a Flux regen) stalls it.
-    # Catch that here, and make sure no Flux CRD ends up in the `all` category.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -29,7 +26,6 @@ jobs:
       - name: Install pinned kustomize and yq
         shell: bash
         env:
-          # Keep KUSTOMIZE_VERSION close to the kustomize API vendored in kustomize-controller.
           KUSTOMIZE_VERSION: "5.8.1"
           KUSTOMIZE_SHA256: "029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d"
           YQ_VERSION: "v4.53.6"
@@ -51,9 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # This is the path the flux-system Kustomization applies.
           kustomize build clusters/korriban > "$RUNNER_TEMP/korriban.yaml"
-          # Counts, not `yq -e`: a yq error must fail the step, not read as "no match".
           flux_crds=$(yq ea '[select(.kind == "CustomResourceDefinition" and (.metadata.name | test("\.toolkit\.fluxcd\.io$")))] | length' "$RUNNER_TEMP/korriban.yaml")
           in_all=$(yq ea '[select(.kind == "CustomResourceDefinition" and ((.spec.names.categories // []) | any_c(. == "all")))] | .[].metadata.name' "$RUNNER_TEMP/korriban.yaml")
           echo "Flux CRDs in build: ${flux_crds}"
