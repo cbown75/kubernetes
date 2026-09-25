@@ -14,6 +14,29 @@ permissions:
 env:
   KUBE_VERSION: "1.29.0"
 jobs:
+  kustomize_build:
+    # Flux reconciles ./clusters/korriban as one build, so a broken patch (e.g. the CRD
+    # category test op in flux-system/kustomization.yaml after a Flux regen) stalls it.
+    # Catch that here, and make sure no Flux CRD ends up in the `all` category.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kustomize
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.8.1/kustomize_v5.8.1_linux_amd64.tar.gz \
+            | tar -xz -C /usr/local/bin kustomize
+          kustomize version
+      - name: Build clusters/korriban
+        shell: bash
+        run: |
+          set -euo pipefail
+          kustomize build clusters/korriban > /tmp/korriban.yaml
+          kustomize build clusters/korriban/flux-system > /tmp/flux-system.yaml
+          if yq -e 'select(.kind == "CustomResourceDefinition") | select(.spec.names.categories[] == "all") | .metadata.name' /tmp/flux-system.yaml; then
+            echo "::error::Flux CRDs are in the 'all' category"; exit 1
+          fi
   commitlint:
     runs-on: ubuntu-latest
     steps:

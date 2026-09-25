@@ -11,7 +11,10 @@ resources:
 patches:
   # Flux v2.9 puts its CRDs in the `all` category, so `kubectl delete all --all -n flux-system`
   # would also delete the flux-system Kustomization (prune: true) and everything it manages.
-  # The test op fails the build if upstream moves `all`, instead of removing the wrong entry.
+  # The test op fails the build if upstream moves `all`, instead of removing the wrong entry
+  # (CI builds clusters/korriban on every PR). Any Flux CRD added later must also list `all`
+  # first. `kubectl delete all` still hits the controller Deployments; this only protects the
+  # Kustomization and its prune cascade.
   - target:
       kind: CustomResourceDefinition
       name: ".*\\.toolkit\\.fluxcd\\.io"

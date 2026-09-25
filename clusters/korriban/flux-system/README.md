@@ -186,9 +186,10 @@ flux bootstrap github \
 # Check bootstrap status
 flux check
 
-# Reinstall FluxCD components
-flux install --export > flux-system.yaml
-kubectl apply -f flux-system.yaml
+# Reinstall FluxCD components. Build from git so the flux-system patches apply: a raw
+# `flux install --export` puts the Flux CRDs back in the `all` category. Upgrade Flux by
+# regenerating gotk-components.yaml and merging, never out of band.
+kustomize build clusters/korriban/flux-system | kubectl apply --server-side -f -
 
 # Uninstall FluxCD (danger!)
 flux uninstall --silent
