@@ -176,27 +176,32 @@ kubectl get kustomizations -A -o yaml | grep -A 5 -B 5 interval
 ### Bootstrap and Recovery
 
 ```bash
-# Bootstrap FluxCD (initial setup)
-flux bootstrap github --personal \
+# Run from the repo root with GITHUB_TOKEN exported (repo admin on cbown75/kubernetes)
+cd "$(git rev-parse --show-toplevel)"
+
+# Bootstrap FluxCD (initial setup, or reinstall after an uninstall)
+FLUX_VERSION=$(sed -n 's/^# Flux Version: //p' clusters/korriban/flux-system/gotk-components.yaml)
+[[ "$FLUX_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && flux bootstrap github --personal \
   --owner=cbown75 \
   --repository=kubernetes \
   --branch=main \
   --path=clusters/korriban \
-  --version="$(sed -n 's/^# Flux Version: //p' clusters/korriban/flux-system/gotk-components.yaml)" \
+  --version="$FLUX_VERSION" \
   --components=source-controller,kustomize-controller,helm-controller,notification-controller
+# After a reinstall, also recreate the private repo's credential
+flux create secret git kubernetes-private-ssh -n flux-system \
+  --url=ssh://git@github.com/cbown75/kubernetes-private.git --private-key-file=<deploy key>
 
 # Check bootstrap status
 flux check
 
 # Upgrade Flux (then open a PR)
+tmp=$(mktemp)
 flux install --export --version=<vX.Y.Z> \
-  --components=source-controller,kustomize-controller,helm-controller,notification-controller \
-  > clusters/korriban/flux-system/gotk-components.yaml
+  --components=source-controller,kustomize-controller,helm-controller,notification-controller > "$tmp"
+[ "$(yq ea '[select(.kind == "CustomResourceDefinition")] | length' "$tmp")" -ge 11 ] \
+  && mv "$tmp" clusters/korriban/flux-system/gotk-components.yaml
 kustomize build clusters/korriban > /dev/null
-
-# Reinstall: re-run the bootstrap above (restores the flux-system Secret), recreate the
-# kubernetes-private-ssh Secret, then reconcile so the flux-system patches apply
-flux reconcile kustomization flux-system --with-source
 
 # Uninstall FluxCD (danger!)
 flux uninstall --silent

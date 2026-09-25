@@ -12,10 +12,22 @@ patches:
   # Flux v2.9 adds its CRDs to the `all` category; keep them out of `kubectl delete all`.
   - target:
       kind: CustomResourceDefinition
-      name: ".*\\.toolkit\\.fluxcd\\.io"
+      name: ".*\\.source\\.toolkit\\.fluxcd\\.io"
     patch: |-
-      - op: test
-        path: /spec/names/categories/0
-        value: all
-      - op: remove
-        path: /spec/names/categories/0
+      - op: replace
+        path: /spec/names/categories
+        value: [fluxcd, fluxcd-sources]
+  - target:
+      kind: CustomResourceDefinition
+      name: ".*\\.(kustomize|helm)\\.toolkit\\.fluxcd\\.io"
+    patch: |-
+      - op: replace
+        path: /spec/names/categories
+        value: [fluxcd, fluxcd-appliers]
+  - target:
+      kind: CustomResourceDefinition
+      name: ".*\\.notification\\.toolkit\\.fluxcd\\.io"
+    patch: |-
+      - op: replace
+        path: /spec/names/categories
+        value: [fluxcd, fluxcd-notifications]
