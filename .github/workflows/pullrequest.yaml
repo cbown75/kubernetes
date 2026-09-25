@@ -14,6 +14,49 @@ permissions:
 env:
   KUBE_VERSION: "1.29.0"
 jobs:
+  kustomize_build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install pinned kustomize and yq
+        shell: bash
+        env:
+          KUSTOMIZE_VERSION: "5.8.1"
+          KUSTOMIZE_SHA256: "029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d"
+          YQ_VERSION: "v4.53.6"
+          YQ_SHA256: "c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385"
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"
+          curl -sSfLo "$RUNNER_TEMP/kustomize.tgz" \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          echo "${KUSTOMIZE_SHA256}  $RUNNER_TEMP/kustomize.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/kustomize.tgz" -C "$bin" kustomize
+          curl -sSfLo "$bin/yq" "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          echo "${YQ_SHA256}  $bin/yq" | sha256sum -c -
+          chmod +x "$bin/yq"
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/kustomize" version | grep -q "v${KUSTOMIZE_VERSION}"
+          "$bin/yq" --version | grep -q "${YQ_VERSION}"
+      - name: Build clusters/korriban and check Flux CRD categories
+        shell: bash
+        run: |
+          set -euo pipefail
+          kustomize build clusters/korriban > "$RUNNER_TEMP/korriban.yaml"
+          flux_crds=$(yq ea '[select(.kind == "CustomResourceDefinition" and (.metadata.name | test("\.toolkit\.fluxcd\.io$")))] | length' "$RUNNER_TEMP/korriban.yaml")
+          in_all=$(yq ea '[select(.kind == "CustomResourceDefinition" and ((.spec.names.categories // []) | any_c(. == "all")))] | .[].metadata.name' "$RUNNER_TEMP/korriban.yaml")
+          echo "Flux CRDs in build: ${flux_crds}"
+          if [[ "${flux_crds}" -lt 11 ]]; then
+            echo "::error::expected at least 11 Flux CRDs in the build, found ${flux_crds}"; exit 1
+          fi
+          if [[ -n "${in_all}" ]]; then
+            echo "::error::CRDs in the 'all' category: ${in_all}"; exit 1
+          fi
   commitlint:
     runs-on: ubuntu-latest
     steps:

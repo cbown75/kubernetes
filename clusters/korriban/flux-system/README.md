@@ -176,19 +176,38 @@ kubectl get kustomizations -A -o yaml | grep -A 5 -B 5 interval
 ### Bootstrap and Recovery
 
 ```bash
-# Bootstrap FluxCD (initial setup)
-flux bootstrap github \
-  --owner=<github-user> \
-  --repository=<repo-name> \
-  --branch=main \
-  --path=clusters/korriban
+# Run from the repo root with GITHUB_TOKEN exported (repo admin on cbown75/kubernetes)
+cd "$(git rev-parse --show-toplevel)"
+
+# Bootstrap FluxCD (initial setup, or reinstall after an uninstall; pushes to main)
+FLUX_VERSION=$(sed -n 's/^# Flux Version: //p' clusters/korriban/flux-system/gotk-components.yaml)
+if [[ "$FLUX_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  flux bootstrap github --personal --owner=cbown75 --repository=kubernetes --branch=main \
+    --path=clusters/korriban --version="$FLUX_VERSION" \
+    --components=source-controller,kustomize-controller,helm-controller,notification-controller
+else
+  echo "bad FLUX_VERSION: '$FLUX_VERSION'" >&2
+fi
+# After a reinstall, recreate the private repo's credential: this generates a key and prints
+# the public half, which must be added as a read-only deploy key
+flux create secret git kubernetes-private-ssh -n flux-system \
+  --url=ssh://git@github.com/cbown75/kubernetes-private.git
+kubectl -n flux-system get secret kubernetes-private-ssh -o jsonpath='{.data.identity\.pub}' | base64 -d \
+  | gh repo deploy-key add - -R cbown75/kubernetes-private --title flux-korriban
 
 # Check bootstrap status
 flux check
 
-# Reinstall FluxCD components
-flux install --export > flux-system.yaml
-kubectl apply -f flux-system.yaml
+# Upgrade Flux (then open a PR)
+NEW_FLUX_VERSION=vX.Y.Z
+tmp=$(mktemp)
+flux install --export --version="$NEW_FLUX_VERSION" \
+  --components=source-controller,kustomize-controller,helm-controller,notification-controller > "$tmp"
+if [ "$(yq ea '[select(.kind == "CustomResourceDefinition")] | length' "$tmp")" -ge 11 ]; then
+  mv "$tmp" clusters/korriban/flux-system/gotk-components.yaml && kustomize build clusters/korriban > /dev/null
+else
+  echo "flux install output looks wrong; gotk-components.yaml unchanged" >&2; rm -f "$tmp"
+fi
 
 # Uninstall FluxCD (danger!)
 flux uninstall --silent
