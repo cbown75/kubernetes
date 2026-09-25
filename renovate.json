@@ -6,6 +6,11 @@
   },
   "packageRules": [
     {
+      "description": "Upgrade Flux by regenerating gotk-components.yaml, never by tag bumps (BOW-772)",
+      "matchFileNames": ["clusters/korriban/flux-system/gotk-components.yaml"],
+      "enabled": false
+    },
+    {
       "matchPackageNames": [
         "ghcr.io/immich-app/immich-server",
         "ghcr.io/immich-app/immich-machine-learning"
