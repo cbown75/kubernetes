@@ -21,8 +21,8 @@ spec:
       serviceAccountName: pyroscope
       securityContext:
         fsGroup: 10001
-        # Skip the recursive re-chown of the (large) data volume on every start;
-        # without this the pod sits in ContainerCreating for an hour or more.
+        # Skip the recursive re-chown of the data volume (130k+ files) on every start,
+        # which otherwise holds the pod in ContainerCreating until it finishes.
         fsGroupChangePolicy: OnRootMismatch
         runAsUser: 10001
         runAsGroup: 10001
