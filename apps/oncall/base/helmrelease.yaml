@@ -106,7 +106,7 @@ spec:
         # below still works. A release that moves it to "removed" ignores the permit and
         # crash-loops celery again; check `rabbitmqctl list_deprecated_features` on the
         # new version before bumping.
-        tag: "4.3.5-management"
+        tag: "4.3.6-management"
       # RabbitMQ 4.x disables transient_nonexcl_queues by default. grafana-oncall's
       # celery worker declares a transient non-exclusive queue, so without this the
       # broker throws internal_error and closes every connection, crash-looping celery.
