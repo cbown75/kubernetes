@@ -10,6 +10,8 @@ spec:
     username: AgB22pv0dZ/GyG0yi95oBRi5PYTSnqYrot4IFcHeXhSb0PSux6HE7IieyihSV2DRjpc7nwd0c7+W1Z/+bECj0xf+ZMXqk4KkoHlmpgHD0zn9neJ9r7DHcUlEMtAK3L/eKmCWJVhk0ZVO0Jw79Vj/UPAd0P1aKI19ebbL0xvHfaadzJQ7loWt+Da+0zPiavrCHrIq6i8rY2WCpkpE0FF6H9p1rJ1imQCz6i9DtxeW2aqXdAeCe58i9/kiK38YmGldSFv5vkVLASPAAMK5YrNt2/lu+UXUF03hRNSBmasJ7dWt0Lm0hebAZu4lKt5WkNSL3Aud6fBcwncTSMjyKR9jHSKyIBbcl1U1nBYDK3WHrC+ram5SWN2oV67O3qgER5vdGoEW4YLH+kulWpf1iz/stE/4CEx+ALSXgDa54kMiccr+KzDCyOq96e7rIuRc4JZ9K6jbIcD6lZXugG+7bogwGkRLfF9qe5yCfrXArNSpBAiuLITSYn10wbQf8oUQtJ0i/DHsDLlwP3fmyssNBHeQLH4REzsLLUfIhuoeQScD+XrHOPdHAyz0lesmUufAKMkpJLVy61FMaQysz2oGnzzKPAsX2c9/SrF09UYVxps8vrsfPhXfC1o3CPiXTYa7WMBoNJE6s5WkX+oZxMceVbaPhuIGX3+FjXgekabbVJzksEYx8VTU8VLv0Vd9Dl7XXCDzRMYKa9lTH8I=
   template:
     metadata:
+      labels:
+        cnpg.io/reload: "true"
       name: immich-db-managed-cred
       namespace: databases
     type: kubernetes.io/basic-auth
