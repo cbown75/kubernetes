@@ -1,0 +1,89 @@
+# Hubble mTLS PKI for the cilium HelmRelease (hubble.tls.auto.enabled: false).
+# Lives outside the chart so installing Cilium never depends on cert-manager,
+# which itself needs the CNI to run. Namespaced Issuers keep the CA usable
+# only from cilium-system.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cilium-hubble-selfsigned
+  namespace: cilium-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cilium-hubble-ca
+  namespace: cilium-system
+spec:
+  isCA: true
+  commonName: hubble-ca.cilium.io
+  secretName: cilium-hubble-ca
+  duration: 87600h
+  renewBefore: 8760h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    # Each side trusts the ca.crt copied into its own leaf Secret. Renewing
+    # the CA with the same key keeps leaves from either generation valid,
+    # so a CA renewal never splits relay and agent trust.
+    rotationPolicy: Never
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cilium-hubble-ca
+  namespace: cilium-system
+spec:
+  ca:
+    secretName: cilium-hubble-ca
+---
+# Mirrors the chart's tls-certmanager server cert for cluster.name korriban.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hubble-server-tls
+  namespace: cilium-system
+spec:
+  secretName: hubble-server-tls
+  commonName: "*.korriban.hubble-grpc.cilium.io"
+  dnsNames:
+    - "*.korriban.hubble-grpc.cilium.io"
+  duration: 8760h
+  privateKey:
+    rotationPolicy: Always
+  usages:
+    - signing
+    - key encipherment
+    - server auth
+    - client auth
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hubble-relay-client-tls
+  namespace: cilium-system
+spec:
+  secretName: hubble-relay-client-tls
+  commonName: "*.hubble-relay.cilium.io"
+  dnsNames:
+    - "*.hubble-relay.cilium.io"
+  duration: 8760h
+  privateKey:
+    rotationPolicy: Always
+  usages:
+    - signing
+    - key encipherment
+    - client auth
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-ca

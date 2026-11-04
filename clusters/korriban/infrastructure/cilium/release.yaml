@@ -110,22 +110,21 @@ spec:
     hubble:
       enabled: true
       tls:
+        # Certs come from cert-manager via the cilium-hubble-pki Kustomization
+        # (infrastructure/cilium-hubble-pki). The chart's auto methods either
+        # never renew (helm) or would make the CNI install depend on
+        # cert-manager (certmanager). Until the Secrets exist, agents run
+        # without Hubble TLS (volume is optional) and hubble-relay stays Pending.
         auto:
-          enabled: true
-          # The chart default (helm) generates the certs once and never
-          # renews them; they expired after 365 days (BOW-853).
-          # Bootstrap order: this renders cert-manager.io/v1 Certificates, so
-          # cert-manager's CRDs must exist before this release installs on a
-          # fresh cluster.
-          method: certmanager
-          certValidityDuration: 365
-          certManagerIssuerRef:
-            group: cert-manager.io
-            kind: ClusterIssuer
-            name: cilium-hubble-ca
+          enabled: false
+        server:
+          existingSecret: hubble-server-tls
       relay:
         enabled: true
         replicas: 2
+        tls:
+          client:
+            existingSecret: hubble-relay-client-tls
         resources:
           requests:
             cpu: 50m

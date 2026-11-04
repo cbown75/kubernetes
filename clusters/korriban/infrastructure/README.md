@@ -56,6 +56,17 @@ The infrastructure is organized in dependency order, with each component buildin
   - Multiple issuers (staging/production)
 - **Status**: `kubectl get pods -n cert-manager`
 
+#### Cilium Hubble PKI
+
+- **Purpose**: mTLS between hubble-relay and the cilium agents
+- **Namespace**: `cilium-system`
+- **Flux Kustomization**: `cilium-hubble-pki` (`infrastructure/cilium-hubble-pki`), depends on `cert-manager-base`
+- **Features**:
+  - Namespaced self-signed CA (`cilium-hubble-ca`), reached only from `cilium-system`
+  - Leaf Secrets `hubble-server-tls` and `hubble-relay-client-tls`, renewed by cert-manager
+  - Cilium installs without cert-manager. The agents start without Hubble TLS and hubble-relay stays Pending until the Secrets exist.
+- **Status**: `kubectl get certificate -n cilium-system`
+
 ### 4. MetalLB
 
 - **Purpose**: Load balancer implementation for bare metal clusters
