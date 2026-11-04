@@ -5,3 +5,4 @@ resources:
   - clusterissuer.yaml
   - cloudflare-secret.yaml
   - rbac.yaml
+  - hubble-ca.yaml

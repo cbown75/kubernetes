@@ -1,0 +1,50 @@
+# CA chain for Cilium Hubble mTLS (hubble-server <-> hubble-relay).
+# The Cilium HelmRelease issues hubble-server-certs and hubble-relay-client-certs
+# from the cilium-hubble-ca ClusterIssuer, and cert-manager renews them.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cilium-hubble-selfsigned
+  labels:
+    app.kubernetes.io/name: cilium-hubble-ca
+    app.kubernetes.io/part-of: cert-manager
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cilium-hubble-ca
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cilium-hubble-ca
+    app.kubernetes.io/part-of: cert-manager
+spec:
+  isCA: true
+  commonName: hubble-ca.cilium.io
+  secretName: cilium-hubble-ca
+  # Leaf certs carry the CA that signed them in ca.crt, so a CA rotation
+  # needs both hubble leaf certs to be reissued before relay<->agent mTLS
+  # works again. A 10y CA keeps that event rare.
+  duration: 87600h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: cilium-hubble-selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: cilium-hubble-ca
+  labels:
+    app.kubernetes.io/name: cilium-hubble-ca
+    app.kubernetes.io/part-of: cert-manager
+spec:
+  ca:
+    # A ClusterIssuer reads its CA secret from cert-manager's
+    # --cluster-resource-namespace (the cert-manager namespace).
+    secretName: cilium-hubble-ca

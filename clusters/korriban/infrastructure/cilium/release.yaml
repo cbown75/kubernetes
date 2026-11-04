@@ -109,6 +109,20 @@ spec:
           memory: 512Mi
     hubble:
       enabled: true
+      tls:
+        auto:
+          enabled: true
+          # The chart default (helm) generates the certs once and never
+          # renews them; they expired after 365 days (BOW-853).
+          # Bootstrap order: this renders cert-manager.io/v1 Certificates, so
+          # cert-manager's CRDs must exist before this release installs on a
+          # fresh cluster.
+          method: certmanager
+          certValidityDuration: 365
+          certManagerIssuerRef:
+            group: cert-manager.io
+            kind: ClusterIssuer
+            name: cilium-hubble-ca
       relay:
         enabled: true
         replicas: 2
