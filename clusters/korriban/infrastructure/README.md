@@ -58,49 +58,40 @@ The infrastructure is organized in dependency order, with each component buildin
 
 #### Cilium Hubble PKI
 
-- **Status**: staged. The cilium HelmRelease does not consume these Secrets until BOW-857 switches it to `existingSecret`; until then Hubble still uses the chart's helm-method `cilium-ca`, `hubble-server-certs` and `hubble-relay-client-certs`, and the re-key runbook below does not apply (see *Before BOW-857*).
+- **Status**: staged. The cilium HelmRelease doesn't use these Secrets until BOW-857 switches it to `existingSecret`. Until then Hubble runs on the chart's helm-method `cilium-ca`, `hubble-server-certs` and `hubble-relay-client-certs` (see *During the staged window*).
 - **Purpose**: mTLS between hubble-relay and the cilium agents
 - **Namespace**: `cilium-system`
 - **Flux Kustomization**: `cilium-hubble-pki` (`infrastructure/cilium-hubble-pki`), depends on `cert-manager-base`. Registered in `clusters/korriban/kustomization.yaml`, not in the `infrastructure` Kustomization.
 - **Features**:
-  - Self-signed CA `cilium-hubble-ca` (10y, key kept across renewals) behind namespaced Issuers, so only Certificates in `cilium-system` can use it. Anyone who can create CertificateRequests in `cilium-system`, or read its Secrets (including cluster-wide Secret readers, see BOW-742), can still mint certs that Hubble trusts.
+  - Self-signed CA `cilium-hubble-ca` (10y, key kept across renewals) behind namespaced Issuers, so only Certificates in `cilium-system` can reference it. Anyone who can create or patch Certificates, CertificateRequests or Issuers in `cilium-system`, or read its Secrets (including cluster-wide Secret readers, see BOW-742), can still mint certs that Hubble trusts.
   - Leaf Secrets `hubble-server-tls` and `hubble-relay-client-tls` (1y), renewed by cert-manager and covered by the existing cert-manager expiry alerts
-  - Once consumed: the Cilium chart renders no cert-manager objects. Until the leaf Secrets exist, each agent's Hubble server on :4244 waits for them (fail-closed, no plaintext) and hubble-relay stays in ContainerCreating. Do not set `hubble.tls.enabled: false` to work around this.
+  - After BOW-857, until the leaf Secrets exist, each agent's Hubble server on :4244 waits for them (fail-closed, no plaintext) and hubble-relay stays in ContainerCreating. Never set `hubble.tls.enabled: false`: the agents listen on host-network :4244 on every node.
 - **Check**: `kubectl get certificate -n cilium-system`
 
-**Re-key the CA** (suspected key compromise, or `cilium-hubble-ca` was lost or restored from a backup without it). Only a new CA key invalidates stolen certs. Renewing a leaf doesn't, and `cmctl renew` on the CA keeps the old key (`rotationPolicy: Never`). cert-manager doesn't reissue leaves when the CA changes, so both leaves must be renewed by hand, and the agents must restart to drop streams opened with stolen certs.
+**Re-key** (suspected key compromise, or `cilium-hubble-ca` was lost or restored from a backup without it). Only a new CA key invalidates certs minted from a stolen CA; `cmctl renew` on the CA keeps its key (`rotationPolicy: Never`).
 
-0. Close the way in first: find how the key or a cert leaked and revoke that access (RBAC on `cilium-system` CertificateRequests and Secrets, cluster-wide Secret readers). Review `kubectl -n cilium-system get certificaterequests -o wide` for requests not owned by the three Certificates.
-1. Re-key and verify (needs `cmctl`, `brew install cmctl`):
+1. Close the way in first: find how the key or cert leaked and revoke that access. That covers create or patch on Certificates, CertificateRequests, Issuers and Secrets in `cilium-system`, and cluster-wide Secret readers. A stolen CA key leaves no CertificateRequest behind, so check the API audit log as well. List the requests and who owns them:
 
-```bash
-set -euo pipefail
-NS=cilium-system
-fp() { kubectl -n "$NS" get secret "$1" -o jsonpath="{.data.$2}" | base64 -d | openssl x509 -noout -pubkey | openssl sha256; }
-old=$(fp cilium-hubble-ca 'tls\.crt' 2>/dev/null || echo none)
-kubectl -n "$NS" delete secret cilium-hubble-ca --ignore-not-found
-kubectl -n "$NS" wait --for=create secret/cilium-hubble-ca --timeout=2m
-new=$(fp cilium-hubble-ca 'tls\.crt')
-[ "$old" != "$new" ] || { echo "CA key did not change"; exit 1; }
-# renew keeps the old Secret until the new one is written (deleting the leaf Secrets also works, with a gap)
-cmctl renew -n "$NS" hubble-server-tls hubble-relay-client-tls
-for s in hubble-server-tls hubble-relay-client-tls; do
-  for _ in $(seq 60); do [ "$(fp "$s" 'ca\.crt' 2>/dev/null)" = "$new" ] && break; sleep 2; done
-  [ "$(fp "$s" 'ca\.crt')" = "$new" ] || { echo "$s not reissued from the new CA"; exit 1; }
-done
-# Restart both sides: the file reload only blocks new handshakes, restarting the agents ends existing streams
-kubectl -n "$NS" rollout restart ds/cilium deploy/hubble-relay
-kubectl -n "$NS" rollout status ds/cilium --timeout=15m
-kubectl -n "$NS" rollout status deploy/hubble-relay --timeout=5m
-```
+   ```bash
+   kubectl -n cilium-system get certificaterequests -o custom-columns=NAME:.metadata.name,OWNER:.metadata.ownerReferences[0].name,REQUESTER:.spec.username,CREATED:.metadata.creationTimestamp
+   ```
 
-**Before BOW-857** (Hubble still on the chart's helm-method certs): re-key by deleting `cilium-ca`, `hubble-server-certs` and `hubble-relay-client-certs`, running `flux reconcile hr cilium -n flux-system --force` so the chart regenerates them, then restarting `ds/cilium` and `deploy/hubble-relay` as above.
+   Anything owned by something other than the three Certificates, or requested by someone other than the cert-manager controller, needs explaining.
+2. Run `./scripts/rekey-hubble-ca.sh`. It needs `cmctl` (`brew install cmctl`) and refuses to start until cilium actually mounts these Secrets. It replaces the CA key, checks that only cert-manager wrote the new CA Secret, gives both leaves new keys, verifies that they chain to the new CA, and restarts the agents and relay to end existing streams. Use `--leaves-only` to resume after a failure past the CA step (relay and agents are split across CAs until it finishes), or when only a leaf key leaked.
 
-**Decommission**, in this order. cert-manager doesn't set owner references on Secrets, so pruning alone leaves the CA private key behind, and deleting the Secrets while the Certificates still exist just reissues them with a fresh key.
+**During the staged window** (before BOW-857): don't re-key the helm-method CA in place. Its key is also stored in the Helm release Secrets in `flux-system` (`sh.helm.release.v1.cilium-system-cilium.*`), and a failed forced upgrade rolls back to the compromised key. Close the access path (step 1, plus Secret readers in `flux-system`), land BOW-857 so the agents trust `cilium-hubble-ca` instead, then run the re-key. The old helm-method key stays in the release history until five more upgrades rotate it out, so don't roll the HelmRelease back past BOW-857.
 
-1. Point the cilium HelmRelease away from these Secrets (other certs, or Hubble TLS deliberately off). Otherwise the agents fail closed and relay can't start.
-2. Remove `infrastructure/cilium-hubble-pki.yaml` from `clusters/korriban/kustomization.yaml` and let Flux prune. Confirm `kubectl -n cilium-system get certificate,issuer` no longer lists them. This also removes their expiry alerts.
-3. `kubectl -n cilium-system delete secret -l app.kubernetes.io/name=cilium-hubble-pki`, then confirm the same `get secret -l ...` returns nothing.
+**Decommission**, in this order. cert-manager doesn't set owner references on Secrets, so pruning alone leaves the CA private key behind, and deleting the Secrets while the Certificates still exist just reissues them.
+
+1. Point the cilium HelmRelease at other certs that have their own renewal and expiry alerting, or disable Hubble. Never turn Hubble TLS off.
+2. Remove `infrastructure/cilium-hubble-pki.yaml` from `clusters/korriban/kustomization.yaml` and let Flux prune. Confirm `kubectl -n cilium-system get certificate,issuer` no longer lists them. Their expiry alerts go with them.
+3. Delete the Secrets by name and confirm they are gone. Also delete any leftover `cert-manager.io/next-private-key=true` Secret from an interrupted issuance:
+
+   ```bash
+   kubectl -n cilium-system delete secret cilium-hubble-ca hubble-server-tls hubble-relay-client-tls --ignore-not-found
+   kubectl -n cilium-system get secret -l 'app.kubernetes.io/name=cilium-hubble-pki' -o name
+   kubectl -n cilium-system get secret -l 'cert-manager.io/next-private-key=true' -o name
+   ```
 
 ### 4. MetalLB
 

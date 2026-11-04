@@ -155,6 +155,27 @@ Creates sealed secrets for N8N automation platform.
 
 ---
 
+### 6. Hubble CA Re-key
+
+**Script:** `rekey-hubble-ca.sh`
+
+Incident response for the Cilium Hubble mTLS PKI (`infrastructure/cilium-hubble-pki`). It replaces the CA key, reissues both leaf certs from it, verifies the chain, and restarts the cilium agents and hubble-relay. This acts on the live cluster, not on Git. Read the re-key runbook in `clusters/korriban/infrastructure/README.md` before running it.
+
+**Prerequisites:**
+
+- `kubectl` on the korriban context
+- `cmctl` (`brew install cmctl`)
+- `openssl`
+
+**Usage:**
+
+```bash
+./scripts/rekey-hubble-ca.sh                # new CA key and leaves
+./scripts/rekey-hubble-ca.sh --leaves-only  # new leaf keys only, or resume after the CA step
+```
+
+---
+
 ## General Workflow
 
 All scripts follow this pattern:
