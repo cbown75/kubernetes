@@ -5,7 +5,8 @@ metadata:
   namespace: flux-system
 spec:
   # Not dependsOn infrastructure: the cilium HelmRelease waits on
-  # hubble-relay, which waits on these Secrets.
+  # hubble-relay, which waits on these Secrets. The cilium-system namespace
+  # comes from infrastructure; until it exists, applies fail and retry.
   dependsOn:
     - name: cert-manager-base
   interval: 10m

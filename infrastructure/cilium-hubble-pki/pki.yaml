@@ -1,7 +1,7 @@
-# Hubble mTLS PKI for the cilium HelmRelease (hubble.tls.auto.enabled: false).
-# Lives outside the chart so installing Cilium never depends on cert-manager,
-# which itself needs the CNI to run. Namespaced Issuers keep the CA usable
-# only from cilium-system.
+# Hubble mTLS PKI for the cilium HelmRelease's hubble.tls.server and
+# hubble.relay.tls.client existingSecret values. Kept outside the chart so the
+# CNI release never renders cert-manager objects; cert-manager itself needs the
+# CNI to run. Namespaced Issuers keep the CA usable only from cilium-system.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -19,6 +19,10 @@ spec:
   isCA: true
   commonName: hubble-ca.cilium.io
   secretName: cilium-hubble-ca
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cilium-hubble-pki
+      app.kubernetes.io/part-of: infrastructure
   duration: 87600h
   renewBefore: 8760h
   privateKey:
@@ -50,6 +54,10 @@ metadata:
   namespace: cilium-system
 spec:
   secretName: hubble-server-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cilium-hubble-pki
+      app.kubernetes.io/part-of: infrastructure
   commonName: "*.korriban.hubble-grpc.cilium.io"
   dnsNames:
     - "*.korriban.hubble-grpc.cilium.io"
@@ -73,6 +81,10 @@ metadata:
   namespace: cilium-system
 spec:
   secretName: hubble-relay-client-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cilium-hubble-pki
+      app.kubernetes.io/part-of: infrastructure
   commonName: "*.hubble-relay.cilium.io"
   dnsNames:
     - "*.hubble-relay.cilium.io"

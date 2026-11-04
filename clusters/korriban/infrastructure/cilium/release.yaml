@@ -109,22 +109,9 @@ spec:
           memory: 512Mi
     hubble:
       enabled: true
-      tls:
-        # Certs come from cert-manager via the cilium-hubble-pki Kustomization
-        # (infrastructure/cilium-hubble-pki). The chart's auto methods either
-        # never renew (helm) or would make the CNI install depend on
-        # cert-manager (certmanager). Until the Secrets exist, agents run
-        # without Hubble TLS (volume is optional) and hubble-relay stays Pending.
-        auto:
-          enabled: false
-        server:
-          existingSecret: hubble-server-tls
       relay:
         enabled: true
         replicas: 2
-        tls:
-          client:
-            existingSecret: hubble-relay-client-tls
         resources:
           requests:
             cpu: 50m

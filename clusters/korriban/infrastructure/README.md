@@ -62,10 +62,24 @@ The infrastructure is organized in dependency order, with each component buildin
 - **Namespace**: `cilium-system`
 - **Flux Kustomization**: `cilium-hubble-pki` (`infrastructure/cilium-hubble-pki`), depends on `cert-manager-base`
 - **Features**:
-  - Namespaced self-signed CA (`cilium-hubble-ca`), reached only from `cilium-system`
-  - Leaf Secrets `hubble-server-tls` and `hubble-relay-client-tls`, renewed by cert-manager
-  - Cilium installs without cert-manager. The agents start without Hubble TLS and hubble-relay stays Pending until the Secrets exist.
+  - Namespaced self-signed CA (`cilium-hubble-ca`, 10y, key kept across renewals), reached only from `cilium-system`
+  - Leaf Secrets `hubble-server-tls` and `hubble-relay-client-tls` (1y), renewed by cert-manager
+  - The Cilium chart renders no cert-manager objects. Until the leaf Secrets exist, each agent's Hubble server on :4244 waits for them (fail-closed, no plaintext) and hubble-relay stays in ContainerCreating. Do not set `hubble.tls.enabled: false` to work around this.
 - **Status**: `kubectl get certificate -n cilium-system`
+
+**Re-key the CA** (suspected key compromise, or `cilium-hubble-ca` was deleted or restored from a backup without it). Renewing a leaf doesn't invalidate a stolen copy; only a new CA key does. cert-manager doesn't reissue leaves when the CA changes, so renew both leaves by hand or relay and agent trust splits:
+
+```bash
+kubectl -n cilium-system delete secret cilium-hubble-ca        # skip if it is already gone
+kubectl -n cilium-system wait certificate/cilium-hubble-ca --for=condition=Ready --timeout=2m
+# Deleting the leaf Secrets makes cert-manager reissue them from the new CA (or: cmctl renew ...)
+kubectl -n cilium-system delete secret hubble-server-tls hubble-relay-client-tls
+kubectl -n cilium-system wait certificate --all --for=condition=Ready --timeout=2m
+# Agents and relay reload the mounted files; if relay stays unhealthy after ~2m:
+kubectl -n cilium-system rollout restart deploy/hubble-relay
+```
+
+**Decommission**: cert-manager doesn't set owner references on Secrets, so pruning the `cilium-hubble-pki` Kustomization leaves the CA private key behind. Delete `secret/cilium-hubble-ca`, `secret/hubble-server-tls` and `secret/hubble-relay-client-tls` in `cilium-system` explicitly.
 
 ### 4. MetalLB
 
