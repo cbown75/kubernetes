@@ -30,8 +30,9 @@ spec:
     algorithm: ECDSA
     size: 256
     # Each side trusts the ca.crt copied into its own leaf Secret. Renewing
-    # the CA with the same key keeps leaves from either generation valid,
-    # so a CA renewal never splits relay and agent trust.
+    # the CA with the same key keeps leaves from either generation valid, so
+    # a CA renewal doesn't split relay and agent trust as long as the leaves
+    # renew (about every 8 months) before the old CA cert expires.
     rotationPolicy: Never
   issuerRef:
     group: cert-manager.io
