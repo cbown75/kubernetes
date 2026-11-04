@@ -1,0 +1,109 @@
+# Hubble mTLS PKI, staged for the cilium HelmRelease's hubble.tls.server and
+# hubble.relay.tls.client existingSecret values (BOW-857). Kept outside the
+# chart so the CNI release never renders cert-manager objects; cert-manager
+# itself needs the CNI to run. Namespaced Issuers: only Certificates in
+# cilium-system can reference the CA.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cilium-hubble-selfsigned
+  namespace: cilium-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cilium-hubble-ca
+  namespace: cilium-system
+spec:
+  isCA: true
+  commonName: hubble-ca.cilium.io
+  # Keep recent CertificateRequests for troubleshooting (default 1).
+  revisionHistoryLimit: 10
+  secretName: cilium-hubble-ca
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cilium-hubble-pki
+      app.kubernetes.io/part-of: infrastructure
+  duration: 87600h
+  renewBefore: 8760h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    # Each side trusts the ca.crt copied into its own leaf Secret. Renewing
+    # the CA with the same key keeps leaves from either generation valid, so
+    # a CA renewal doesn't split relay and agent trust as long as the leaves
+    # renew (about every 8 months) before the old CA cert expires.
+    rotationPolicy: Never
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cilium-hubble-ca
+  namespace: cilium-system
+spec:
+  ca:
+    secretName: cilium-hubble-ca
+---
+# Mirrors the chart's tls-certmanager server cert. "korriban" must match
+# values.cluster.name in clusters/korriban/infrastructure/cilium/release.yaml:
+# relay verifies agents as <node>.<cluster.name>.hubble-grpc.cilium.io.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hubble-server-tls
+  namespace: cilium-system
+spec:
+  revisionHistoryLimit: 10
+  secretName: hubble-server-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cilium-hubble-pki
+      app.kubernetes.io/part-of: infrastructure
+  commonName: "*.korriban.hubble-grpc.cilium.io"
+  dnsNames:
+    - "*.korriban.hubble-grpc.cilium.io"
+  duration: 8760h
+  privateKey:
+    rotationPolicy: Always
+  usages:
+    - signing
+    - key encipherment
+    - server auth
+    - client auth
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hubble-relay-client-tls
+  namespace: cilium-system
+spec:
+  revisionHistoryLimit: 10
+  secretName: hubble-relay-client-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: cilium-hubble-pki
+      app.kubernetes.io/part-of: infrastructure
+  commonName: "*.hubble-relay.cilium.io"
+  dnsNames:
+    - "*.hubble-relay.cilium.io"
+  duration: 8760h
+  privateKey:
+    rotationPolicy: Always
+  usages:
+    - signing
+    - key encipherment
+    - client auth
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-ca
