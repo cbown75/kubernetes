@@ -19,6 +19,8 @@ metadata:
 spec:
   isCA: true
   commonName: hubble-ca.cilium.io
+  # Keep CertificateRequest history so issuance can be audited (default 1).
+  revisionHistoryLimit: 10
   secretName: cilium-hubble-ca
   secretTemplate:
     labels:
@@ -57,6 +59,7 @@ metadata:
   name: hubble-server-tls
   namespace: cilium-system
 spec:
+  revisionHistoryLimit: 10
   secretName: hubble-server-tls
   secretTemplate:
     labels:
@@ -84,6 +87,7 @@ metadata:
   name: hubble-relay-client-tls
   namespace: cilium-system
 spec:
+  revisionHistoryLimit: 10
   secretName: hubble-relay-client-tls
   secretTemplate:
     labels:
