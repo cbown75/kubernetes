@@ -5,10 +5,17 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
+  # One cilium HelmRelease attempt can take up to its 15m timeout, so the
+  # health-check timeout below is longer (it also applies to the other
+  # components in this Kustomization), and a failed check retries after 2m
+  # rather than a full interval. While cilium keeps failing, apps, media-apps,
+  # istio-cni, istiod and istio-ingress (and the istio-base and istio-config
+  # Kustomizations) stay blocked until it succeeds.
+  retryInterval: 2m
   sourceRef:
     kind: GitRepository
     name: flux-system
   path: ./clusters/korriban/infrastructure
   prune: true
   wait: true
-  timeout: 10m
+  timeout: 20m

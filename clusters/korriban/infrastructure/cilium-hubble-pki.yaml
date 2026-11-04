@@ -7,10 +7,10 @@ metadata:
     app.kubernetes.io/name: cilium-hubble-pki
     app.kubernetes.io/part-of: infrastructure
 spec:
-  # Not dependsOn infrastructure: once the cilium HelmRelease consumes these
-  # Secrets (BOW-857), it waits on hubble-relay, which waits on them. The
-  # cilium-system namespace comes from infrastructure; until it exists,
-  # applies fail and retry.
+  # Not dependsOn infrastructure: cilium HelmRelease installs and upgrades
+  # wait on hubble-relay, which waits on these Secrets. The cilium-system
+  # namespace comes from infrastructure; until it exists, applies fail and
+  # retry.
   dependsOn:
     - name: cert-manager-base
   interval: 10m
