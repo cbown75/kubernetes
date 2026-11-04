@@ -19,7 +19,7 @@ metadata:
 spec:
   isCA: true
   commonName: hubble-ca.cilium.io
-  # Keep CertificateRequest history so issuance can be audited (default 1).
+  # Keep recent CertificateRequests for troubleshooting (default 1).
   revisionHistoryLimit: 10
   secretName: cilium-hubble-ca
   secretTemplate:
