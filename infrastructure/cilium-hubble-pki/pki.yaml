@@ -1,7 +1,8 @@
-# Hubble mTLS PKI for the cilium HelmRelease's hubble.tls.server and
-# hubble.relay.tls.client existingSecret values. Kept outside the chart so the
-# CNI release never renders cert-manager objects; cert-manager itself needs the
-# CNI to run. Namespaced Issuers keep the CA usable only from cilium-system.
+# Hubble mTLS PKI, staged for the cilium HelmRelease's hubble.tls.server and
+# hubble.relay.tls.client existingSecret values (BOW-857). Kept outside the
+# chart so the CNI release never renders cert-manager objects; cert-manager
+# itself needs the CNI to run. Namespaced Issuers: only Certificates in
+# cilium-system can reference the CA.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -46,7 +47,9 @@ spec:
   ca:
     secretName: cilium-hubble-ca
 ---
-# Mirrors the chart's tls-certmanager server cert for cluster.name korriban.
+# Mirrors the chart's tls-certmanager server cert. "korriban" must match
+# values.cluster.name in clusters/korriban/infrastructure/cilium/release.yaml:
+# relay verifies agents as <node>.<cluster.name>.hubble-grpc.cilium.io.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
