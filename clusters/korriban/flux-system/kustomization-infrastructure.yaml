@@ -5,10 +5,12 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
+  retryInterval: 2m
   sourceRef:
     kind: GitRepository
     name: flux-system
   path: ./clusters/korriban/infrastructure
   prune: true
   wait: true
-  timeout: 10m
+  # Longer than the cilium HelmRelease's 15m timeout.
+  timeout: 20m

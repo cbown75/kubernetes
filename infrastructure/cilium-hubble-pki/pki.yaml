@@ -1,5 +1,5 @@
-# Hubble mTLS PKI, staged for the cilium HelmRelease's hubble.tls.server and
-# hubble.relay.tls.client existingSecret values (BOW-857). Kept outside the
+# Hubble mTLS PKI for the cilium HelmRelease's hubble.tls.server and
+# hubble.relay.tls.client existingSecret values. Kept outside the
 # chart so the CNI release never renders cert-manager objects; cert-manager
 # itself needs the CNI to run. Namespaced Issuers: only Certificates in
 # cilium-system can reference the CA.

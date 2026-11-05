@@ -44,11 +44,22 @@ spec:
     createNamespace: false
     replace: true
     crds: CreateReplace
+    # Retry instead of remediating: install remediation uninstalls the CNI.
+    strategy:
+      name: RetryOnFailure
+      retryInterval: 5m
     remediation:
       retries: 3
   upgrade:
-    cleanupOnFail: true
+    # Off until BOW-861: with no rollback, cleanup would delete resources the
+    # failed upgrade created while the updated workloads still reference them.
+    cleanupOnFail: false
     crds: CreateReplace
+    # Retry instead of rolling back: rollback targets predate the switch.
+    # Change only in Git; remove per BOW-861.
+    strategy:
+      name: RetryOnFailure
+      retryInterval: 5m
     remediation:
       retries: 3
       remediateLastFailure: true
@@ -78,6 +89,7 @@ spec:
     securityContext:
       privileged: true
     cluster:
+      # Must match the hubble-server-tls SAN in infrastructure/cilium-hubble-pki.
       name: korriban
       id: 1
     ipam:
@@ -109,9 +121,19 @@ spec:
           memory: 512Mi
     hubble:
       enabled: true
+      tls:
+        # Issued by cert-manager (infrastructure/cilium-hubble-pki); the chart's
+        # helm method never renews.
+        auto:
+          enabled: false
+        server:
+          existingSecret: hubble-server-tls
       relay:
         enabled: true
         replicas: 2
+        tls:
+          client:
+            existingSecret: hubble-relay-client-tls
         resources:
           requests:
             cpu: 50m
