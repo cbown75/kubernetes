@@ -1,0 +1,17 @@
+# hubble-ui proxies the relay, so only kubelet probes may reach it; use kubectl port-forward.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-ui-ingress
+  namespace: cilium-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: hubble-ui
+  ingress:
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP

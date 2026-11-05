@@ -111,6 +111,13 @@ The infrastructure is organized in dependency order, with each component buildin
   - **Ingress LoadBalancer IP**: `10.10.7.210` (via MetalLB)
 - **Status**: `kubectl get pods -n istio-system`
 
+### 6. Cilium Network Policies
+
+- **Purpose**: hubble-relay accepts 4245 only from hubble-ui; hubble-ui accepts only kubelet probes. Remaining exposure: BOW-872.
+- **Flux Kustomization**: `cilium-system-policies` (`infrastructure/cilium-system-policies`), registered in `clusters/korriban/kustomization.yaml`.
+- **Check**: `kubectl -n cilium-system get cnp` (VALID True)
+- **Access**: `kubectl -n cilium-system port-forward svc/hubble-ui 12000:80` (port-forward isn't subject to the policies)
+
 ## Network Architecture
 
 ```
