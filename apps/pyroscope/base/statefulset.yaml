@@ -29,7 +29,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: pyroscope
-          image: grafana/pyroscope:2.4.1
+          image: grafana/pyroscope:2.4.3
           imagePullPolicy: IfNotPresent
           args:
             - -config.file=/etc/pyroscope/config.yaml
