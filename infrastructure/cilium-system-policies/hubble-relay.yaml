@@ -1,0 +1,25 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-relay-ingress
+  namespace: cilium-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: hubble-relay
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s-app: hubble-ui
+            io.cilium.k8s.policy.serviceaccount: hubble-ui
+      toPorts:
+        - ports:
+            - port: "4245"
+              protocol: TCP
+    # Kubelet probes.
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "4222"
+              protocol: TCP

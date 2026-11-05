@@ -1,0 +1,19 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cilium-system-policies
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: cilium-system-policies
+    app.kubernetes.io/part-of: infrastructure
+spec:
+  # No dependsOn: retries until cilium-operator registers the CNP CRD.
+  interval: 10m
+  retryInterval: 1m
+  path: ./infrastructure/cilium-system-policies
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  wait: true
+  timeout: 5m

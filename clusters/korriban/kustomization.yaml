@@ -5,6 +5,7 @@ resources:
   - infrastructure/cert-manager-base.yaml
   - infrastructure/cert-manager-config.yaml
   - infrastructure/cilium-hubble-pki.yaml
+  - infrastructure/cilium-system-policies.yaml
   - infrastructure/metallb-base.yaml
   - infrastructure/metallb-config.yaml
   - infrastructure/istio-base.yaml
