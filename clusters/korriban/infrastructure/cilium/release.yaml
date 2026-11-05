@@ -44,39 +44,25 @@ spec:
     createNamespace: false
     replace: true
     crds: CreateReplace
-    # Retry a failed install instead of remediating: install remediation
-    # always uninstalls, which would remove the CNI. On bootstrap or DR,
-    # hubble-relay can't become ready until cert-manager, which needs this CNI,
-    # issues the Hubble Secrets, so the first install can time out; a failed
-    # install that reached Helm storage is retried as an upgrade, which waits
-    # again. While this strategy is set, remediation below never uninstalls,
-    # but its retries still cap an absent or out-of-sync release; keep it.
+    # Retry instead of remediating: install remediation uninstalls the CNI.
     strategy:
       name: RetryOnFailure
       retryInterval: 5m
     remediation:
       retries: 3
   upgrade:
-    # Off while upgrade.strategy is RetryOnFailure: with no rollback, Helm
-    # would delete the resources a failed upgrade created while the updated
-    # workloads still reference them. Restore it with BOW-861.
+    # Off until BOW-861: with no rollback, cleanup would delete resources the
+    # failed upgrade created while the updated workloads still reference them.
     cleanupOnFail: false
     crds: CreateReplace
-    # Retry a failed upgrade instead of rolling back: rollback targets
-    # predate the switch to cert-manager Hubble Secrets. While this strategy
-    # is set, remediation below never rolls back, but its retries still cap
-    # an absent or out-of-sync release; keep it. Remove this strategy once a
-    # release after the switch is deployed and no rollback target predates
-    # it (BOW-861).
-    # Change this only in Git: an in-cluster edit that removes or renames this
-    # strategy re-enables rollback until Flux re-applies it.
+    # Retry instead of rolling back: rollback targets predate the switch.
+    # Change only in Git; remove per BOW-861.
     strategy:
       name: RetryOnFailure
       retryInterval: 5m
     remediation:
       retries: 3
       remediateLastFailure: true
-  # Unused while upgrade.strategy is RetryOnFailure.
   rollback:
     cleanupOnFail: true
     timeout: 10m
@@ -103,8 +89,7 @@ spec:
     securityContext:
       privileged: true
     cluster:
-      # Must match the hubble-server-tls SAN in
-      # infrastructure/cilium-hubble-pki/pki.yaml (*.korriban.hubble-grpc.cilium.io).
+      # Must match the hubble-server-tls SAN in infrastructure/cilium-hubble-pki.
       name: korriban
       id: 1
     ipam:
@@ -137,12 +122,8 @@ spec:
     hubble:
       enabled: true
       tls:
-        # Certs come from cert-manager via the cilium-hubble-pki Kustomization
-        # (infrastructure/cilium-hubble-pki). The chart's helm method never
-        # renews them. Until the Secrets exist, each agent's Hubble server
-        # fails closed; hubble-relay stays in ContainerCreating without
-        # hubble-relay-client-tls and can't become ready without the agents'
-        # hubble-server-tls.
+        # Issued by cert-manager (infrastructure/cilium-hubble-pki); the chart's
+        # helm method never renews.
         auto:
           enabled: false
         server:
