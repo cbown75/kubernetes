@@ -53,8 +53,9 @@ spec:
       name: synology-csi-driver
       image:
         repository: ghcr.io/cbown75/synology-csi
-        tag: latest
-        pullPolicy: Always
+        # Pinned to the digest running on 2026-11-05; `latest` alone floats on every pod start.
+        tag: latest@sha256:f96ec456e07584dcf4697543526a1168dbf1c7a384cb0913f3c613b6182e5bb9
+        pullPolicy: IfNotPresent
 
     # Kubelet configuration
     kubelet:
