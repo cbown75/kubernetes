@@ -1,0 +1,85 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gpu-operator
+  namespace: flux-system
+spec:
+  interval: 30m
+  # The first install waits on the NFD and operator images pulling from nvcr.io/registry.k8s.io.
+  timeout: 10m
+  targetNamespace: gpu-operator
+  releaseName: gpu-operator
+  chart:
+    spec:
+      chart: gpu-operator
+      # Talos v1.13.12 CI pins v26.3.1 (v1.14.5 pins v26.3.3); bump with the Talos release that tests it.
+      version: "v26.3.1"
+      sourceRef:
+        kind: HelmRepository
+        name: nvidia
+        namespace: flux-system
+      interval: 12h
+  # Retry instead of uninstalling: the operator owns the adopted nvidia RuntimeClass,
+  # so an uninstall-remediation would garbage-collect it.
+  install:
+    createNamespace: false
+    crds: CreateReplace
+    strategy:
+      name: RetryOnFailure
+      retryInterval: 5m
+  upgrade:
+    crds: CreateReplace
+    strategy:
+      name: RetryOnFailure
+      retryInterval: 5m
+  values:
+    # Talos ships the driver and container toolkit as system extensions.
+    driver:
+      enabled: false
+    toolkit:
+      enabled: false
+    hostPaths:
+      driverInstallDir: /usr/local
+    operator:
+      # Bump with the chart (Renovate groups them); the validator runs the same image.
+      version: "v26.3.1@sha256:327518e7157e9634eab9aeb51abfba816845fad47177ca985e1b34d202a1f51e"
+      # immich selects this RuntimeClass by name.
+      runtimeClass: nvidia
+      # Flux replaces the CRDs (crds: CreateReplace); the hook Job would duplicate it with CRD-wide write RBAC.
+      upgradeCRD: false
+      affinity: null
+      tolerations: []
+    node-feature-discovery:
+      worker:
+        # The chart default shares the master's ServiceAccount (cluster-wide node update) with every worker pod.
+        serviceAccount:
+          create: true
+          name: nfd-worker
+        nodeSelector:
+          nvidia.com/gpu: "true"
+        tolerations:
+          - key: nvidia.com/gpu
+            operator: Exists
+            effect: NoSchedule
+      gc:
+        # A fixed node set needs no NodeFeature GC, and its role carries nodes/proxy get.
+        enable: false
+      master:
+        affinity: null
+        tolerations: []
+    validator:
+      version: "v26.3.1@sha256:327518e7157e9634eab9aeb51abfba816845fad47177ca985e1b34d202a1f51e"
+    devicePlugin:
+      # device-plugin v0.19.0 injects InfiniBand/GDS/GDRCopy device nodes into GPU pods by default.
+      env:
+        - name: MOFED_ENABLED
+          value: "false"
+        - name: GDS_ENABLED
+          value: "false"
+        - name: GDRCOPY_ENABLED
+          value: "false"
+    migManager:
+      enabled: false
+    # Nothing scrapes it yet (BOW-884); it runs privileged with cluster-wide pod read.
+    dcgmExporter:
+      enabled: false
