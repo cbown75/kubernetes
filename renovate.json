@@ -7,6 +7,14 @@
   "flux": {
     "managerFilePatterns": ["/(^|/)(clusters|infrastructure|apps)/.+\\.ya?ml$/"]
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "gpu-operator images pinned by tag@digest in values.*.version, which no built-in manager reads; only lines under a renovate comment match, so each keeps its own depName",
+      "managerFilePatterns": ["/(^|/)infrastructure/gpu-operator/base/helmrelease\\.yaml$/"],
+      "matchStrings": ["# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n\\s*version: \"(?<currentValue>v[0-9.]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""]
+    }
+  ],
   "packageRules": [
     {
       "description": "Cilium upgrades one minor at a time (Talos upgrade plan, Track B); never open a multi-minor jump unprompted",
@@ -25,6 +33,14 @@
       "separateMultipleMinor": true,
       "dependencyDashboardApproval": true,
       "prBodyNotes": ["Istio Helm upgrades allow one minor per step; base, cni, istiod and gateway are bumped together in this PR (vault: Talos v1.13 Upgrade Plan, Track B)."]
+    },
+    {
+      "description": "gpu-operator tracks the version Talos validates for its NVIDIA extensions; bump only with the matching Talos release, chart and operator image together",
+      "matchFileNames": ["infrastructure/gpu-operator/**"],
+      "groupName": "gpu-operator",
+      "separateMinorPatch": true,
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["Check the gpu-operator version Talos tests (siderolabs/talos internal/integration/api/constants.go, NvidiaGPUOperatorChartVersion, at the running Talos tag) for the running Talos minor before merging."]
     },
     {
       "description": "Renovate never upgrades Flux: controllers are upgraded only by regenerating gotk-components.yaml with `flux install --export` (BOW-772)",

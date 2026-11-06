@@ -1,0 +1,50 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gpu-operator-base
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: gpu-operator
+    app.kubernetes.io/part-of: gpu-infrastructure
+spec:
+  # Also orders the nvidia RuntimeClass handoff: infrastructure drops it from its
+  # inventory before the operator adopts it.
+  dependsOn:
+    - name: infrastructure
+  interval: 10m
+  retryInterval: 2m
+  path: ./infrastructure/gpu-operator/base
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  # Ready requires the operator's ClusterPolicy ready and the device plugin running on a
+  # GPU node; GPU workloads themselves are proven by the A3 acceptance test.
+  wait: false
+  # Kept short: kustomize-controller can't preempt a health-check wait (CancelHealthCheckOnNewRevision
+  # is off), so a long timeout delays fix/revert pushes. The HelmRelease keeps retrying on its own.
+  timeout: 15m
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: gpu-operator
+      namespace: flux-system
+    - apiVersion: nvidia.com/v1
+      kind: ClusterPolicy
+      name: cluster-policy
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      name: nvidia-device-plugin-daemonset
+      namespace: gpu-operator
+  healthCheckExprs:
+    - apiVersion: nvidia.com/v1
+      kind: ClusterPolicy
+      current: status.?state.orValue('') == 'ready'
+      failed: status.?state.orValue('') == 'ignored'
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      current: >-
+        status.desiredNumberScheduled > 0 &&
+        status.numberReady == status.desiredNumberScheduled &&
+        status.?updatedNumberScheduled.orValue(0) == status.desiredNumberScheduled &&
+        status.?numberAvailable.orValue(0) == status.desiredNumberScheduled
