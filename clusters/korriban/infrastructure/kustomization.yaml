@@ -6,5 +6,5 @@ resources:
   - sealed-secrets
   - cilium
   - dns
-  - nvidia-device-plugin
+  - nvidia-runtimeclass
   - intel-gpu-plugin
