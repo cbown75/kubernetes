@@ -4,18 +4,36 @@
   "kubernetes": {
     "managerFilePatterns": ["apps/.+\\.yaml$", "infrastructure/.+\\.yaml$"]
   },
+  "flux": {
+    "managerFilePatterns": ["/(^|/)(clusters|infrastructure|apps)/.+\\.ya?ml$/"]
+  },
   "packageRules": [
     {
-      "description": "Flux controllers are upgraded by regenerating gotk-components.yaml, never by tag bumps (BOW-772)",
-      "matchFileNames": ["**/flux-system/gotk-components.{yaml,yml}"],
-      "matchDatasources": ["docker"],
+      "description": "Cilium upgrades one minor at a time (Talos upgrade plan, Track B); never open a multi-minor jump unprompted",
+      "matchDatasources": ["helm"],
+      "matchPackageNames": ["cilium"],
+      "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["Upgrade one minor at a time and run the upstream pre-flight check (vault: Talos v1.13 Upgrade Plan, Track B)."]
+    },
+    {
+      "description": "Istio's four charts move together, one minor at a time (Talos upgrade plan, Track B)",
+      "matchDatasources": ["helm"],
+      "matchFileNames": ["**/istio/**"],
+      "matchPackageNames": ["base", "cni", "istiod", "gateway"],
+      "groupName": "istio",
+      "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["Istio Helm upgrades allow one minor per step; base, cni, istiod and gateway are bumped together in this PR (vault: Talos v1.13 Upgrade Plan, Track B)."]
+    },
+    {
+      "description": "Renovate never upgrades Flux: controllers are upgraded only by regenerating gotk-components.yaml with `flux install --export` (BOW-772)",
+      "matchFileNames": ["**/flux-system/**"],
       "enabled": false
     },
     {
-      "matchFileNames": ["**/flux-system/gotk-components.{yaml,yml}"],
-      "matchPackageNames": ["fluxcd/flux2"],
-      "dependencyDashboardApproval": true,
-      "prBodyNotes": ["Do not merge: regenerate gotk-components.yaml with `flux install --export` (flux-system README, \"Upgrade Flux\")."]
+      "matchPackageNames": ["fluxcd/flux2", "ghcr.io/fluxcd/**"],
+      "enabled": false
     },
     {
       "matchPackageNames": [
