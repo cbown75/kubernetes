@@ -9,12 +9,22 @@
   },
   "packageRules": [
     {
-      "description": "Cilium and Istio upgrade one minor at a time (Talos upgrade plan, Track B); never open a multi-minor jump unprompted",
+      "description": "Cilium upgrades one minor at a time (Talos upgrade plan, Track B); never open a multi-minor jump unprompted",
       "matchDatasources": ["helm"],
-      "matchPackageNames": ["cilium", "base", "cni", "istiod", "gateway"],
+      "matchPackageNames": ["cilium"],
       "separateMultipleMinor": true,
       "dependencyDashboardApproval": true,
-      "prBodyNotes": ["Upgrade one minor at a time and run the upstream pre-flight checks (vault: Talos v1.13 Upgrade Plan, Track B). For Istio, bump base, cni, istiod and gateway together."]
+      "prBodyNotes": ["Upgrade one minor at a time and run the upstream pre-flight check (vault: Talos v1.13 Upgrade Plan, Track B)."]
+    },
+    {
+      "description": "Istio's four charts move together, one minor at a time (Talos upgrade plan, Track B)",
+      "matchDatasources": ["helm"],
+      "matchFileNames": ["**/istio/**"],
+      "matchPackageNames": ["base", "cni", "istiod", "gateway"],
+      "groupName": "istio",
+      "separateMultipleMinor": true,
+      "dependencyDashboardApproval": true,
+      "prBodyNotes": ["Istio Helm upgrades allow one minor per step; base, cni, istiod and gateway are bumped together in this PR (vault: Talos v1.13 Upgrade Plan, Track B)."]
     },
     {
       "description": "Renovate never upgrades Flux: controllers are upgraded only by regenerating gotk-components.yaml with `flux install --export` (BOW-772)",
