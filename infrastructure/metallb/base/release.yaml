@@ -58,7 +58,7 @@ spec:
       enabled: true
       image:
         repository: quay.io/metallb/controller
-        tag: v0.14.8
+        tag: v0.16.2
         pullPolicy: IfNotPresent
       logLevel: warn
       resources:
