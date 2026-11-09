@@ -57,9 +57,12 @@ spec:
             - name: REPLICAS_FILE
               value: "/config/replicas"
             - name: CRON
-              value: "40 * * * *"
+              value: "40 * * * *" # hourly, offset from pihole1 (:00) and pihole3 (:20)
             - name: TZ
               value: "America/Phoenix"
+            # 30 s between per-call retries so one run survives a short replica restart
+            - name: CLIENT_RETRY_DELAY_SECONDS
+              value: "30"
             - name: FULL_SYNC
               value: "false"
             - name: SYNC_CONFIG_DNS

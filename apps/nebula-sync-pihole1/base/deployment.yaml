@@ -63,9 +63,12 @@ spec:
             - name: REPLICAS_FILE
               value: "/config/replicas"
             - name: CRON
-              value: "0 * * * *"
+              value: "0 * * * *" # hourly; pihole3 and pihole5 run at :20 and :40 so replica restarts don't coincide
             - name: TZ
               value: "America/Phoenix"
+            # 30 s between per-call retries so one run survives a short replica restart
+            - name: CLIENT_RETRY_DELAY_SECONDS
+              value: "30"
             - name: FULL_SYNC
               value: "false"
             - name: SYNC_CONFIG_DNS
