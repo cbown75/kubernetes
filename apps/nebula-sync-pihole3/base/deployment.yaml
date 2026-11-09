@@ -57,7 +57,7 @@ spec:
             - name: REPLICAS_FILE
               value: "/config/replicas"
             - name: CRON
-              value: "*/10 * * * *" # Every 10 minutes as per docker-compose
+              value: "0 * * * *"
             - name: TZ
               value: "America/Phoenix"
             - name: FULL_SYNC
