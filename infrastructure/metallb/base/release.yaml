@@ -58,7 +58,7 @@ spec:
       enabled: true
       image:
         repository: quay.io/metallb/controller
-        tag: v0.14.8
+        tag: v0.16.2
         pullPolicy: IfNotPresent
       logLevel: warn
       resources:
@@ -83,8 +83,15 @@ spec:
       enabled: true
       image:
         repository: quay.io/metallb/speaker
-        tag: v0.14.8
+        tag: v0.16.2
         pullPolicy: IfNotPresent
+      # MetalLB 0.16.2 changed memberlist key derivation (metallb#3143), so old
+      # and new speakers cannot gossip. A one-at-a-time rollout splits the L2
+      # election and double-announces LB IPs; replace every speaker at once.
+      updateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 100%
       logLevel: warn
       resources:
         limits:
