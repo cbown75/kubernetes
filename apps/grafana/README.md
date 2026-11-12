@@ -20,7 +20,6 @@ This Grafana deployment uses a **multi-cluster structure** with Kustomize overla
 ```
 /apps/grafana/
   base/                           # Shared configuration across all clusters
-    namespace.yaml                # monitoring namespace
     serviceaccount.yaml          # Grafana service account
     role.yaml                    # Sidecar RBAC: ConfigMaps in monitoring only
     rolebinding.yaml             # Binds the role to the Grafana service account
@@ -29,6 +28,8 @@ This Grafana deployment uses a **multi-cluster structure** with Kustomize overla
     pvc.yaml                     # PVC template
     configmap-datasources.yaml   # Prometheus & Loki datasources
     configmap-grafana-ini.yaml   # Base grafana.ini config
+    configmap-dashboard-provider.yaml  # File provider reading /tmp/dashboards
+    dashboards/                  # Dashboard ConfigMaps (grafana_dashboard=1)
     kustomization.yaml
 
   overlay/
@@ -51,7 +52,7 @@ This Grafana deployment uses a **multi-cluster structure** with Kustomize overla
 - **Namespace**: `monitoring`
 - **Replicas**: 1 (Recreate strategy due to PVC)
 - **Storage**: 10Gi PersistentVolumeClaim
-- **Image**: grafana/grafana:11.4.0
+- **Image**: grafana/grafana:13.3.0
 - **Authentication**: Local admin user via sealed secrets
 
 ### Cluster-Specific Configuration
@@ -85,10 +86,14 @@ Pre-configured data sources (defined in base):
 Grafana includes a **sidecar container** that automatically discovers and loads dashboards:
 
 - **Watches**: ConfigMaps with label `grafana_dashboard=1`
-- **Namespace**: `monitoring` only. The sidecar's Role covers just this
-  namespace, so a dashboard ConfigMap anywhere else is silently ignored.
-- **Startup**: about 2 minutes after a pod restart before dashboards are
-  written to `/tmp/dashboards`; the sidecar logs nothing at the default level.
+- **Namespace**: `monitoring` only. The sidecar's `NAMESPACE=monitoring` env
+  limits the watch, and its namespaced Role only allows ConfigMap reads
+  there. A dashboard ConfigMap in any other namespace is silently ignored;
+  widening just one of the two does not change that.
+- **Startup**: the sidecar is silent for about 2 minutes after a pod
+  restart, then logs one `Writing /tmp/dashboards/<name>.json` line per
+  dashboard and `Initial sync complete`. Until then Grafana does not show the
+  file-provisioned dashboards.
 - **Auto-reload**: Dashboards update automatically when ConfigMaps change
 
 **To add a dashboard:**
@@ -128,10 +133,10 @@ resources:
 resources:
   requests:
     cpu: 50m
-    memory: 50Mi
+    memory: 128Mi
   limits:
     cpu: 100m
-    memory: 100Mi
+    memory: 256Mi
 ```
 
 ### Security Context
