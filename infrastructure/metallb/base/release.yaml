@@ -48,9 +48,15 @@ spec:
       retries: 3
   upgrade:
     crds: CreateReplace
-    # TEMPORARY for the 0.14.8 -> 0.16.2 upgrade: a rollback restores the old
-    # one-at-a-time speaker rollout and mixes speaker versions (see the speaker
-    # updateStrategy below). Fail in place instead; restore retries: 3 after.
+    # TEMPORARY for the 0.14.8 -> 0.16.2 upgrade. Rolling back to 0.14.8 would
+    # restore the one-at-a-time speaker rollout and mix speaker versions (see
+    # speaker.updateStrategy), and the stored 0.14.8 manifest cannot be
+    # force-rolled-back anyway (invalid pod securityContext fields).
+    # On failure the HelmRelease stalls and blocks metallb-config: fix the
+    # cause, then `flux reconcile hr metallb -n metallb-system --force`.
+    # Restore retries: 3 only after
+    # `helm history metallb-system-metallb -n metallb-system` shows 0.16.2
+    # `deployed`.
     remediation:
       retries: 0
   rollback:
@@ -77,8 +83,9 @@ spec:
           type: RuntimeDefault
     speaker:
       enabled: true
-      # TEMPORARY for the 0.16.2 upgrade; restore the default once every
-      # speaker runs v0.16.2. 0.16.2 changed memberlist key derivation
+      # TEMPORARY for the 0.16.2 upgrade; restore the default only after
+      # `helm history` shows 0.16.2 `deployed` (not just running speakers),
+      # together with upgrade retries. 0.16.2 changed memberlist key derivation
       # (metallb#3143), so old and new speakers cannot gossip. A one-at-a-time
       # rollout splits the L2 election and double-announces LB IPs; replace
       # every speaker at once.
@@ -99,21 +106,14 @@ spec:
           operator: Exists
         - effect: NoExecute
           operator: Exists
+      # L2-only cluster (no BGPPeers): keep the FRR sidecars off explicitly.
+      frr:
+        enabled: false
       # Pod-level only; the chart sets the container to drop ALL + add NET_RAW.
       securityContext:
         runAsUser: 0
-            #    prometheus:
-            #      namespace: monitoring
-            #      serviceAccount: metallb-controller
-            #      app.kubernetes.io/part-of: monitoring-stack
-            #      serviceMonitor:
-            #        enabled: true
-            #        additionalLabels:
-            #          app.kubernetes.io/part-of: monitoring-stack
-            #      prometheusRule:
-            #        enabled: true
-            #        additionalLabels:
-            #          app.kubernetes.io/part-of: monitoring-stack
+        seccompProfile:
+          type: RuntimeDefault
     crds:
       enabled: true
       validationFailurePolicy: Fail
