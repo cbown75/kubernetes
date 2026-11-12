@@ -57,7 +57,7 @@ spec:
             - name: REPLICAS_FILE
               value: "/config/replicas"
             - name: CRON
-              value: "*/10 * * * *"
+              value: "40 * * * *" # hourly, offset per nebula-sync instance (:00/:20/:40); the sync at pod start ignores the offset
             - name: TZ
               value: "America/Phoenix"
             - name: FULL_SYNC
