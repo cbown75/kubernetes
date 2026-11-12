@@ -98,8 +98,10 @@ spec:
               value: "1"
             - name: FOLDER
               value: /tmp/dashboards
+            # ConfigMaps only: the ClusterRole grants no Secret access, so a
+            # compromised Grafana cannot read cluster Secrets.
             - name: RESOURCE
-              value: both
+              value: configmap
             - name: NAMESPACE
               value: ALL
             - name: REQ_USERNAME
