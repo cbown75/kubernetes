@@ -22,6 +22,8 @@ This Grafana deployment uses a **multi-cluster structure** with Kustomize overla
   base/                           # Shared configuration across all clusters
     namespace.yaml                # monitoring namespace
     serviceaccount.yaml          # Grafana service account
+    role.yaml                    # Sidecar RBAC: ConfigMaps in monitoring only
+    rolebinding.yaml             # Binds the role to the Grafana service account
     deployment.yaml              # Main deployment with sidecar
     service.yaml                 # ClusterIP service
     pvc.yaml                     # PVC template
@@ -83,7 +85,10 @@ Pre-configured data sources (defined in base):
 Grafana includes a **sidecar container** that automatically discovers and loads dashboards:
 
 - **Watches**: ConfigMaps with label `grafana_dashboard=1`
-- **Namespace**: ALL (searches entire cluster)
+- **Namespace**: `monitoring` only. The sidecar's Role covers just this
+  namespace, so a dashboard ConfigMap anywhere else is silently ignored.
+- **Startup**: about 2 minutes after a pod restart before dashboards are
+  written to `/tmp/dashboards`; the sidecar logs nothing at the default level.
 - **Auto-reload**: Dashboards update automatically when ConfigMaps change
 
 **To add a dashboard:**
