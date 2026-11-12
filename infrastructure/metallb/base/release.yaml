@@ -48,18 +48,17 @@ spec:
       retries: 3
   upgrade:
     crds: CreateReplace
+    # TEMPORARY for the 0.14.8 -> 0.16.2 upgrade: a rollback restores the old
+    # one-at-a-time speaker rollout and mixes speaker versions (see the speaker
+    # updateStrategy below). Fail in place instead; restore retries: 3 after.
     remediation:
-      retries: 3
+      retries: 0
   rollback:
     recreate: true
     force: true
   values:
     controller:
       enabled: true
-      image:
-        repository: quay.io/metallb/controller
-        tag: v0.16.2
-        pullPolicy: IfNotPresent
       logLevel: warn
       resources:
         limits:
@@ -68,26 +67,21 @@ spec:
         requests:
           cpu: 50m
           memory: 50Mi
+      # Pod-level securityContext only. The chart hardcodes the container-level
+      # hardening (drop ALL, read-only root, no privilege escalation).
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
         fsGroup: 65534
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        readOnlyRootFilesystem: true
         seccompProfile:
           type: RuntimeDefault
     speaker:
       enabled: true
-      image:
-        repository: quay.io/metallb/speaker
-        tag: v0.16.2
-        pullPolicy: IfNotPresent
-      # MetalLB 0.16.2 changed memberlist key derivation (metallb#3143), so old
-      # and new speakers cannot gossip. A one-at-a-time rollout splits the L2
-      # election and double-announces LB IPs; replace every speaker at once.
+      # TEMPORARY for the 0.16.2 upgrade; restore the default once every
+      # speaker runs v0.16.2. 0.16.2 changed memberlist key derivation
+      # (metallb#3143), so old and new speakers cannot gossip. A one-at-a-time
+      # rollout splits the L2 election and double-announces LB IPs; replace
+      # every speaker at once.
       updateStrategy:
         type: RollingUpdate
         rollingUpdate:
@@ -105,16 +99,9 @@ spec:
           operator: Exists
         - effect: NoExecute
           operator: Exists
+      # Pod-level only; the chart sets the container to drop ALL + add NET_RAW.
       securityContext:
         runAsUser: 0
-        allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: true
-        capabilities:
-          add:
-            - NET_RAW
-            - NET_ADMIN
-          drop:
-            - ALL
             #    prometheus:
             #      namespace: monitoring
             #      serviceAccount: metallb-controller
