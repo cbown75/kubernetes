@@ -71,7 +71,7 @@ Pre-configured data sources (defined in base):
 
 #### Prometheus
 
-- **URL**: `http://prometheus-server.monitoring.svc.cluster.local:9090`
+- **URL**: `http://prometheus-server.monitoring.svc.cluster.local`
 - **Type**: Time-series metrics
 - **Usage**: Primary metrics source for all dashboards
 
@@ -88,11 +88,25 @@ Grafana includes a **sidecar container** that automatically discovers and loads 
 - **Watches**: ConfigMaps with label `grafana_dashboard=1`
 - **Namespace**: `monitoring` only. The sidecar's `NAMESPACE=monitoring` env
   limits the watch, and its namespaced Role only allows ConfigMap reads
-  there. A dashboard ConfigMap in any other namespace is silently ignored;
-  widening just one of the two does not change that.
+  there. A dashboard ConfigMap in any other namespace is silently ignored.
+  This scope is a security boundary: cluster-wide ConfigMap read exposed
+  credentials other charts keep in ConfigMaps (see `base/role.yaml`). Put
+  new dashboards in `monitoring`. If another namespace is unavoidable, add a
+  namespaced Role/RoleBinding for that one namespace and append it to
+  `NAMESPACE` (comma-separated); never use a ClusterRole or `NAMESPACE=ALL`.
+  Change both together. If `NAMESPACE` names a namespace (or `ALL`) the Role
+  does not cover, the sidecar's initial list fails with 403 and the sidecar
+  exits. It crash-loops, the pod goes NotReady, and Grafana itself drops out
+  of its Service: a full Grafana outage, not just missing dashboards.
+- **File names**: each data key becomes `/tmp/dashboards/<data key>`, and
+  the sidecar does not enforce unique names. Keys must end in `.json` (the
+  file provider ignores anything else) and be unique across all dashboard
+  ConfigMaps. Two ConfigMaps with the same key overwrite each other, and
+  deleting either one deletes the shared file and its dashboard. Each
+  dashboard's `uid` must be unique too.
 - **Startup**: the sidecar is silent for about 2 minutes after a pod
-  restart, then logs one `Writing /tmp/dashboards/<name>.json` line per
-  dashboard and `Initial sync complete`. Until then Grafana does not show the
+  restart, then logs one `Writing /tmp/dashboards/<data key> (ascii)` line
+  per dashboard and `Initial sync complete`. Until then Grafana does not show the
   file-provisioned dashboards.
 - **Auto-reload**: Dashboards update automatically when ConfigMaps change
 
@@ -107,9 +121,13 @@ metadata:
   labels:
     grafana_dashboard: "1"
 data:
-  dashboard.json: |
+  # Unique key; the value is the raw dashboard model (as exported from the
+  # dashboard's JSON model), not the {"dashboard": ...} HTTP API wrapper.
+  my-dashboard.json: |
     {
-      "dashboard": { ... }
+      "title": "My Dashboard",
+      "uid": "my-dashboard",
+      "panels": [ ... ]
     }
 ```
 
@@ -226,9 +244,12 @@ Access Grafana through Istio ingress with automatic TLS termination:
 **Method 1: Via ConfigMap (GitOps)**
 
 ```bash
-# Create ConfigMap from dashboard JSON
+# Create ConfigMap from dashboard JSON. If the file came from the API export
+# below, unwrap it first: the API returns {"dashboard": ..., "meta": ...}.
+jq 'if has("dashboard") then .dashboard else . end' dashboard.json > dashboard.raw.json \
+  && mv dashboard.raw.json dashboard.json
 kubectl create configmap my-dashboard \
-  --from-file=dashboard.json \
+  --from-file=my-dashboard.json=dashboard.json \
   --namespace=monitoring \
   --dry-run=client -o yaml | \
   kubectl label --local -f - grafana_dashboard=1 --dry-run=client -o yaml \
@@ -315,7 +336,7 @@ kubectl exec -n monitoring deployment/grafana -- cat /etc/grafana/grafana.ini
 curl -k https://grafana.home.cwbtech.net/api/health
 
 # Check data source connectivity
-curl -k https://grafana.home.cwbtech.net/api/datasources/proxy/1/api/v1/query?query=up
+curl -k 'https://grafana.home.cwbtech.net/api/datasources/proxy/1/api/v1/query?query=up'
 ```
 
 ### Logs
@@ -356,7 +377,7 @@ kubectl get svc -n monitoring grafana
 ```bash
 # Test Prometheus connectivity from Grafana pod
 kubectl exec -n monitoring deployment/grafana -c grafana -- \
-  wget -O- http://prometheus-server.monitoring.svc.cluster.local:9090/api/v1/query?query=up
+  wget -O- 'http://prometheus-server.monitoring.svc.cluster.local/api/v1/query?query=up'
 
 # Test Loki connectivity
 kubectl exec -n monitoring deployment/grafana -c grafana -- \
