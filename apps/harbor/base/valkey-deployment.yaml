@@ -37,7 +37,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: valkey
-          image: valkey/valkey:8.1-alpine
+          image: valkey/valkey:9.2-alpine
           imagePullPolicy: IfNotPresent
           # appendonly for durability of the job queue; --dir pins persistence to the
           # writable PVC (required under readOnlyRootFilesystem, independent of the image
