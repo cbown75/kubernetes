@@ -52,7 +52,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: n8n
-          image: n8nio/n8n:2.48.4
+          image: n8nio/n8n:3.3.0
           imagePullPolicy: Always
           command:
             - /bin/sh
