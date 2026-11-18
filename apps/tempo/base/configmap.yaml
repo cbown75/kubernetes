@@ -29,12 +29,10 @@ data:
         zipkin:
           endpoint: 0.0.0.0:9411
 
-    ingester:
-      max_block_duration: 5m
-
-    compactor:
-      compaction:
-        block_retention: 720h  # 30 days
+    overrides:
+      defaults:
+        compaction:
+          block_retention: 720h
 
     storage:
       trace:
