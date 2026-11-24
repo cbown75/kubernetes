@@ -136,13 +136,16 @@ spec:
           volumeMounts:
             - name: n8n-data
               mountPath: /home/node/.n8n
+          # n8n v3 needs >250MiB of heap at startup. Node 26 (n8n 3.x image)
+          # sizes old space at 50% of this container's limits.memory; main
+          # runs no task runner in queue mode, so the rest is non-heap.
           resources:
             requests:
               cpu: 500m
-              memory: 256Mi
+              memory: 1536Mi
             limits:
               cpu: "1"
-              memory: 512Mi
+              memory: 1536Mi
           livenessProbe:
             httpGet:
               path: /healthz
