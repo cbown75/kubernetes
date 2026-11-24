@@ -133,16 +133,20 @@ spec:
             # Environment
             - name: NODE_ENV
               value: production
+            # Without this V8 caps the heap at ~half the container limit;
+            # n8n v3 exhausts ~250MB at startup. Keep below limits.memory.
+            - name: NODE_OPTIONS
+              value: --max-old-space-size=768
           volumeMounts:
             - name: n8n-data
               mountPath: /home/node/.n8n
           resources:
             requests:
               cpu: 500m
-              memory: 256Mi
+              memory: 512Mi
             limits:
               cpu: "1"
-              memory: 512Mi
+              memory: 1Gi
           livenessProbe:
             httpGet:
               path: /healthz
