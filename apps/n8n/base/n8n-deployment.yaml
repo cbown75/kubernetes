@@ -133,20 +133,24 @@ spec:
             # Environment
             - name: NODE_ENV
               value: production
-            # Without this V8 caps the heap at ~half the container limit;
-            # n8n v3 exhausts ~250MB at startup. Keep below limits.memory.
+            # Memory budget for limits.memory (1536Mi): main heap ~768MB
+            # (50%, follows the limit) + internal task runner 256MB (it
+            # does not inherit NODE_OPTIONS) + ~500MB non-heap headroom.
+            # n8n v3 needs >250MB of heap at startup.
             - name: NODE_OPTIONS
-              value: --max-old-space-size=768
+              value: --max-old-space-size-percentage=50
+            - name: N8N_RUNNERS_MAX_OLD_SPACE_SIZE
+              value: "256"
           volumeMounts:
             - name: n8n-data
               mountPath: /home/node/.n8n
           resources:
             requests:
               cpu: 500m
-              memory: 512Mi
+              memory: 1536Mi
             limits:
               cpu: "1"
-              memory: 1Gi
+              memory: 1536Mi
           livenessProbe:
             httpGet:
               path: /healthz
